@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Fée Maison{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-xl-7">
+            <!-- En-tête de la page -->
+            <div class="d-flex align-items-center mb-4">
+                <a href="{{ url_for('stock_overview') }}" class="btn btn-outline-secondary me-3" title="Retour à la vue d'ensemble du stock">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+                <h1 class="h3 mb-0">
+                    <i class="bi bi-kanban-fill me-2"></i>{{ title }}
+                </h1>
+            </div>
+
+            <div class="alert alert-info d-flex align-items-center" role="alert">
+                <i class="bi bi-info-circle-fill me-2"></i>
+                <div>
+                    Utilisez des quantités positives pour les entrées de stock (ex: +10) et 
+                    négatives pour les sorties (ex: -5).
+                </div>
+            </div>
+
+            <!-- Formulaire -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-pencil-square me-2"></i>
+                        Effectuer un Ajustement de Stock
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST" novalidate>
+                        {{ form.hidden_tag() }}
+                        
+                        <!-- Champ Produit -->
+                        <div class="mb-3">
+                            {{ form.product.label(class="form-label fw-semibold") }}
+                            <span class="text-danger" title="Champ requis">*</span>
+                            {{ form.product(class="form-select form-select-lg" + (" is-invalid" if form.product.errors else "")) }}
+                            {% if form.product.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.product.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Sélectionnez le produit à ajuster.</div>
+                        </div>
+                        
+                        <!-- Champ Quantité -->
+                        <div class="mb-3">
+                            {{ form.quantity.label(class="form-label fw-semibold") }}
+                            <span class="text-danger" title="Champ requis">*</span>
+                            <div class="input-group">
+                                {{ form.quantity(class="form-control form-control-lg" + (" is-invalid" if form.quantity.errors else ""), placeholder="Ex: +10 ou -5") }}
+                                <span class="input-group-text">unités</span>
+                            </div>
+                            {% if form.quantity.errors %}
+                                <div class="invalid-feedback d-block"> {# d-block pour s'afficher sous input-group #}
+                                    {% for error in form.quantity.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                Quantité à ajouter (positive) ou à retirer (négative).
+                            </div>
+                        </div>
+                        
+                        <!-- Champ Raison -->
+                        <div class="mb-4">
+                            {{ form.reason.label(class="form-label fw-semibold") }}
+                            {{ form.reason(class="form-control" + (" is-invalid" if form.reason.errors else ""), rows=3, placeholder="Ex: Réception fournisseur, Produit endommagé, Correction d'inventaire...") }}
+                            {% if form.reason.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.reason.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Expliquez brièvement la raison de cet ajustement (optionnel mais recommandé).</div>
+                        </div>
+                        
+                        <!-- Boutons -->
+                        <div class="d-flex gap-2">
+                            {{ form.submit(class="btn btn-primary btn-lg") }}
+                            <a href="{{ url_for('stock_overview') }}" class="btn btn-outline-secondary btn-lg">
+                                <i class="bi bi-x-circle me-1"></i>Annuler
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Liens rapides et info -->
+            <div class="row mt-4">
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title"><i class="bi bi-ui-checks-grid me-1"></i>Accès Rapide</h6>
+                            <a href="{{ url_for('quick_stock_entry') }}" class="btn btn-sm btn-outline-success mb-2 d-block">
+                                <i class="bi bi-box-arrow-in-down me-1"></i>Réception Rapide (Yasmine)
+                            </a>
+                            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-sm btn-outline-info d-block">
+                                <i class="bi bi-speedometer2 me-1"></i>Admin Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="card bg-light border">
+                         <div class="card-body">
+                            <h6 class="card-title"><i class="bi bi-info-lg me-1"></i>Information</h6>
+                            <p class="small text-muted mb-0">
+                                Tous les ajustements de stock sont enregistrés dans les logs système pour assurer une traçabilité complète et faciliter les audits futurs.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

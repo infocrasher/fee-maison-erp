@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Page Non Trouvée</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.1/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background-color: #f8f9fa; }
+        .error-container { text-align: center; padding: 2rem; }
+        .error-icon { font-size: 5rem; color: var(--bs-warning); }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="mb-4"><i class="bi bi-exclamation-triangle-fill error-icon"></i></div>
+        <h1 class="display-1 fw-bold">404</h1>
+        <p class="h2 text-muted">Page Non Trouvée</p>
+        <p class="lead mt-3">
+            Désolé, la page que vous recherchez n'existe pas ou a été déplacée.
+        </p>
+        <a href="{{ url_for('hello_world') }}" class="btn btn-primary mt-3">
+            <i class="bi bi-house-door"></i> Retour à l'accueil
+        </a>
+    </div>
+</body>
+</html>

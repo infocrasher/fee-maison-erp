@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.name }} - Détails Produit{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-10 col-xl-8">
+            <!-- En-tête de la page -->
+            <div class="d-flex align-items-center mb-4">
+                <a href="{{ url_for('list_products') }}" class="btn btn-outline-secondary me-3" title="Retour à la liste des produits">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+                <h1 class="h3 mb-0">
+                    <i class="bi bi-box-fill me-2"></i>Détails du Produit : <strong>{{ product.name }}</strong>
+                </h1>
+                {% if current_user.is_authenticated and current_user.is_admin() %}
+                <div class="ms-auto btn-group">
+                    <a href="{{ url_for('edit_product', product_id=product.id) }}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-pencil-square me-1"></i>Modifier
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteProductModal{{ product.id }}">
+                        <i class="bi bi-trash-fill me-1"></i>Supprimer
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="row g-0">
+                    {# Colonne pour l'image (placeholder pour l'instant) #}
+                    {# <div class="col-md-4 text-center bg-light p-3">
+                        <i class="bi bi-image-fill display-1 text-secondary"></i>
+                        <p class="text-muted small mt-2">Image du produit (à venir)</p>
+                    </div> #}
+                    <div class="col-md-12"> {# Changez en col-md-8 si vous réactivez l'image #}
+                        <div class="card-body p-4">
+                            <h3 class="card-title text-primary">{{ product.name }}</h3>
+                            
+                            <p class="card-text">
+                                <span class="badge bg-info me-2">{{ product.category_ref.name if product.category_ref else 'N/A' }}</span>
+                                {% if product.sku %}
+                                <span class="badge bg-secondary">SKU: {{ product.sku }}</span>
+                                {% endif %}
+                            </p>
+
+                            {% if product.description %}
+                                <h5 class="mt-4">Description</h5>
+                                <p class="text-muted" style="white-space: pre-wrap;">{{ product.description|nl2br|safe }}</p>
+                            {% endif %}
+
+                            <h5 class="mt-4">Prix & Stock</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <div class="card bg-light border">
+                                        <div class="card-body">
+                                            <h6 class="text-muted small text-uppercase">Prix de Vente</h6>
+                                            <p class="h4 fw-bold mb-0">{{ "%.2f"|format(product.price|float) }} DA</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="card bg-light border">
+                                        <div class="card-body">
+                                            <h6 class="text-muted small text-uppercase">Quantité en Stock</h6>
+                                            <p class="h4 fw-bold mb-0 
+                                                {% if product.quantity_in_stock <= 0 %}text-danger{% elif product.quantity_in_stock <= 5 %}text-warning{% else %}text-success{% endif %}">
+                                                {{ product.quantity_in_stock }} unité(s)
+                                            </p>
+                                            {% if product.quantity_in_stock <= 0 %}
+                                                <small class="d-block text-danger">Rupture de stock</small>
+                                            {% elif product.quantity_in_stock <= 5 %}
+                                                <small class="d-block text-warning">Stock bas</small>
+                                            {% else %}
+                                                <small class="d-block text-success">En stock</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% if product.cost_price is not none %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="card bg-light border">
+                                        <div class="card-body">
+                                            <h6 class="text-muted small text-uppercase">Prix d'Achat</h6>
+                                            <p class="h5 mb-0">{{ "%.2f"|format(product.cost_price|float) }} DA</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                {% if product.price and product.cost_price and product.price > product.cost_price %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="card bg-light border">
+                                        <div class="card-body">
+                                            <h6 class="text-muted small text-uppercase">Marge Brute (estimée)</h6>
+                                            <p class="h5 mb-0 text-success">
+                                                {{ "%.2f"|format((product.price - product.cost_price)|float) }} DA 
+                                                <small>({{ "%.0f"|format(((product.price - product.cost_price) / product.cost_price * 100) if product.cost_price > 0 else 0) }}%)</small>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <hr>
+                            <p class="small text-muted mb-0">
+                                Créé le: {{ product.created_at.strftime('%d/%m/%Y %H:%M') if product.created_at else 'N/A' }}<br>
+                                Dernière mise à jour: {{ product.updated_at.strftime('%d/%m/%Y %H:%M') if product.updated_at else 'N/A' }}
+                            </p>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions rapides pour admin -->
+            {% if current_user.is_authenticated and current_user.is_admin() %}
+            <div class="mt-4">
+                <h5 class="mb-3"><i class="bi bi-lightning-fill me-1"></i>Actions Rapides Admin</h5>
+                <div class="btn-group">
+                    <a href="{{ url_for('stock_adjustment') }}?product_id={{ product.id }}" class="btn btn-outline-info">
+                        <i class="bi bi-kanban me-1"></i>Ajuster Stock de ce Produit
+                    </a>
+                    <a href="{{ url_for('quick_stock_entry') }}?product_id={{ product.id }}" class="btn btn-outline-success">
+                        <i class="bi bi-box-arrow-in-down me-1"></i>Réception Rapide pour ce Produit
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+
+<!-- Modal de suppression (si l'admin est sur cette page) -->
+{% if current_user.is_authenticated and current_user.is_admin() %}
+<div class="modal fade" id="deleteProductModal{{ product.id }}" tabindex="-1" aria-labelledby="deleteProductModalLabel{{ product.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteProductModalLabel{{ product.id }}"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmer la Suppression</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Êtes-vous sûr de vouloir supprimer le produit <strong>"{{ product.name }}"</strong> ?</p>
+                <p class="text-danger fw-bold">Cette action est irréversible.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Annuler</button>
+                <form method="POST" action="{{ url_for('delete_product', product_id=product.id) }}" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ manual_csrf_token() }}"/>
+                    <button type="submit" class="btn btn-danger"><i class="bi bi-trash-fill me-1"></i>Oui, Supprimer</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

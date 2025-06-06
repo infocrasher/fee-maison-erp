@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Tableau de Bord Administrateur - Fée Maison{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- En-tête de la page -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">
+                    <i class="bi bi-shield-check me-2 text-danger"></i>Tableau de Bord Administrateur
+                </h1>
+                <div class="badge bg-danger fs-6">
+                    <i class="bi bi-person-badge me-1"></i>Accès Administrateur
+                </div>
+            </div>
+
+            <!-- Message de bienvenue -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="alert alert-info" role="alert">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Bienvenue, {{ current_user.username }} !</strong> 
+                        Vous êtes connecté avec les privilèges administrateur.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistiques rapides (placeholders) -->
+            <div class="row mb-4">
+                <div class="col-md-3 mb-3">
+                    <div class="card text-center h-100">
+                        <div class="card-body">
+                            <i class="bi bi-people fs-1 text-primary mb-2"></i>
+                            <h5 class="card-title">Utilisateurs</h5>
+                            <p class="card-text text-muted">Gestion des comptes</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card text-center h-100">
+                        <div class="card-body">
+                            <i class="bi bi-box-seam fs-1 text-success mb-2"></i>
+                            <h5 class="card-title">Produits</h5>
+                            <p class="card-text text-muted">Catalogue & Stock</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card text-center h-100">
+                        <div class="card-body">
+                            <i class="bi bi-graph-up fs-1 text-warning mb-2"></i>
+                            <h5 class="card-title">Rapports</h5>
+                            <p class="card-text text-muted">Analyses & Stats</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card text-center h-100">
+                        <div class="card-body">
+                            <i class="bi bi-gear fs-1 text-secondary mb-2"></i>
+                            <h5 class="card-title">Configuration</h5>
+                            <p class="card-text text-muted">Paramètres système</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions administrateur (placeholders) -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-tools me-2"></i>Actions Administrateur
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Contenu des actions à venir -->
+                            <div class="alert alert-warning mt-3" role="alert">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                <strong>Note :</strong> Les fonctionnalités administrateur seront implémentées dans les prochaines phases du développement.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="row mt-4">
+                <div class="col-12 text-center">
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary btn-sm me-2">
+                        <i class="bi bi-arrow-left-circle"></i> Retour au tableau de bord principal
+                    </a>
+                    <a href="{{ url_for('account') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-person-circle"></i> Mon compte
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

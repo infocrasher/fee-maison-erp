@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Fée Maison{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0"><i class="bi bi-cart-plus me-2"></i>{{ title }}</h1>
+                <a href="{{ url_for('list_orders') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-list-ul me-1"></i>Toutes les Commandes</a>
+            </div>
+            <div class="alert alert-info mb-4" role="alert"><i class="bi bi-info-circle me-2"></i><strong>Nouvelle commande :</strong> Saisissez les informations du client, les options de service et sélectionnez le produit commandé.</div>
+
+            <div class="card shadow-sm">
+                <div class="card-header"><h5 class="card-title mb-0"><i class="bi bi-pencil-square me-2"></i>{{ legend }}</h5></div>
+                <div class="card-body p-4">
+                    <form method="POST" novalidate>
+                        {{ form.hidden_tag() }}
+                        
+                        <fieldset class="mb-4">
+                            <legend class="h6 mb-3 border-bottom pb-2"><i class="bi bi-ui-checks-grid me-1"></i>Type de Demande</legend>
+                             <div class="mb-3">
+                                {{ form.order_type.label(class="form-label fw-semibold") }} <span class="text-danger">*</span>
+                                {{ form.order_type(class="form-select" + (" is-invalid" if form.order_type.errors else ""), id="order_type_select") }}
+                                {% if form.order_type.errors %}<div class="invalid-feedback">{% for error in form.order_type.errors %}{{ error }}{% endfor %}</div>{% endif %}
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="mb-4" id="customer_info_fieldset">
+                            <legend class="h6 mb-3 border-bottom pb-2"><i class="bi bi-person-badge me-1"></i>Informations Client</legend>
+                            <div class="mb-3">
+                                {{ form.customer_name.label(class="form-label fw-semibold") }} <span class="text-danger" id="customer_name_required_star">*</span>
+                                {{ form.customer_name(class="form-control form-control-lg" + (" is-invalid" if form.customer_name.errors else ""), placeholder="Nom complet du client", id="customer_name") }}
+                                {% if form.customer_name.errors %}<div class="invalid-feedback">{% for error in form.customer_name.errors %}{{ error }}{% endfor %}</div>{% endif %}
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    {{ form.customer_phone.label(class="form-label fw-semibold") }} <span class="text-danger" id="customer_phone_required_star">*</span>
+                                    {{ form.customer_phone(class="form-control" + (" is-invalid" if form.customer_phone.errors else ""), placeholder="Ex: 0555123456", id="customer_phone") }}
+                                    {% if form.customer_phone.errors %}<div class="invalid-feedback">{% for error in form.customer_phone.errors %}{{ error }}{% endfor %}</div>{% endif %}
+                                </div>
+                            </div>
+                        </fieldset>
+                        
+                        <fieldset class="mb-4" id="service_options_fieldset">
+                            <legend class="h6 mb-3 border-bottom pb-2"><i class="bi bi-gear-fill me-1"></i>Options de Service et Planification</legend>
+                            <div class="mb-3" id="delivery_option_wrapper">
+                                {{ form.delivery_option.label(class="form-label fw-semibold") }} <span class="text-danger">*</span>
+                                {{ form.delivery_option(class="form-select" + (" is-invalid" if form.delivery_option.errors else ""), id="delivery_option") }}
+                                {% if form.delivery_option.errors %}<div class="invalid-feedback">{% for error in form.delivery_option.errors %}{{ error }}{% endfor %}</div>{% endif %}
+                            </div>
+                            <div class="mb-3" id="customer_address_wrapper">
+                                {{ form.customer_address.label(class="form-label fw-semibold") }} 
+                                <span class="text-danger" id="customer_address_required_star" style="display:none;">*</span>
+                                {{ form.customer_address(class="form-control" + (" is-invalid" if form.customer_address.errors else ""), rows=3, placeholder="Adresse complète pour la livraison...", id="customer_address") }}
+                                {% if form.customer_address.errors %}<div class="invalid-feedback">{% for error in form.customer_address.errors %}{{ error }}{% endfor %}</div>{% endif %}
+                                <div class="form-text" id="customer_address_help_text">Adresse de livraison.</div>
+                            </div>
+                            <div class="mb-3" id="delivery_cost_field" style="display:none;">
+                                {{ form.delivery_cost.label(class="form-label fw-semibold") }}
+                                <div class="input-group">
+                                    {{ form.delivery_cost(class="form-control" + (" is-invalid" if form.delivery_cost.errors else ""), step="0.01", placeholder="0.00", type="number", id="delivery_cost_input") }}
+                                    <span class="input-group-text">DA</span>
+                                </div>
+                                {% if form.delivery_cost.errors %}<div class="invalid-feedback d-block">{% for error in form.delivery_cost.errors %}{{ error }}{% endfor %}</div>{% endif %}
+                            </div>
+                            <div class="mb-3">
+                                {{ form.due_date.label(class="form-label fw-semibold") }}
+                                {{ form.due_date(class="form-control" + (" is-invalid" if form.due_date.errors else ""), id="due_date") }}
+                                {% if form.due_date.errors %}<div class="invalid-feedback">{% for error in form.due_date.errors %}{{ error }}{% endfor %}</div>{% endif %}
+                            </div>
+                        </fieldset>
+                        
+                        <fieldset class="mb-4">
+                            <legend class="h6 mb-3 border-bottom pb-2"><i class="bi bi-box-seam me-1"></i>Produit Commandé</legend>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold" for="product_select">Produit <span class="text-danger">*</span></label>
+                                {# Select manuel pour les produits, en utilisant la variable passée par la route #}
+                                <select name="product" id="product_select" class="form-select {% if form.product.errors %}is-invalid{% endif %}" required>
+                                    <option value="" {% if not request.form.get('product') and (not form.product.data or form.product.data is none) %}selected{% endif %}>Sélectionnez un produit...</option>
+                                    {% for p_item in products_for_select %}
+                                    <option value="{{ p_item.id }}" 
+                                            data-price="{{ p_item.price|float if p_item.price is not none else '0.00' }}"
+                                            {# Condition simplifiée pour selected, en supposant que form.product.data est l'objet Product si WTForms l'a lié #}
+                                            {% if request.form.get('product') == p_item.id|string or (form.product.data and form.product.data.id == p_item.id) %}selected{% endif %}>
+                                        {{ p_item.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                {% if form.product.errors %}<div class="invalid-feedback d-block">{% for error in form.product.errors %}{{ error }}{% endfor %}</div>{% endif %}
+                            </div>
+                            <div class="row align-items-center">
+                                <div class="col-md-4 mb-3">
+                                    {{ form.quantity.label(class="form-label fw-semibold") }} <span class="text-danger">*</span>
+                                    <div class="input-group">
+                                        {{ form.quantity(class="form-control" + (" is-invalid" if form.quantity.errors else ""), id="quantity_input", type="number") }}
+                                        <span class="input-group-text">unité(s)</span>
+                                    </div>
+                                    {% if form.quantity.errors %}<div class="invalid-feedback d-block">{% for error in form.quantity.errors %}{{ error }}{% endfor %}</div>{% endif %}
+                                </div>
+                                <div class="col-md-8 mb-3" id="price_preview" style="display: none;">
+                                    <div class="card bg-light border"><div class="card-body py-2 px-3">
+                                        <small class="text-muted">Prix unitaire : <strong id="unit_price">-</strong> DA</small><br>
+                                        <small class="text-muted">Sous-total articles : <strong id="subtotal_price">-</strong> DA</small><br>
+                                        <strong class="text-primary">Total commande : <span id="total_price">-</span> DA</strong>
+                                    </div></div>
+                                </div>
+                            </div>
+                        </fieldset>
+                        
+                        <fieldset class="mb-4">
+                            <legend class="h6 mb-3 border-bottom pb-2"><i class="bi bi-chat-left-text me-1"></i>Instructions Spéciales</legend>
+                            <div class="mb-3">
+                                {{ form.notes.label(class="form-label fw-semibold") }}
+                                {{ form.notes(class="form-control", rows=3, placeholder="Instructions spéciales...") }}
+                                {% if form.notes.errors %}<div class="invalid-feedback">{% for error in form.notes.errors %}{{ error }}{% endfor %}</div>{% endif %}
+                            </div>
+                        </fieldset>
+                        
+                        <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                            <a href="{{ url_for('list_orders') }}" class="btn btn-outline-secondary">Annuler</a>
+                            {{ form.submit(class="btn btn-primary btn-lg", value="Créer la Commande") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const orderTypeSelect = document.getElementById('order_type_select');
+    const clientInfoFieldset = document.getElementById('customer_info_fieldset'); 
+    const serviceOptionsFieldset = document.getElementById('service_options_fieldset');
+    const customerNameInput = document.getElementById('customer_name'); // Ajouté
+    const customerPhoneInput = document.getElementById('customer_phone'); // Ajouté
+
+    const productSelect = document.getElementById('product_select');
+    const quantityInput = document.getElementById('quantity_input');
+    const pricePreview = document.getElementById('price_preview');
+    const unitPriceSpan = document.getElementById('unit_price');
+    const subtotalPriceSpan = document.getElementById('subtotal_price');
+    const totalPriceSpan = document.getElementById('total_price');
+    const deliveryOptionSelect = document.getElementById('delivery_option');
+    const deliveryCostField = document.getElementById('delivery_cost_field');
+    const deliveryCostInput = document.getElementById('delivery_cost_input');
+    const customerAddressWrapper = document.getElementById('customer_address_wrapper'); // Doit être la div parente du champ adresse
+    const customerAddressInput = document.getElementById('customer_address'); // Si ID existe
+    const customerAddressRequiredStar = document.getElementById('customer_address_required_star');
+    const customerAddressHelpText = document.getElementById('customer_address_help_text');
+    const customerNameRequiredStar = document.getElementById('customer_name_required_star');
+    const customerPhoneRequiredStar = document.getElementById('customer_phone_required_star');
+
+    function updatePricePreview() {
+        if (!productSelect || !quantityInput || !pricePreview || !unitPriceSpan || !subtotalPriceSpan || !totalPriceSpan || !deliveryCostInput) {
+            if(pricePreview) pricePreview.style.display = 'none'; return;
+        }
+        const selectedOption = productSelect.options[productSelect.selectedIndex];
+        const quantity = parseInt(quantityInput.value, 10) || 0;
+        let unitPrice = 0;
+        if (selectedOption && selectedOption.dataset.price) { unitPrice = parseFloat(selectedOption.dataset.price); }
+        if (!isNaN(unitPrice) && quantity > 0) {
+            const itemsSubtotal = unitPrice * quantity;
+            let currentDeliveryCost = 0;
+            if (deliveryOptionSelect && deliveryOptionSelect.value === 'delivery') {
+                 currentDeliveryCost = parseFloat(deliveryCostInput.value) || 0;
+                 if (isNaN(currentDeliveryCost) || currentDeliveryCost < 0) currentDeliveryCost = 0; 
+            }
+            const grandTotal = itemsSubtotal + currentDeliveryCost;
+            unitPriceSpan.textContent = unitPrice.toFixed(2);
+            subtotalPriceSpan.textContent = itemsSubtotal.toFixed(2);
+            totalPriceSpan.textContent = grandTotal.toFixed(2);
+            pricePreview.style.display = 'block';
+        } else {
+            unitPriceSpan.textContent = '-'; subtotalPriceSpan.textContent = '-'; totalPriceSpan.textContent = '-';
+            pricePreview.style.display = 'none';
+        }
+    }
+    
+    function toggleDeliveryFields() {
+        if (!deliveryOptionSelect || !deliveryCostField || !customerAddressRequiredStar || !customerAddressHelpText || !deliveryCostInput) return; // Retiré customerAddressInput de la vérif ici car on ne le modifie pas directement.
+        const isDelivery = deliveryOptionSelect.value === 'delivery';
+        deliveryCostField.style.display = isDelivery ? 'block' : 'none';
+        customerAddressRequiredStar.style.display = isDelivery ? 'inline' : 'none';
+        customerAddressHelpText.textContent = isDelivery ? 'Adresse obligatoire pour une livraison à domicile.' : 'Adresse de livraison (optionnel si retrait en magasin).'; // J'ai gardé le innerHTML car vous n'aviez qu'un seul span
+        if (!isDelivery) { deliveryCostInput.value = '0.00'; }
+        updatePricePreview();
+    }
+
+    function toggleOrderTypeSpecificFields() {
+        if (!orderTypeSelect || !clientInfoFieldset || !serviceOptionsFieldset) return;
+        const isCustomerOrder = orderTypeSelect.value === 'customer_order';
+
+        clientInfoFieldset.style.display = isCustomerOrder ? 'block' : 'none';
+        if (customerNameRequiredStar) customerNameRequiredStar.style.display = isCustomerOrder ? 'inline' : 'none';
+        if (customerPhoneRequiredStar) customerPhoneRequiredStar.style.display = isCustomerOrder ? 'inline' : 'none';
+        
+        // Gérer l'affichage des wrappers des champs dans serviceOptionsFieldset
+        const deliveryOptionWrapper = document.getElementById('delivery_option_wrapper');
+        // const customerAddressWrapper est déjà défini
+        // const deliveryCostField est déjà défini
+
+        if (deliveryOptionWrapper) deliveryOptionWrapper.style.display = isCustomerOrder ? 'block' : 'none';
+        if (customerAddressWrapper) customerAddressWrapper.style.display = isCustomerOrder ? 'block' : 'none';
+        
+        if (!isCustomerOrder) { 
+            if (customerNameInput) customerNameInput.value = 'Production Comptoir';
+            if (customerPhoneInput) customerPhoneInput.value = '';
+            if (customerAddressInput) customerAddressInput.value = '';
+            if (deliveryOptionSelect) deliveryOptionSelect.value = 'pickup'; 
+            if (deliveryCostInput) deliveryCostInput.value = '0.00';
+            if (deliveryCostField) deliveryCostField.style.display = 'none'; // Cacher explicitement
+            if (customerAddressRequiredStar) customerAddressRequiredStar.style.display = 'none';
+        } else {
+            // Quand on revient à Commande Client, effacer "Production Comptoir"
+             if (customerNameInput && customerNameInput.value === 'Production Comptoir') {
+                customerNameInput.value = '';
+            }
+        }
+        toggleDeliveryFields(); 
+    }
+
+    if (productSelect) productSelect.addEventListener('change', updatePricePreview);
+    if (quantityInput) quantityInput.addEventListener('input', updatePricePreview);
+    if (deliveryOptionSelect) deliveryOptionSelect.addEventListener('change', toggleDeliveryFields);
+    if (deliveryCostInput) deliveryCostInput.addEventListener('input', updatePricePreview);
+    if (orderTypeSelect) orderTypeSelect.addEventListener('change', toggleOrderTypeSpecificFields);
+    
+    toggleOrderTypeSpecificFields(); 
+    if (productSelect && productSelect.value && productSelect.options.length > 1 && productSelect.options[productSelect.selectedIndex] && productSelect.options[productSelect.selectedIndex].value !== "") { 
+        updatePricePreview(); 
+    } else if (pricePreview) { 
+        pricePreview.style.display = 'none';
+    }
+});
+</script>
+{% endblock %}
