@@ -154,3 +154,6 @@ logs/
 
 # macOS specific
 .DS_Store
+
+# backup files
+*.db.backup

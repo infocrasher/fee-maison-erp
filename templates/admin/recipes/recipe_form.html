@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+{% from "_form_macros.html" import render_field %}
+
+{% block title %}{{ title }} - Fée Maison{% endblock %}
+
+{% block head %}
+{{ super() }}
+<style>
+    .form-section-card { border: 1px solid #e0e0e0; border-radius: 10px; margin-bottom: 2rem; background-color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+    .form-section-card .card-header { background-color: #f8f9fa; font-weight: 600; border-bottom: 1px solid #e0e0e0; color: #333; }
+    .form-section-card .card-header i { color: #007bff; }
+    .ingredients-container { background: #f0f2f5; border-radius: 8px; padding: 1.5rem; margin-top: 1rem; }
+    .ingredient-row { background: white; border: 1px solid #dee2e6; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; position: relative; transition: box-shadow 0.2s ease-in-out; }
+    .ingredient-row:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .remove-ingredient-btn { position: absolute; top: 0.75rem; right: 0.75rem; width: 30px; height: 30px; line-height: 30px; text-align: center; padding:0; }
+    .add-ingredient-btn { border-style: dashed; font-weight: 500; transition: background-color 0.2s ease, color 0.2s ease; }
+    .add-ingredient-btn:hover { background-color: #28a745; color: white; }
+    .ingredient-cost-preview { font-size: 0.85rem; color: #28a745; font-weight: 500; margin-top: 0.25rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0"><i class="bi bi-journal-plus me-2"></i>{{ legend }}</h1>
+        <a href="{{ url_for('list_recipes') }}" class="btn btn-outline-secondary"><i class="bi bi-list-ul me-1"></i>Liste des Recettes</a>
+    </div>
+
+    <form method="POST" id="recipe-form" novalidate>
+        {{ form.hidden_tag() }}
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card form-section-card">
+                    <div class="card-header"><i class="bi bi-card-text me-2"></i>Informations Générales</div>
+                    <div class="card-body">
+                        {{ render_field(form.name, placeholder="Nom unique de la recette") }}
+                        {{ render_field(form.finished_product) }}
+                        {{ render_field(form.description, rows=4, placeholder="Instructions de préparation, tours de main...") }}
+                    </div>
+                </div>
+
+                <div class="card form-section-card">
+                    <div class="card-header"><i class="bi bi-gear-wide-connected me-2"></i>Détails de Production</div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">{{ render_field(form.yield_quantity, placeholder="Ex: 112") }}</div>
+                            <div class="col-md-6">{{ render_field(form.yield_unit, placeholder="Ex: pièces, kg") }}</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">{{ render_field(form.preparation_time, placeholder="En minutes") }}</div>
+                            <div class="col-md-4">{{ render_field(form.cooking_time, placeholder="En minutes") }}</div>
+                            <div class="col-md-4">{{ render_field(form.difficulty_level) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card form-section-card sticky-top" style="top: 20px;">
+                    <div class="card-header"><i class="bi bi-calculator-fill me-2"></i>Coût Estimé</div>
+                    <div class="card-body">
+                        <h4 class="text-center mb-3" id="recipe-total-cost-display">0.00 DA</h4>
+                        <p class="text-muted text-center small">Coût total des ingrédients.</p>
+                        <div id="recipe-cost-per-yield-unit-display" class="text-center fw-bold mt-2">Coût / unité: 0.00 DA</div>
+                    </div>
+                    <div class="card-footer">
+                         {{ form.submit(class="btn btn-primary w-100 btn-lg") }}
+                         <a href="{{ url_for('list_recipes') }}" class="btn btn-outline-secondary w-100 mt-2">Annuler</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card form-section-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-basket3-fill me-2"></i>Ingrédients</span>
+                <span class="badge bg-primary rounded-pill" id="ingredients-count-badge">0</span>
+            </div>
+            <div class="card-body">
+                <div id="ingredients-container" class="ingredients-container">
+                    {% for ingredient_field_entry in form.ingredients %}
+                    <div class="ingredient-row" data-index="{{ loop.index0 }}">
+                        {{ ingredient_field_entry.hidden_tag() }} 
+                        <button type="button" class="btn btn-sm btn-danger remove-ingredient-btn" onclick="removeIngredientRow(this)" title="Supprimer cet ingrédient"><i class="bi bi-x-lg"></i></button>
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-5">
+                                {{ ingredient_field_entry.product.label(class="form-label") }}
+                                {{ ingredient_field_entry.product(class="form-select ingredient-product-select" ~ (" is-invalid" if ingredient_field_entry.product.errors else "")) }}
+                            </div>
+                            <div class="col-md-2">
+                                {{ ingredient_field_entry.quantity_needed.label(class="form-label") }}
+                                {{ ingredient_field_entry.quantity_needed(class="form-control ingredient-quantity-input" ~ (" is-invalid" if ingredient_field_entry.quantity_needed.errors else "")) }}
+                            </div>
+                            <div class="col-md-2">
+                                {{ ingredient_field_entry.unit.label(class="form-label") }}
+                                {{ ingredient_field_entry.unit(class="form-control ingredient-unit-input" ~ (" is-invalid" if ingredient_field_entry.unit.errors else "")) }}
+                            </div>
+                            <div class="col-md-3">
+                                {{ ingredient_field_entry.notes.label(class="form-label") }}
+                                {{ ingredient_field_entry.notes(class="form-control") }}
+                            </div>
+                        </div>
+                        <div class="ingredient-cost-preview mt-2 text-end price-related">Coût ingrédient: 0.00 DA</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <button type="button" class="btn btn-success add-ingredient-btn mt-3" onclick="addIngredientRow()">
+                    <i class="bi bi-plus-lg me-2"></i>Ajouter un Ingrédient
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script id="ingredient-products-data" type="application/json">
+    {{ ingredient_products_json|tojson|safe if ingredient_products_json else '[]' }}
+</script>
+<script id="conversion-factors-data" type="application/json">
+    {{ conversion_factors|tojson|safe if conversion_factors else '{}' }}
+</script>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    
+    let ingredientProducts = [];
+    try {
+        ingredientProducts = JSON.parse(document.getElementById('ingredient-products-data').textContent);
+    } catch (e) { console.error('Erreur parsing JSON des ingrédients:', e); }
+
+    let conversionFactors = {};
+    try {
+        const rawFactors = JSON.parse(document.getElementById('conversion-factors-data').textContent);
+        for (const key in rawFactors) {
+            conversionFactors[key.toLowerCase()] = parseFloat(rawFactors[key]);
+        }
+    } catch (e) { console.error('Erreur parsing JSON des conversions:', e); }
+    
+    const ingredientsContainer = document.getElementById('ingredients-container');
+    const yieldQuantityInput = document.querySelector('input[name="yield_quantity"]');
+    
+    function createIngredientProductOptions() {
+        let options = '<option value="">--- Sélectionnez un ingrédient ---</option>';
+        ingredientProducts.forEach(p => {
+            options += `<option value="${p.id}" 
+                data-cost="${p.cost_price || 0}" 
+                data-base-unit="${p.unit || ''}"
+                data-suggested-unit="${p.suggested_unit || p.unit || ''}">
+                ${p.name}
+            </option>`;
+        });
+        return options;
+    }
+
+    function enrichSelectElement(selectElement) {
+        if (!selectElement) return;
+        const selectedValue = selectElement.value;
+        selectElement.innerHTML = createIngredientProductOptions();
+        selectElement.value = selectedValue;
+    }
+    
+    function attachEventsToRow(row) {
+        const productSelect = row.querySelector('.ingredient-product-select');
+        const quantityInput = row.querySelector('.ingredient-quantity-input');
+        const unitInput = row.querySelector('.ingredient-unit-input');
+
+        if (productSelect) productSelect.addEventListener('change', () => {
+            autofillUnit(row);
+            calculateIngredientCost(row);
+        });
+        if (quantityInput) quantityInput.addEventListener('input', () => calculateIngredientCost(row));
+        if (unitInput) unitInput.addEventListener('input', () => calculateIngredientCost(row));
+    }
+    
+    function autofillUnit(row) {
+        const productSelect = row.querySelector('.ingredient-product-select');
+        const unitInput = row.querySelector('.ingredient-unit-input');
+        const selectedOption = productSelect ? productSelect.options[productSelect.selectedIndex] : null;
+        if (unitInput && selectedOption && selectedOption.dataset.suggestedUnit && selectedOption.value) {
+            unitInput.value = selectedOption.dataset.suggestedUnit;
+        }
+    }
+
+    function calculateIngredientCost(row) {
+        const productSelect = row.querySelector('.ingredient-product-select');
+        const quantityInput = row.querySelector('.ingredient-quantity-input');
+        const unitInput = row.querySelector('.ingredient-unit-input');
+        const costPreview = row.querySelector('.ingredient-cost-preview');
+        
+        const selectedOption = productSelect.options[productSelect.selectedIndex];
+        const quantityInRecipe = parseFloat(quantityInput.value) || 0;
+        let cost = 0;
+
+        if (selectedOption && selectedOption.value && quantityInRecipe > 0 && selectedOption.dataset.cost) {
+            const costPerBaseUnit = parseFloat(selectedOption.dataset.cost);
+            const productBaseUnit = (selectedOption.dataset.baseUnit || '').toLowerCase().trim();
+            const unitInRecipe = (unitInput.value || '').toLowerCase().trim();
+
+            if (!productBaseUnit || productBaseUnit === unitInRecipe) {
+                cost = costPerBaseUnit * quantityInRecipe;
+            } else {
+                const factorForProductBase = conversionFactors[productBaseUnit];
+                const factorFromRecipe = conversionFactors[unitInRecipe];
+                if (factorForProductBase > 0 && factorFromRecipe > 0) {
+                    const quantityInBaseUnits = (quantityInRecipe * factorFromRecipe) / factorForProductBase;
+                    cost = quantityInBaseUnits * costPerBaseUnit;
+                }
+            }
+        }
+        costPreview.textContent = `Coût ingrédient: ${cost.toFixed(2)} DA`;
+        updateTotalRecipeCost();
+    }
+
+    function updateTotalRecipeCost() {
+        let totalCost = 0;
+        ingredientsContainer.querySelectorAll('.ingredient-row').forEach(row => {
+            const costText = row.querySelector('.ingredient-cost-preview').textContent;
+            const match = costText.match(/([\d\.]+)\s*DA/);
+            if (match && match[1]) {
+                totalCost += parseFloat(match[1]);
+            }
+        });
+        document.getElementById('recipe-total-cost-display').textContent = `${totalCost.toFixed(2)} DA`;
+        const yieldQty = parseFloat(yieldQuantityInput.value) || 1;
+        const costPerYield = totalCost / yieldQty;
+        document.getElementById('recipe-cost-per-yield-unit-display').textContent = `Coût / unité: ${costPerYield.toFixed(2)} DA`;
+    }
+
+    window.addIngredientRow = function() {
+        if (!ingredientsContainer) return;
+        const newIndex = ingredientsContainer.querySelectorAll('.ingredient-row').length;
+        const newRow = document.createElement('div');
+        newRow.className = 'ingredient-row';
+        newRow.dataset.index = newIndex;
+        newRow.innerHTML = `
+            <button type="button" class="btn btn-sm btn-danger remove-ingredient-btn" onclick="removeIngredientRow(this)" title="Supprimer"><i class="bi bi-x-lg"></i></button>
+            <div class="row g-3 align-items-end">
+                <div class="col-md-5"><label class="form-label">Ingrédient</label><select name="ingredients-${newIndex}-product" class="form-select ingredient-product-select">${createIngredientProductOptions()}</select></div>
+                <div class="col-md-2"><label class="form-label">Quantité</label><input type="number" name="ingredients-${newIndex}-quantity_needed" class="form-control ingredient-quantity-input" step="0.001" placeholder="1.000" value="1.000"></div>
+                <div class="col-md-2"><label class="form-label">Unité</label><input type="text" name="ingredients-${newIndex}-unit" class="form-control ingredient-unit-input" placeholder="g, pièce..."></div>
+                <div class="col-md-3"><label class="form-label">Notes</label><input type="text" name="ingredients-${newIndex}-notes" class="form-control"></div>
+            </div>
+            <div class="ingredient-cost-preview mt-2 text-end">Coût ingrédient: 0.00 DA</div>
+        `;
+        ingredientsContainer.appendChild(newRow);
+        attachEventsToRow(newRow);
+        updateUIAfterChange();
+    }
+
+    window.removeIngredientRow = function(button) {
+        if (ingredientsContainer.querySelectorAll('.ingredient-row').length > 1) {
+            button.closest('.ingredient-row').remove();
+            updateUIAfterChange();
+        } else {
+            alert("Une recette doit contenir au moins un ingrédient.");
+        }
+    }
+    
+    function updateUIAfterChange() {
+        updateIngredientsCountBadge();
+        updateRemoveButtonsVisibility();
+        updateTotalRecipeCost();
+    }
+    
+    function updateIngredientsCountBadge() {
+        const count = ingredientsContainer.querySelectorAll('.ingredient-row').length;
+        document.getElementById('ingredients-count-badge').textContent = count;
+    }
+    
+    function updateRemoveButtonsVisibility() {
+        const rows = ingredientsContainer.querySelectorAll('.ingredient-row');
+        const show = rows.length > 1;
+        rows.forEach(row => {
+            const btn = row.querySelector('.remove-ingredient-btn');
+            if(btn) btn.style.display = show ? 'inline-block' : 'none';
+        });
+    }
+
+    function initializePage() {
+        ingredientsContainer.querySelectorAll('.ingredient-row').forEach(row => {
+            const productSelect = row.querySelector('.ingredient-product-select');
+            enrichSelectElement(productSelect);
+            attachEventsToRow(row);
+            if (productSelect.value) {
+                autofillUnit(row);
+                calculateIngredientCost(row);
+            }
+        });
+        
+        if (yieldQuantityInput) {
+            yieldQuantityInput.addEventListener('input', updateTotalRecipeCost);
+        }
+        updateUIAfterChange();
+    }
+    
+    initializePage();
+});
+</script>
+{% endblock %}

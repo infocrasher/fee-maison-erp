@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}{{ recipe.name }} - Fée Maison{% endblock %}
+
+{% block head %}
+{{ super() }}
+<style>
+    .view-header-section {
+        background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+        color: white;
+        padding: 2.5rem 1.5rem;
+        margin-bottom: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .view-header-title { font-size: 2.25rem; font-weight: 700; }
+    .view-header-subtitle { font-size: 1.1rem; opacity: 0.9; }
+    .info-card {
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        margin-bottom: 1.5rem;
+        background-color: #fff;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+    .info-card .card-header {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        border-bottom: 1px solid #e0e0e0;
+        color: #333;
+    }
+    .info-card .card-header i { color: #007bff; }
+    .info-card .list-group-item { border-left: 0; border-right: 0; }
+    .info-label { font-weight: 500; color: #555; }
+    .info-value a { text-decoration: none; }
+    .ingredients-table th { background-color: #e9ecef; }
+    .difficulty-badge { font-size: 0.85rem; padding: .3em .6em; }
+    .difficulty-Facile { background-color: #d4edda; color: #155724; }
+    .difficulty-Moyen { background-color: #fff3cd; color: #856404; }
+    .difficulty-Difficile { background-color: #f8d7da; color: #721c24; }
+    .difficulty-Expert { background-color: #d1ecf1; color: #0c5460; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="view-header-section">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="view-header-title">{{ recipe.name }}</h1>
+                <p class="view-header-subtitle mb-0">
+                    Produit Fini: 
+                    {% if recipe.finished_product %}
+                        <a href="{{ url_for('view_product', product_id=recipe.finished_product.id) }}" class="text-white fw-bold">{{ recipe.finished_product.name }}</a>
+                    {% else %}
+                        <span class="fst-italic">Non associé</span>
+                    {% endif %}
+                </p>
+            </div>
+            <div class="btn-group">
+                <a href="{{ url_for('edit_recipe', recipe_id=recipe.id) }}" class="btn btn-light"><i class="bi bi-pencil-fill me-2"></i>Modifier</a>
+                <form action="{{ url_for('delete_recipe', recipe_id=recipe.id) }}" method="POST" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer la recette \'{{ recipe.name }}\' ? Cette action est irréversible.');">
+                    {{ form.hidden_tag() }}
+                    <button type="submit" class="btn btn-danger"><i class="bi bi-trash-fill me-2"></i>Supprimer</button>
+                </form>
+                <a href="{{ url_for('list_recipes') }}" class="btn btn-outline-light"><i class="bi bi-list-ul me-2"></i>Liste</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="card info-card">
+                <div class="card-header"><i class="bi bi-info-circle-fill me-2"></i>Informations Générales</div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span class="info-label">Produit Fini:</span>
+                        <span class="info-value">
+                            {% if recipe.finished_product %}
+                                <a href="{{ url_for('view_product', product_id=recipe.finished_product.id) }}">{{ recipe.finished_product.name }}</a>
+                            {% else %}N/A{% endif %}
+                        </span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span class="info-label">Quantité Produite:</span>
+                        <span class="info-value fw-bold">{{ "%.2f"|format(recipe.yield_quantity) }} {{ recipe.yield_unit }}</span>
+                    </li>
+                    {% if recipe.preparation_time is not none %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span class="info-label">Temps Préparation:</span>
+                        <span class="info-value">{{ recipe.preparation_time }} min</span>
+                    </li>
+                    {% endif %}
+                    {% if recipe.cooking_time is not none %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span class="info-label">Temps Cuisson:</span>
+                        <span class="info-value">{{ recipe.cooking_time }} min</span>
+                    </li>
+                    {% endif %}
+                    {% if recipe.difficulty_level %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span class="info-label">Difficulté:</span>
+                        <span class="info-value"><span class="badge difficulty-{{ recipe.difficulty_level|replace('é', 'e')|lower }}">{{ recipe.difficulty_level }}</span></span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+
+            <div class="card info-card">
+                <div class="card-header"><i class="bi bi-cash-coin me-2"></i>Analyse des Coûts</div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span class="info-label">Coût Total Ingrédients:</span>
+                        <span class="info-value fw-bold">{{ "%.2f DA"|format(recipe.current_total_cost_of_ingredients) }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span class="info-label">Coût / {{ recipe.yield_unit }}:</span>
+                        <span class="info-value fw-bold">{{ "%.2f DA"|format(recipe.current_cost_per_yield_unit) }}</span>
+                    </li>
+                    
+                    {% if recipe.finished_product and recipe.finished_product.price is not none %}
+                        {% set cost_per_yield = recipe.current_cost_per_yield_unit %}
+                        {% set selling_price_per_unit = recipe.finished_product.price %}
+                        
+                        {% if cost_per_yield > 0 and selling_price_per_unit > 0 %}
+                            {% set margin = selling_price_per_unit - cost_per_yield %}
+                            {% set margin_percent = (margin / selling_price_per_unit) * 100 %}
+                        {% else %}
+                            {% set margin = 0 %}
+                            {% set margin_percent = 0 %}
+                        {% endif %}
+
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span class="info-label">Prix Vente / unité:</span>
+                            <span class="info-value">{{ "%.2f DA"|format(selling_price_per_unit) }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center {% if margin > 0 %}text-success{% else %}text-danger{% endif %}">
+                            <span class="info-label fw-bold">Marge Brute / unité:</span>
+                            <span class="info-value fw-bold">{{ "%.2f DA"|format(margin) }} ({{ "%.1f"|format(margin_percent) }}%)</span>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            {% if recipe.description %}
+            <div class="card info-card">
+                <div class="card-header"><i class="bi bi-text-left me-2"></i>Description & Instructions</div>
+                <div class="card-body">
+                    {{ recipe.description|nl2br|safe }}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="card info-card">
+                <div class="card-header"><i class="bi bi-egg-fried me-2"></i>Ingrédients ({{ recipe.ingredients.count() }})</div>
+                <div class="card-body p-0">
+                    {% if recipe.ingredients.all() %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover mb-0 ingredients-table">
+                            <thead>
+                                <tr>
+                                    <th>Ingrédient</th>
+                                    <th class="text-end">Quantité</th>
+                                    <th>Unité</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ingredient in recipe.ingredients.all() %}
+                                <tr>
+                                    <td>
+                                        {% if ingredient.ingredient_product %}
+                                            <a href="{{ url_for('view_product', product_id=ingredient.ingredient_product.id) }}">{{ ingredient.ingredient_product.name }}</a>
+                                        {% else %}
+                                            <span class="text-muted">Ingrédient supprimé</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">{{ "%.3f"|format(ingredient.quantity_needed) }}</td>
+                                    <td>{{ ingredient.unit }}</td>
+                                    <td>{{ ingredient.notes or '--' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="p-3 text-muted text-center">Aucun ingrédient n'a été défini pour cette recette.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

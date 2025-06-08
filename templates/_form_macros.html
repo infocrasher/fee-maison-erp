@@ -1,6 +1,6 @@
 {# templates/_form_macros.html #}
 
-{% macro render_field(field, label_visible=true, class="", placeholder="", type="") %} {# **kwargs a été retiré #}
+{% macro render_field(field, label_visible=true, class="", placeholder="", type="", rows=None, cols=None) %}
   <div class="form-group mb-3">
     {% if label_visible %}
       {{ field.label(class="form-label fw-medium") }}
@@ -14,13 +14,23 @@
         {% set field_class = field_class + ' ' + class %}
     {% endif %}
     
-    {% if type %}
-        {# Ici, on ne peut plus passer **kwargs directement à field() #}
-        {# Si vous aviez des attributs spécifiques à passer (ex: data-foo="bar"), il faudrait les ajouter explicitement ici #}
-        {{ field(class=field_class, placeholder=placeholder or field.label.text, type=type) }}
-    {% else %}
-        {{ field(class=field_class, placeholder=placeholder or field.label.text) }}
+    {# Construction des attributs dynamiques #}
+    {% set field_attrs = {'class': field_class} %}
+    {% if placeholder %}
+        {% set _ = field_attrs.update({'placeholder': placeholder}) %}
     {% endif %}
+    {% if type %}
+        {% set _ = field_attrs.update({'type': type}) %}
+    {% endif %}
+    {% if rows %}
+        {% set _ = field_attrs.update({'rows': rows}) %}
+    {% endif %}
+    {% if cols %}
+        {% set _ = field_attrs.update({'cols': cols}) %}
+    {% endif %}
+    
+    {# Rendu du champ avec tous les attributs #}
+    {{ field(**field_attrs) }}
     
     {% if field.errors %}
       <div class="invalid-feedback">
@@ -34,7 +44,7 @@
   </div>
 {% endmacro %}
 
-{% macro render_checkbox(field, label_visible=true, class="", div_class="") %} {# **kwargs retiré aussi ici par cohérence #}
+{% macro render_checkbox(field, label_visible=true, class="", div_class="") %}
   <div class="form-check mb-3 {{div_class}}">
     {{ field(class="form-check-input " + class) }}
     {% if label_visible %}
@@ -52,7 +62,7 @@
   </div>
 {% endmacro %}
 
-{% macro render_submit(field, class="btn btn-primary w-100") %} {# **kwargs retiré #}
+{% macro render_submit(field, class="btn btn-primary w-100") %}
   <div class="d-grid">
     {{ field(class=class) }}
   </div>
