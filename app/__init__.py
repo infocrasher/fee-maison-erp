@@ -1,4 +1,4 @@
-# Fichier: app/__init__.py (Version mise à jour)
+# Fichier: app/__init__.py (Mis à jour)
 
 import os
 from flask import Flask
@@ -37,11 +37,12 @@ def create_app(config_name=None):
     from app.auth.routes import auth as auth_blueprint
     app.register_blueprint(auth_blueprint, url_prefix='/auth')
 
-    # --- AJOUT DU BLUEPRINT PRODUCTS ---
     from app.products.routes import products as products_blueprint
     app.register_blueprint(products_blueprint, url_prefix='/admin/products')
 
-    # (Plus tard, on ajoutera les autres blueprints ici)
+    # --- ENREGISTREMENT DU BLUEPRINT ORDERS ---
+    from app.orders.routes import orders as orders_blueprint
+    app.register_blueprint(orders_blueprint, url_prefix='/admin/orders')
 
     @app.cli.command("create-admin")
     def create_admin():
