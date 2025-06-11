@@ -1,23 +1,16 @@
-# --- START OF FILE models.py ---
-
 from datetime import datetime
 from decimal import Decimal
-# from flask_sqlalchemy import SQLAlchemy  <-- SUPPRIMEZ CETTE LIGNE
-from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import func
+from flask_login import UserMixin
+
 from extensions import db
 
-
-
-# Constante pour les conversions, importée par app.py
 CONVERSION_FACTORS = {
     'kg_g': 1000, 'g_kg': 0.001,
     'l_ml': 1000, 'ml_l': 0.001,
-    # Ajoutez d'autres paires unité source -> unité cible ici
 }
 
-# Modèle User
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -27,7 +20,7 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(20), nullable=False, default='user')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    orders = db.relationship('Order', backref='user', lazy='dynamic') # <-- AJOUT: Relation avec les commandes
+    orders = db.relationship('Order', backref='user', lazy='dynamic')
 
     @property
     def is_admin(self):
@@ -42,46 +35,43 @@ class User(UserMixin, db.Model):
     def __repr__(self):
         return f'<User {self.username}>'
 
-# Modèle Category
 class Category(db.Model):
     __tablename__ = 'categories'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
     description = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
     products = db.relationship('Product', backref='category', lazy='dynamic')
     
     def __repr__(self):
         return f'<Category {self.name}>'
 
-# Modèle Product
 class Product(db.Model):
     __tablename__ = 'products'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False, index=True)
-    product_type = db.Column(db.String(50), nullable=False)  # 'finished', 'ingredient'
+    product_type = db.Column(db.String(50), nullable=False)
     description = db.Column(db.Text)
-    price = db.Column(db.Numeric(10, 2))  # Prix de vente
-    cost_price = db.Column(db.Numeric(10, 2))  # Prix d'achat/coût
+    price = db.Column(db.Numeric(10, 2))
+    cost_price = db.Column(db.Numeric(10, 2))
     unit = db.Column(db.String(20), nullable=False)
     sku = db.Column(db.String(50), unique=True, nullable=True)
     quantity_in_stock = db.Column(db.Float, default=0.0)
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # <-- CORRECTION: Renommage du backref pour la clarté
     order_items = db.relationship('OrderItem', backref='product', lazy='dynamic')
     
     def __repr__(self):
         return f'<Product {self.name}>'
 
-# Modèle Recipe
 class Recipe(db.Model):
     __tablename__ = 'recipes'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
-    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), unique=True) # Un produit fini ne peut avoir qu'une recette
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), unique=True)
     yield_quantity = db.Column(db.Numeric(10, 3), nullable=False, default=1.0)
     yield_unit = db.Column(db.String(50), nullable=False, default='pièces')
     preparation_time = db.Column(db.Integer)
@@ -90,7 +80,6 @@ class Recipe(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     ingredients = db.relationship('RecipeIngredient', backref='recipe', lazy='dynamic', cascade='all, delete-orphan')
-    # <-- CORRECTION: Ajout d'un backref pour la relation Recipe -> Product
     finished_product = db.relationship('Product', foreign_keys=[product_id], backref='recipe_definition')
     
     @property
@@ -106,7 +95,6 @@ class Recipe(db.Model):
     def __repr__(self):
         return f'<Recipe {self.name}>'
 
-# Modèle RecipeIngredient
 class RecipeIngredient(db.Model):
     __tablename__ = 'recipe_ingredients'
     id = db.Column(db.Integer, primary_key=True)
@@ -117,7 +105,6 @@ class RecipeIngredient(db.Model):
     notes = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # <-- CORRECTION: Renommage du backref pour la clarté
     product = db.relationship('Product', backref='recipe_uses')
     
     @property
@@ -129,11 +116,10 @@ class RecipeIngredient(db.Model):
     def __repr__(self):
         return f'<RecipeIngredient {self.quantity_needed} {self.unit} of {self.product.name if self.product else "Unknown"}>'
 
-# Modèle Order
 class Order(db.Model):
     __tablename__ = 'orders'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True) # <-- AJOUT: Lien vers l'utilisateur qui a créé la commande
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     order_type = db.Column(db.String(50), nullable=False, default='customer_order')
     customer_name = db.Column(db.String(200))
     customer_phone = db.Column(db.String(20))
@@ -148,10 +134,10 @@ class Order(db.Model):
     
     items = db.relationship('OrderItem', backref='order', lazy='dynamic', cascade='all, delete-orphan')
     
-    def get_order_type_display(self): # <-- AJOUT: Méthode utilitaire
+    def get_order_type_display(self):
         return "Demande Client" if self.order_type == 'customer_order' else "Prod. Comptoir"
         
-    def get_status_display(self): # <-- AJOUT: Méthode utilitaire
+    def get_status_display(self):
         statuses = {
             'pending': 'En attente', 'ready_at_shop': 'Prête en boutique',
             'out_for_delivery': 'En livraison', 'completed': 'Terminée',
@@ -159,9 +145,7 @@ class Order(db.Model):
         }
         return statuses.get(self.status, self.status.replace('_', ' ').capitalize())
 
-    # <-- AJOUT: Méthode appelée depuis app.py
     def calculate_total_amount(self):
-        """Calcule et met à jour le montant total de la commande."""
         total = sum(item.subtotal for item in self.items)
         if self.delivery_cost:
             total += self.delivery_cost
@@ -170,14 +154,13 @@ class Order(db.Model):
     def __repr__(self):
         return f'<Order #{self.id}>'
 
-# Modèle OrderItem
 class OrderItem(db.Model):
     __tablename__ = 'order_items'
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
-    unit_price = db.Column(db.Numeric(10, 2), nullable=False) # <-- CORRECTION: Nom standard
+    unit_price = db.Column(db.Numeric(10, 2), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     @property
