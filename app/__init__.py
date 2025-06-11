@@ -2,6 +2,7 @@ import os
 from flask import Flask
 from config import config_by_name
 from extensions import db, migrate, login
+from datetime import datetime # <--- AJOUTEZ CET IMPORT
 
 def create_app(config_name=None):
     app = Flask(__name__)
@@ -10,7 +11,7 @@ def create_app(config_name=None):
         config_name = os.environ.get('FLASK_ENV') or 'default'
     app.config.from_object(config_by_name[config_name])
 
-    # Lier les extensions à l'application
+    # Initialisation des extensions
     db.init_app(app)
     migrate.init_app(app, db)
     login.init_app(app)
@@ -24,6 +25,11 @@ def create_app(config_name=None):
     @login.user_loader
     def load_user(user_id):
         return db.session.get(User, int(user_id))
+
+    # --- AJOUT DU PROCESSEUR DE CONTEXTE ICI ---
+    @app.context_processor
+    def inject_current_year():
+        return {'current_year': datetime.utcnow().year}
     
     # Enregistrement des Blueprints
     from app.main.routes import main as main_blueprint
