@@ -60,7 +60,7 @@
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownUser">
                                 <li><a class="dropdown-item {% if request.endpoint == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}"><i class="bi bi-speedometer2 me-2"></i>Tableau de Bord</a></li>
-                                <li><a class="dropdown-item {% if request.endpoint == 'account' %}active{% endif %}" href="{{ url_for('account') }}"><i class="bi bi-gear me-2"></i>Mon Compte</a></li>
+                                <li><a class="dropdown-item {% if request.endpoint == 'account' %}active{% endif %}" href="{{ url_for('auth.account') }}"><i class="bi bi-gear me-2"></i>Mon Compte</a></li>
                                 {% if current_user.is_admin %}
                                 <li><a class="dropdown-item {% if request.endpoint == 'admin_dashboard' %}active{% endif %}" href="{{ url_for('admin_dashboard') }}"><i class="bi bi-person-badge me-2"></i>Admin Dashboard</a></li>
                                 {% endif %}
