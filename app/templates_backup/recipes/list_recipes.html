@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% from "_form_macros.html" import render_pagination %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800"><i class="bi bi-journal-richtext me-2"></i>{{ title }}</h1>
+        <a href="{{ url_for('new_recipe') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Nouvelle Recette
+        </a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Liste des recettes enregistrées</h6>
+        </div>
+        <div class="card-body">
+            {% if recipes_pagination.items %}
+            <div class="table-responsive">
+                <table class="table table-hover" id="recipesTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Nom de la Recette</th>
+                            <th>Produit Fini Associé</th>
+                            <th>Rendement</th>
+                            <th>Coût / Unité de Rendement</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for recipe in recipes_pagination.items %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('view_recipe', recipe_id=recipe.id) }}" class="fw-bold">{{ recipe.name }}</a>
+                                <p class="small text-muted mb-0">{{ recipe.description|truncate(80) }}</p>
+                            </td>
+                            <td>
+                                {% if recipe.finished_product %}
+                                    <a href="{{ url_for('view_product', product_id=recipe.product_id) }}">{{ recipe.finished_product.name }}</a>
+                                {% else %}
+                                    <span class="text-danger">Aucun</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ "%.2f"|format(recipe.yield_quantity) }} {{ recipe.yield_unit }}</td>
+                            <td>{{ "%.2f DA"|format(recipe.current_cost_per_yield_unit) }}</td>
+                            <td class="text-center">
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('view_recipe', recipe_id=recipe.id) }}" class="btn btn-sm btn-outline-info" title="Voir">
+                                        <i class="bi bi-eye-fill"></i>
+                                    </a>
+                                    <a href="{{ url_for('edit_recipe', recipe_id=recipe.id) }}" class="btn btn-sm btn-outline-primary" title="Modifier">
+                                        <i class="bi bi-pencil-fill"></i>
+                                    </a>
+                                    
+                                    <!-- Formulaire de suppression sécurisé CORRIGÉ -->
+                                    <form method="POST" action="{{ url_for('delete_recipe', recipe_id=recipe.id) }}" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer la recette \'{{ recipe.name }}\' ? Cette action est irréversible.');" style="display: inline;">
+                                        {{ form.hidden_tag() }} {# C'est la clé de la sécurité (jeton CSRF) #}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
+                                            <i class="bi bi-trash-fill"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <p class="mb-1">Aucune recette n'a été trouvée.</p>
+                    <a href="{{ url_for('new_recipe') }}" class="btn btn-success btn-sm">Créer la première recette</a>
+                </div>
+            {% endif %}
+
+            {% if recipes_pagination.pages > 1 %}
+            <div class="mt-4">
+                {{ render_pagination(recipes_pagination, 'list_recipes') }}
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+{% endblock %}

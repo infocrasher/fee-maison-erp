@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Fée Maison{% endblock %}
+
+{% block head %}
+{{ super() }}
+<!-- FullCalendar CSS -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css" rel="stylesheet">
+<style>
+    .calendar-container {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        padding: 20px;
+    }
+    
+    .fc-event {
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: all 0.2s ease;
+    }
+    
+    .fc-event:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .fc-tooltip-custom {
+        position: absolute;
+        z-index: 10001;
+        background: rgba(0,0,0,0.9);
+        color: white;
+        padding: 12px 16px;
+        border-radius: 6px;
+        font-size: 13px;
+        max-width: 300px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        pointer-events: none;
+    }
+    
+    .status-legend {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+    
+    .status-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9rem;
+    }
+    
+    .status-color {
+        width: 16px;
+        height: 16px;
+        border-radius: 3px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">
+            <i class="bi bi-calendar-week me-2"></i>{{ title }}
+        </h1>
+        <div class="btn-group">
+            <a href="{{ url_for('new_order') }}" class="btn btn-success">
+                <i class="bi bi-plus-circle me-1"></i>Nouvelle Demande
+            </a>
+            <a href="{{ url_for('list_orders') }}" class="btn btn-outline-primary">
+                <i class="bi bi-list me-1"></i>Liste Commandes
+            </a>
+        </div>
+    </div>
+
+    <!-- Légendes -->
+    <div class="status-legend">
+        <div class="status-item">
+            <div class="status-color" style="background-color: #0d6efd;"></div>
+            <span>Commandes Clients</span>
+        </div>
+        <div class="status-item">
+            <div class="status-color" style="background-color: #198754;"></div>
+            <span>Production Comptoir</span>
+        </div>
+        <div class="status-item">
+            <div class="status-color" style="background-color: #6c757d;"></div>
+            <span>Prêt au Magasin</span>
+        </div>
+        <div class="status-item">
+            <div class="status-color" style="background-color: #dc3545;"></div>
+            <span>Annulé</span>
+        </div>
+        <div class="status-item">
+            <small class="text-muted">Total: {{ total_orders_on_calendar or 0 }} événements</small>
+        </div>
+    </div>
+
+    <!-- Calendrier -->
+    <div class="calendar-container">
+        <div id="calendar_container"></div>
+    </div>
+</div>
+
+<!-- Données JSON séparées du JavaScript -->
+<script id="calendar-events-data" type="application/json">
+{{ events|tojson|safe }}
+</script>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<!-- FullCalendar JS -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core/locales/fr.js"></script>
+
+<script>
+// JavaScript PROPRE - Aucun mélange Jinja2
+document.addEventListener('DOMContentLoaded', function() {
+    const calendarEl = document.getElementById('calendar_container');
+    
+    if (!calendarEl) {
+        console.error("Élément calendrier non trouvé!");
+        return;
+    }
+    
+    // Récupérer les données depuis le script JSON
+    let eventsFromFlask = [];
+    try {
+        const dataScript = document.getElementById('calendar-events-data');
+        if (dataScript) {
+            eventsFromFlask = JSON.parse(dataScript.textContent);
+        }
+    } catch (e) {
+        console.error("Erreur lors du parsing des événements:", e);
+        eventsFromFlask = [];
+    }
+    
+    let currentTooltip = null;
+
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        locale: 'fr',
+        initialView: 'dayGridMonth',
+        firstDay: 1, // Lundi
+        
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+        },
+        
+        buttonText: {
+            today: "Aujourd'hui",
+            month: 'Mois',
+            week: 'Semaine',
+            day: 'Jour',
+            list: 'Liste'
+        },
+        
+        height: 'auto',
+        aspectRatio: 1.8,
+        dayMaxEvents: 3,
+        navLinks: true,
+        
+        events: eventsFromFlask,
+        
+        eventClick: function(info) {
+            if (info.event.url) {
+                window.location.href = info.event.url;
+                info.jsEvent.preventDefault();
+            }
+        },
+        
+        eventMouseEnter: function(info) {
+            // Supprimer tooltip existant
+            if (currentTooltip) {
+                currentTooltip.remove();
+                currentTooltip = null;
+            }
+            
+            const props = info.event.extendedProps;
+            let content = '<strong>' + info.event.title + '</strong>';
+            content += '<hr style="margin: 8px 0; border-color: rgba(255,255,255,0.3);">';
+            content += '<div><strong>Type:</strong> ' + (props.orderType || 'N/A') + '</div>';
+            content += '<div><strong>Statut:</strong> ' + (props.status || 'N/A') + '</div>';
+            
+            if (props.orderType === 'Commande Client') {
+                content += '<div><strong>Client:</strong> ' + (props.customerName || 'N/A') + '</div>';
+                content += '<div><strong>Montant:</strong> ' + (props.totalAmount ? props.totalAmount.toFixed(2) : '0.00') + ' DA</div>';
+            }
+            
+            content += '<div><strong>Produit:</strong> ' + (props.productName || 'N/A') + ' (' + (props.quantity || 0) + ')</div>';
+            content += '<small style="color: #ccc;">Cliquez pour voir les détails</small>';
+            
+            const tooltip = document.createElement('div');
+            tooltip.className = 'fc-tooltip-custom';
+            tooltip.innerHTML = content;
+            document.body.appendChild(tooltip);
+            currentTooltip = tooltip;
+            
+            // Positionnement intelligent
+            const eventRect = info.el.getBoundingClientRect();
+            const tooltipRect = tooltip.getBoundingClientRect();
+            
+            let left = eventRect.left + (eventRect.width / 2) - (tooltipRect.width / 2);
+            let top = eventRect.top - tooltipRect.height - 10;
+            
+            // Ajustements pour rester dans l'écran
+            if (left < 10) left = 10;
+            if (left + tooltipRect.width > window.innerWidth - 10) {
+                left = window.innerWidth - tooltipRect.width - 10;
+            }
+            if (top < 10) top = eventRect.bottom + 10;
+            
+            tooltip.style.left = left + 'px';
+            tooltip.style.top = top + 'px';
+        },
+        
+        eventMouseLeave: function(info) {
+            if (currentTooltip) {
+                currentTooltip.remove();
+                currentTooltip = null;
+            }
+        }
+    });
+
+    calendar.render();
+    console.log('Calendrier initialisé avec ' + eventsFromFlask.length + ' événements');
+});
+</script>
+{% endblock %}

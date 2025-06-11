@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>403 - Accès Interdit</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.1/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background-color: #f8f9fa; }
+        .error-container { text-align: center; padding: 2rem; }
+        .error-icon { font-size: 5rem; color: var(--bs-danger); }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="mb-4"><i class="bi bi-shield-fill-x error-icon"></i></div>
+        <h1 class="display-1 fw-bold">403</h1>
+        <p class="h2 text-muted">Accès Interdit</p>
+        <p class="lead mt-3">
+            Vous n'avez pas les permissions nécessaires pour accéder à cette page.
+        </p>
+        <div class="mt-3">
+            <a href="{{ url_for('hello_world') }}" class="btn btn-primary me-2">
+                <i class="bi bi-house-door"></i> Retour à l'accueil
+            </a>
+            <a href="{{ url_for('login') }}" class="btn btn-outline-secondary">
+                 <i class="bi bi-box-arrow-in-right"></i> Se connecter
+            </a>
+        </div>
+    </div>
+</body>
+</html>

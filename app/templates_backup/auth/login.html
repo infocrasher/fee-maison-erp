@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "_form_macros.html" import render_field %}
+
+{% block title %}{{ title }} - Fée Maison{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-lg border-0 rounded-3">
+                <div class="card-header bg-primary text-white text-center py-3">
+                    <h3 class="mb-0"><i class="bi bi-box-arrow-in-right me-2"></i>{{ title }}</h3>
+                </div>
+                <div class="card-body p-4 p-md-5">
+                    <p class="text-center text-muted mb-4">Connectez-vous pour accéder à votre espace.</p>
+                    
+                    <form method="POST" novalidate>
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="mb-3">
+                            {{ render_field(form.email, class="form-control form-control-lg", placeholder="Votre adresse e-mail") }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ render_field(form.password, class="form-control form-control-lg", placeholder="Votre mot de passe") }}
+                        </div>
+                        
+                        <div class="mb-3 form-check d-flex justify-content-between align-items-center">
+                            <div>
+                                {{ form.remember(class="form-check-input") }}
+                                {{ form.remember.label(class="form-check-label") }}
+                            </div>
+                            <!-- Le lien vers la réinitialisation de mot de passe peut être ajouté ici plus tard si besoin -->
+                            <!-- <a href="#" class="text-decoration-none small">Mot de passe oublié ?</a> -->
+                        </div>
+                        
+                        <div class="d-grid mb-3">
+                            {{ form.submit(class="btn btn-primary btn-lg w-100") }}
+                        </div>
+                    </form>
+                    
+                    <div class="text-center mt-4">
+                        <small class="text-muted">
+                            Vous n'avez pas de compte ?
+                            <!-- Lien vers l'inscription supprimé car la route 'register' n'existe plus. -->
+                            Veuillez contacter l'administrateur.
+                        </small>
+                    </div>
+                </div>
+                <div class="card-footer text-center py-3 bg-light">
+                    <a href="{{ url_for('hello_world') }}" class="text-decoration-none text-muted">
+                        <i class="bi bi-arrow-left-circle me-1"></i>Retour à l'accueil
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Styles optionnels pour améliorer la page de connexion */
+    body {
+        background-color: #f8f9fa; /* Couleur de fond légère */
+    }
+    .card-header h3 {
+        font-weight: 300;
+    }
+</style>
+{% endblock %}

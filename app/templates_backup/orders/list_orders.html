@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Fée Maison{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête de la page -->
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <h1 class="h3 mb-0">
+            <i class="bi bi-receipt-cutoff me-2"></i>{{ title }}
+        </h1>
+        <a href="{{ url_for('new_order') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle-fill me-1"></i>Nouvelle Commande
+        </a>
+    </div>
+
+    {% if orders_pagination and orders_pagination.items %}
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-list-ul me-2"></i>Liste des Commandes
+                    <span class="badge bg-secondary rounded-pill ms-2">{{ orders_pagination.total }} au total</span>
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col" class="text-center" style="width: 5%;">#ID</th>
+                                <th scope="col" style="width: 20%;">Client</th>
+                                <th scope="col" style="width: 15%;">Date Cde</th>
+                                <th scope="col" style="width: 15%;">Date Prévue</th>
+                                <th scope="col" style="width: 10%;">Service</th> {# Largeur ajustée #}
+                                <th scope="col" class="text-end" style="width: 10%;">Montant (DA)</th> {# Largeur ajustée #}
+                                <th scope="col" class="text-center" style="width: 10%;">Statut</th> {# Largeur ajustée #}
+                                <th scope="col" class="text-center" style="width: 5%;">Articles</th> {# Largeur ajustée #}
+                                <th scope="col" class="text-end" style="width: 10%;">Actions</th> {# Largeur ajustée #}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in orders_pagination.items %}
+                            <tr>
+                                <td class="fw-medium text-muted text-center align-middle">
+                                    <a href="{{ url_for('view_order', order_id=order.id) }}">{{ order.id }}</a>
+                                </td>
+                                <td class="align-middle">
+                                    <strong>{{ order.customer_name }}</strong>
+                                    {% if order.customer_phone %}<br><small class="text-muted"><i class="bi bi-telephone-fill"></i> {{ order.customer_phone }}</small>{% endif %}
+                                </td>
+                                <td class="align-middle"><small>{{ order.order_date.strftime('%d/%m/%y %H:%M') }}</small></td>
+                                <td class="align-middle">
+                                    {% if order.due_date %}
+                                        <small>{{ order.due_date.strftime('%d/%m/%y %H:%M') }}</small>
+                                    {% else %}
+                                        <small class="text-muted">N/A</small>
+                                    {% endif %}
+                                </td>
+                                <td class="align-middle"><small>{{ order.get_delivery_option_display() }}</small></td>
+                                <td class="text-end align-middle fw-semibold">{{ "%.2f"|format(order.total_amount|float) }}</td>
+                                <td class="text-center align-middle">
+                                    {% set status_class = 'secondary' %}
+                                    {% if order.status == 'completed' %}{% set status_class = 'success' %}
+                                    {% elif order.status == 'pending' %}{% set status_class = 'warning text-dark' %}
+                                    {% elif order.status == 'processing' %}{% set status_class = 'info text-dark' %}
+                                    {% elif order.status == 'out_for_delivery' %}{% set status_class = 'primary' %}
+                                    {% elif order.status == 'ready_for_pickup' %}{% set status_class = 'purple' %} 
+                                    {% elif order.status == 'cancelled' %}{% set status_class = 'danger' %}
+                                    {% endif %}
+                                    <span class="badge bg-{{ status_class }}">{{ order.get_status_display() }}</span>
+                                </td>
+                                <td class="text-center align-middle"><span class="badge bg-info rounded-pill">{{ order.get_items_count() }}</span></td>
+                                <td class="text-end align-middle">
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('view_order', order_id=order.id) }}" class="btn btn-outline-info" title="Voir Détails"><i class="bi bi-eye-fill"></i></a>
+                                        <a href="{{ url_for('edit_order_status', order_id=order.id) }}" class="btn btn-outline-primary" title="Modifier Statut"><i class="bi bi-pencil-square"></i></a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <!-- Pagination -->
+            {% if orders_pagination.pages > 1 %}
+            <div class="card-footer text-center">
+                <nav aria-label="Pagination des commandes">
+                    <ul class="pagination justify-content-center mb-0">
+                        {# Lien Précédent #}
+                        <li class="page-item {% if not orders_pagination.has_prev %}disabled{% endif %}">
+                            <a class="page-link" href="{{ url_for('list_orders', page=orders_pagination.prev_num if orders_pagination.has_prev else '#') }}">Précédent</a>
+                        </li>
+                        {# Liens des Pages #}
+                        {% for page_num in orders_pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                            {% if page_num %}
+                                <li class="page-item {% if orders_pagination.page == page_num %}active{% endif %}">
+                                    <a class="page-link" href="{{ url_for('list_orders', page=page_num) }}">{{ page_num }}</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled"><span class="page-link">…</span></li>
+                            {% endif %}
+                        {% endfor %}
+                        {# Lien Suivant #}
+                        <li class="page-item {% if not orders_pagination.has_next %}disabled{% endif %}">
+                            <a class="page-link" href="{{ url_for('list_orders', page=orders_pagination.next_num if orders_pagination.has_next else '#') }}">Suivant</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+            <!-- Fin Pagination -->
+        </div>
+    {% else %}
+        <div class="alert alert-info text-center" role="alert">
+            <i class="bi bi-info-circle-fill me-2"></i>Aucune commande enregistrée. <a href="{{ url_for('new_order') }}" class="alert-link">Créer une nouvelle commande</a>.
+        </div>
+    {% endif %}
+    <div class="mt-4 text-center"><a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left-circle-fill"></i> Retour</a></div>
+</div>
+{% endblock %}

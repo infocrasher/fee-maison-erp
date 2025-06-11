@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Fée Maison{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête de la page -->
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <h1 class="h3 mb-0">
+            <i class="bi bi-clipboard-data-fill me-2"></i>{{ title }}
+        </h1>
+        <div class="btn-group">
+            <a href="{{ url_for('stock_adjustment') }}" class="btn btn-primary">
+                <i class="bi bi-pencil-square me-1"></i>Ajuster Stock
+            </a>
+            <a href="{{ url_for('quick_stock_entry') }}" class="btn btn-success">
+                <i class="bi bi-box-arrow-in-down me-1"></i>Réception Magasin
+            </a>
+        </div>
+    </div>
+
+    <!-- Métriques Clés -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card text-center shadow-sm h-100">
+                <div class="card-body">
+                    <i class="bi bi-boxes fs-1 text-primary mb-2"></i>
+                    <h3 class="text-primary mb-0">{{ total_products_count }}</h3>
+                    <p class="card-text text-muted small">Produit(s) au Total</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card text-center shadow-sm h-100">
+                <div class="card-body">
+                    <i class="bi bi-cash-coin fs-1 text-info mb-2"></i>
+                    <h3 class="text-info mb-0">{{ "%.2f"|format(total_stock_value|float) }} DA</h3> {# Assurer conversion en float pour format #}
+                    <p class="card-text text-muted small">Valeur du Stock (Basée sur Coût)</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card text-center shadow-sm h-100 alert-warning"> {# Style pour attirer l'attention #}
+                <div class="card-body">
+                    <i class="bi bi-exclamation-triangle-fill fs-1 text-warning mb-2"></i>
+                    <h3 class="text-warning mb-0">{{ low_stock_products|length }}</h3>
+                    <p class="card-text text-muted small">Produit(s) en Stock Bas</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card text-center shadow-sm h-100 alert-danger"> {# Style pour attirer l'attention #}
+                <div class="card-body">
+                    <i class="bi bi-x-octagon-fill fs-1 text-danger mb-2"></i>
+                    <h3 class="text-danger mb-0">{{ out_of_stock_products|length }}</h3>
+                    <p class="card-text text-muted small">Produit(s) en Rupture</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liste des Produits en Rupture de Stock -->
+    {% if out_of_stock_products %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0"><i class="bi bi-slash-circle-fill me-2"></i>Produits en Rupture de Stock (0 unité)</h5>
+        </div>
+        <div class="list-group list-group-flush">
+            {% for product in out_of_stock_products %}
+            <a href="{{ url_for('view_product', product_id=product.id) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <span>
+                    <i class="bi bi-box-seam me-2"></i><strong>{{ product.name }}</strong>
+                    {% if product.sku %}<small class="text-muted ms-2">(SKU: {{ product.sku }})</small>{% endif %}
+                </span>
+                <span class="badge bg-danger rounded-pill">0</span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Liste des Produits en Stock Bas -->
+    {% if low_stock_products %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0"><i class="bi bi-exclamation-diamond-fill me-2"></i>Produits avec Stock Bas (<5 unités)</h5>
+        </div>
+        <div class="list-group list-group-flush">
+            {% for product in low_stock_products %}
+            <a href="{{ url_for('view_product', product_id=product.id) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                 <span>
+                    <i class="bi bi-box-seam me-2"></i><strong>{{ product.name }}</strong>
+                    {% if product.sku %}<small class="text-muted ms-2">(SKU: {{ product.sku }})</small>{% endif %}
+                </span>
+                <span class="badge bg-warning rounded-pill">{{ product.quantity_in_stock }}</span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if not out_of_stock_products and not low_stock_products %}
+    <div class="alert alert-success text-center" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>
+        Tous les niveaux de stock sont bons ! Aucun produit en rupture ou en stock bas pour le moment.
+    </div>
+    {% endif %}
+
+    <div class="mt-4 text-center">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary me-2">
+            <i class="bi bi-arrow-left-circle-fill"></i> Retour à l'Admin Dashboard
+        </a>
+        <a href="{{ url_for('list_products') }}" class="btn btn-outline-info">
+            <i class="bi bi-card-list"></i> Gérer Tous les Produits
+        </a>
+    </div>
+</div>
+{% endblock %}

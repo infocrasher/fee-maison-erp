@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Fée Maison{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <h2>{{ title or 'Nouvelle Catégorie' }}</h2>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category_flash, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category_flash == 'error' else category_flash }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <!-- FORMULAIRE SIMPLIFIÉ ET CORRIGÉ -->
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                
+                <!-- Champ Nom -->
+                <div class="mb-3">
+                    {{ form.name.label(class="form-label") }}
+                    {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+                    {% if form.name.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.name.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Champ Description -->
+                <div class="mb-3">
+                    {{ form.description.label(class="form-label") }}
+                    {{ form.description(class="form-control", rows="3") }}
+                    {% if form.description.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.description.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Boutons -->
+                <div class="mb-3">
+                    {{ form.submit(class="btn btn-primary") }}
+                    <a href="{{ url_for('list_categories') }}" class="btn btn-secondary">Annuler</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- DEBUG INFO (à retirer en production) -->
+<div class="container mt-3">
+    <div class="alert alert-info">
+        <strong>Debug Info:</strong><br>
+        Form errors: {{ form.errors }}<br>
+        Form data: {{ form.data }}<br>
+        CSRF Token présent: {{ form.csrf_token.data|length > 0 }}
+    </div>
+</div>
+{% endblock %}

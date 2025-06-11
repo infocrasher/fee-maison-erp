@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Fée Maison{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- En-tête de la page -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">
+                    <i class="bi bi-box-seam-fill me-2"></i>Gestion des Produits
+                </h1>
+                <div>
+                    {# CORRECTION ICI pour l'endpoint #}
+                    <a href="{{ url_for('new_product_route') }}" class="btn btn-primary me-2">
+                        <i class="bi bi-plus-circle-fill me-1"></i>Nouveau Produit
+                    </a>
+                    <a href="{{ url_for('stock_overview') }}" class="btn btn-info">
+                        <i class="bi bi-clipboard-data-fill me-1"></i>Vue d'ensemble du Stock
+                    </a>
+                </div>
+            </div>
+
+            {% if products_pagination and products_pagination.items %}
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-list-ul me-2"></i>Liste des Produits
+                            <span class="badge bg-secondary rounded-pill ms-2">{{ products_pagination.total }} au total</span>
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th scope="col" class="text-center" style="width: 5%;">#ID</th>
+                                        <th scope="col" style="width: 25%;">Nom du Produit</th>
+                                        <th scope="col" style="width: 20%;">Catégorie</th>
+                                        <th scope="col" class="text-end" style="width: 10%;">Prix (DA)</th>
+                                        <th scope="col" class="text-center" style="width: 10%;">Stock</th>
+                                        <th scope="col" class="text-end" style="width: 20%;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for product in products_pagination.items %}
+                                    <tr>
+                                        <td class="fw-medium text-muted text-center align-middle">{{ product.id }}</td>
+                                        <td class="align-middle">
+                                            <a href="{{ url_for('view_product', product_id=product.id) }}" class="text-decoration-none">
+                                                <strong class="text-primary">{{ product.name }}</strong>
+                                            </a>
+                                            {% if product.sku %}<br><small class="text-muted">SKU: {{ product.sku }}</small>{% endif %}
+                                        </td>
+                                        <td class="align-middle">
+                                            <span class="badge bg-secondary">{{ product.category_ref.name if product.category_ref else 'N/A' }}</span>
+                                        </td>
+                                        <td class="text-end align-middle fw-semibold">{{ "%.2f"|format(product.price|float if product.price is not none else 0.0) }}</td> {# Ajout de `if product.price is not none` #}
+                                        <td class="text-center align-middle">
+                                            {% if product.quantity_in_stock <= 0 %}
+                                                <span class="badge bg-danger">{{ product.quantity_in_stock }}</span>
+                                            {% elif product.quantity_in_stock <= 5 %}
+                                                <span class="badge bg-warning text-dark">{{ product.quantity_in_stock }}</span>
+                                            {% else %}
+                                                <span class="badge bg-success">{{ product.quantity_in_stock }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end align-middle">
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a href="{{ url_for('view_product', product_id=product.id) }}" class="btn btn-outline-info" title="Voir {{ product.name }}">
+                                                    <i class="bi bi-eye-fill"></i> <span class="d-none d-md-inline">Voir</span>
+                                                </a>
+                                                <a href="{{ url_for('edit_product', product_id=product.id) }}" class="btn btn-outline-primary" title="Modifier {{ product.name }}">
+                                                    <i class="bi bi-pencil-square"></i> <span class="d-none d-md-inline">Modifier</span>
+                                                </a>
+                                                <button type="button" class="btn btn-outline-danger" 
+                                                        title="Supprimer {{ product.name }}"
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#deleteProductModal{{ product.id }}">
+                                                    <i class="bi bi-trash-fill"></i> <span class="d-none d-md-inline">Supprimer</span>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <div class="modal fade" id="deleteProductModal{{ product.id }}" tabindex="-1" aria-labelledby="deleteProductModalLabel{{ product.id }}" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h5 class="modal-title" id="deleteProductModalLabel{{ product.id }}"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmer la Suppression</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>Êtes-vous sûr de vouloir supprimer le produit <strong>"{{ product.name }}"</strong> ?</p>
+                                                <p class="text-danger fw-bold">Cette action est irréversible.</p>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Annuler</button>
+                                                <form method="POST" action="{{ url_for('delete_product', product_id=product.id) }}" style="display: inline;">
+                                                    <input type="hidden" name="csrf_token" value="{{ manual_csrf_token() }}"/>
+                                                    <button type="submit" class="btn btn-danger"><i class="bi bi-trash-fill me-1"></i>Oui, Supprimer</button>
+                                                </form>
+                                            </div>
+                                        </div></div>
+                                    </div>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% if products_pagination.pages > 1 %}
+                    <div class="card-footer text-center">
+                        <nav aria-label="Pagination des produits">
+                            <ul class="pagination justify-content-center mb-0">
+                                <li class="page-item {% if not products_pagination.has_prev %}disabled{% endif %}"><a class="page-link" href="{{ url_for('list_products', page=products_pagination.prev_num if products_pagination.has_prev else '#') }}">Précédent</a></li>
+                                {% for page_num in products_pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                                    {% if page_num %}
+                                        {% if products_pagination.page == page_num %}<li class="page-item active" aria-current="page"><span class="page-link">{{ page_num }}</span></li>
+                                        {% else %}<li class="page-item"><a class="page-link" href="{{ url_for('list_products', page=page_num) }}">{{ page_num }}</a></li>{% endif %}
+                                    {% else %}<li class="page-item disabled"><span class="page-link">...</span></li>{% endif %}
+                                {% endfor %}
+                                <li class="page-item {% if not products_pagination.has_next %}disabled{% endif %}"><a class="page-link" href="{{ url_for('list_products', page=products_pagination.next_num if products_pagination.has_next else '#') }}">Suivant</a></li>
+                            </ul>
+                        </nav>
+                    </div>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="card shadow-sm">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-box-seam display-1 text-muted mb-3"></i>
+                        <h4 class="mb-3">Aucun produit pour le moment</h4>
+                        <p class="text-muted mb-4">Commencez par ajouter des produits à votre catalogue.</p>
+                        {# CORRECTION ICI aussi pour l'endpoint #}
+                        <a href="{{ url_for('new_product_route') }}" class="btn btn-primary btn-lg">
+                            <i class="bi bi-plus-circle-fill me-1"></i>Ajouter votre premier produit
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+             <div class="mt-4 text-center">
+                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left-circle-fill"></i> Retour à l'Admin Dashboard</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Mon Compte - Fée Maison{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="text-center mb-4">
+                <h1 class="h2"><i class="bi bi-person-badge-fill me-2"></i>Mon Compte</h1>
+            </div>
+
+            <div class="row">
+                <!-- Section Informations du compte -->
+                <div class="col-md-5 mb-4 mb-md-0">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0"><i class="bi bi-person-lines-fill me-2"></i>Informations du compte</h5>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-5">Nom d'utilisateur :</dt>
+                                <dd class="col-sm-7">{{ current_user.username }}</dd>
+
+                                <dt class="col-sm-5">Adresse e-mail :</dt>
+                                <dd class="col-sm-7">{{ current_user.email }}</dd>
+                                
+                                <dt class="col-sm-5">Statut :</dt>
+                                <dd class="col-sm-7"><span class="badge bg-success">Actif</span></dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section Modifier le mot de passe -->
+                <div class="col-md-7">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0"><i class="bi bi-key-fill me-2"></i>Modifier le mot de passe</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('account') }}" novalidate>
+                                {{ form.hidden_tag() }}
+                                
+                                <div class="mb-3">
+                                    {{ form.current_password.label(class="form-label") }}
+                                    {{ form.current_password(class="form-control" + (" is-invalid" if form.current_password.errors else "")) }}
+                                    {% if form.current_password.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.current_password.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    {{ form.new_password.label(class="form-label") }}
+                                    {{ form.new_password(class="form-control" + (" is-invalid" if form.new_password.errors else "")) }}
+                                    {% if form.new_password.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.new_password.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                    <div class="form-text">
+                                        Le mot de passe doit contenir au moins 6 caractères.
+                                    </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    {{ form.confirm_new_password.label(class="form-label") }}
+                                    {{ form.confirm_new_password(class="form-control" + (" is-invalid" if form.confirm_new_password.errors else "")) }}
+                                    {% if form.confirm_new_password.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.confirm_new_password.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="d-grid">
+                                    {{ form.submit(class="btn btn-primary") }}
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Actions -->
+            <div class="mt-4 text-center">
+                 <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm me-2">
+                    <i class="bi bi-arrow-left-circle"></i> Retour au tableau de bord
+                </a>
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm">
+                    <i class="bi bi-box-arrow-right"></i> Se déconnecter
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

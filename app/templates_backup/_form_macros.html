@@ -1,0 +1,69 @@
+{# templates/_form_macros.html #}
+
+{% macro render_field(field, label_visible=true, class="", placeholder="", type="", rows=None, cols=None) %}
+  <div class="form-group mb-3">
+    {% if label_visible %}
+      {{ field.label(class="form-label fw-medium") }}
+    {% endif %}
+    
+    {% set field_class = 'form-control' %}
+    {% if field.flags.error %}
+        {% set field_class = field_class + ' is-invalid' %}
+    {% endif %}
+    {% if class %}
+        {% set field_class = field_class + ' ' + class %}
+    {% endif %}
+    
+    {# Construction des attributs dynamiques #}
+    {% set field_attrs = {'class': field_class} %}
+    {% if placeholder %}
+        {% set _ = field_attrs.update({'placeholder': placeholder}) %}
+    {% endif %}
+    {% if type %}
+        {% set _ = field_attrs.update({'type': type}) %}
+    {% endif %}
+    {% if rows %}
+        {% set _ = field_attrs.update({'rows': rows}) %}
+    {% endif %}
+    {% if cols %}
+        {% set _ = field_attrs.update({'cols': cols}) %}
+    {% endif %}
+    
+    {# Rendu du champ avec tous les attributs #}
+    {{ field(**field_attrs) }}
+    
+    {% if field.errors %}
+      <div class="invalid-feedback">
+        {% for error in field.errors %}
+          <span>{{ error }}</span><br>
+        {% endfor %}
+      </div>
+    {% elif field.description %}
+      <small class="form-text text-muted mt-1 d-block">{{ field.description }}</small>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{% macro render_checkbox(field, label_visible=true, class="", div_class="") %}
+  <div class="form-check mb-3 {{div_class}}">
+    {{ field(class="form-check-input " + class) }}
+    {% if label_visible %}
+      {{ field.label(class="form-check-label") }}
+    {% endif %}
+    {% if field.errors %}
+      <div class="invalid-feedback d-block">
+        {% for error in field.errors %}
+          <span>{{ error }}</span><br>
+        {% endfor %}
+      </div>
+    {% elif field.description %}
+      <small class="form-text text-muted">{{ field.description }}</small>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{% macro render_submit(field, class="btn btn-primary w-100") %}
+  <div class="d-grid">
+    {{ field(class=class) }}
+  </div>
+{% endmacro %}

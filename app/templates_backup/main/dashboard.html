@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Fée Maison{% endblock %}
+
+{% block head %}
+{{ super() }}
+<style>
+    .stat-card {
+        transition: transform .2s ease-out, box-shadow .2s ease-out;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+    }
+    .stat-icon {
+        font-size: 2.5rem;
+        opacity: 0.7;
+    }
+    .stat-value {
+        font-size: 1.75rem;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800"><i class="bi bi-speedometer2 me-2"></i>{{ title }}</h1>
+        {% if current_user.is_authenticated %}
+        <span class="text-muted">Bienvenue, {{ current_user.username }} !</span>
+        {% endif %}
+    </div>
+
+    <!-- Cartes de statistiques -->
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2 stat-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Produits Actifs</div>
+                            <div class="stat-value text-gray-800">{{ data.active_products_count if data else '-' }}</div>
+                        </div>
+                        <div class="col-auto"><i class="bi bi-box-seam stat-icon text-gray-300"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2 stat-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Articles en Stock (Total)</div>
+                            <div class="stat-value text-gray-800">{{ data.total_items_in_stock if data else '-' }}</div>
+                        </div>
+                        <div class="col-auto"><i class="bi bi-stack stat-icon text-gray-300"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2 stat-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Ventes (Mois en cours)</div>
+                            <div class="stat-value text-gray-800">{{ data.sales_count_month if data else '-' }}</div>
+                        </div>
+                        <div class="col-auto"><i class="bi bi-cart-check stat-icon text-gray-300"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2 stat-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Chiffre d'Affaires (Mois)</div>
+                            <div class="stat-value text-gray-800">{{ "%.2f DA"|format(data.total_revenue_month|float) if data and data.total_revenue_month is not none else '- DA' }}</div>
+                        </div>
+                        <div class="col-auto"><i class="bi bi-cash-coin stat-icon text-gray-300"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Autres sections du tableau de bord -->
+    <div class="row">
+        <div class="col-lg-7 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary"><i class="bi bi-graph-up me-2"></i>Aperçu des Ventes</h6>
+                </div>
+                <div class="card-body text-center" style="min-height: 300px;">
+                    <i class="bi bi-bar-chart-line display-1 text-light"></i>
+                    <p class="mt-3 text-muted">Les graphiques de ventes apparaîtront ici prochainement.</p>
+                    <!-- Espace pour le graphique Chart.js -->
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary"><i class="bi bi-bell me-2"></i>Alertes & Notifications</h6>
+                </div>
+                <div class="card-body text-center" style="min-height: 150px;">
+                    <i class="bi bi-check-circle-fill display-4 text-success"></i>
+                    <p class="mt-2 text-muted">Tout est calme pour le moment.<br>Les alertes de stock ou autres notifications s'afficheront ici.</p>
+                </div>
+            </div>
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary"><i class="bi bi-lightning-charge me-2"></i>Actions Rapides</h6>
+                </div>
+                <div class="card-body">
+                    {% if current_user.is_admin %}
+                    <a href="{{ url_for('new_product_route') }}" class="btn btn-outline-primary d-block mb-2"><i class="bi bi-plus-circle me-1"></i> Nouveau Produit</a>
+                    <a href="{{ url_for('new_order') }}" class="btn btn-outline-success d-block mb-2"><i class="bi bi-cart-plus me-1"></i> Nouvelle Commande/Production</a>
+                    <a href="{{ url_for('quick_stock_entry') }}" class="btn btn-outline-info d-block"><i class="bi bi-box-arrow-in-down me-1"></i> Réception Stock Rapide</a>
+                    {% else %}
+                    <p class="text-muted">Actions rapides non disponibles pour votre rôle.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<!-- Potentiellement Chart.js ici plus tard -->
+{% endblock %}
