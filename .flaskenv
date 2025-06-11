@@ -1,3 +1,3 @@
-FLASK_APP=app:create_app() # type: ignore
-FLASK_ENV=development # type: ignore
+FLASK_APP=run.py
+FLASK_ENV=development
 FLASK_DEBUG=1
