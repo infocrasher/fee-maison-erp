@@ -3,7 +3,6 @@ from decimal import Decimal
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import func
 from flask_login import UserMixin
-
 from extensions import db
 
 CONVERSION_FACTORS = {
@@ -19,21 +18,11 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), nullable=False, default='user')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
     orders = db.relationship('Order', backref='user', lazy='dynamic')
-
-    @property
-    def is_admin(self):
-        return self.role == 'admin'
-    
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
-    
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
-    
-    def __repr__(self):
-        return f'<User {self.username}>'
+    def is_admin(self): return self.role == 'admin'
+    def set_password(self, password): self.password_hash = generate_password_hash(password)
+    def check_password(self, password): return check_password_hash(self.password_hash, password)
+    def __repr__(self): return f'<User {self.username}>'
 
 class Category(db.Model):
     __tablename__ = 'categories'
@@ -41,11 +30,8 @@ class Category(db.Model):
     name = db.Column(db.String(100), unique=True, nullable=False)
     description = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
     products = db.relationship('Product', backref='category', lazy='dynamic')
-    
-    def __repr__(self):
-        return f'<Category {self.name}>'
+    def __repr__(self): return f'<Category {self.name}>'
 
 class Product(db.Model):
     __tablename__ = 'products'
@@ -60,11 +46,8 @@ class Product(db.Model):
     quantity_in_stock = db.Column(db.Float, default=0.0)
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
     order_items = db.relationship('OrderItem', backref='product', lazy='dynamic')
-    
-    def __repr__(self):
-        return f'<Product {self.name}>'
+    def __repr__(self): return f'<Product {self.name}>'
 
 class Recipe(db.Model):
     __tablename__ = 'recipes'
@@ -78,22 +61,13 @@ class Recipe(db.Model):
     cooking_time = db.Column(db.Integer)
     difficulty_level = db.Column(db.String(20))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
     ingredients = db.relationship('RecipeIngredient', backref='recipe', lazy='dynamic', cascade='all, delete-orphan')
     finished_product = db.relationship('Product', foreign_keys=[product_id], backref='recipe_definition')
-    
     @property
-    def total_cost(self):
-        return sum(ing.cost for ing in self.ingredients)
-    
+    def total_cost(self): return sum(ing.cost for ing in self.ingredients)
     @property
-    def cost_per_unit(self):
-        if self.yield_quantity > 0:
-            return self.total_cost / Decimal(self.yield_quantity)
-        return Decimal('0.0')
-    
-    def __repr__(self):
-        return f'<Recipe {self.name}>'
+    def cost_per_unit(self): return self.total_cost / Decimal(self.yield_quantity) if self.yield_quantity > 0 else Decimal('0.0')
+    def __repr__(self): return f'<Recipe {self.name}>'
 
 class RecipeIngredient(db.Model):
     __tablename__ = 'recipe_ingredients'
@@ -104,17 +78,10 @@ class RecipeIngredient(db.Model):
     unit = db.Column(db.String(50), nullable=False)
     notes = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
     product = db.relationship('Product', backref='recipe_uses')
-    
     @property
-    def cost(self):
-        if self.product and self.product.cost_price:
-            return Decimal(self.quantity_needed) * Decimal(self.product.cost_price)
-        return Decimal('0.0')
-    
-    def __repr__(self):
-        return f'<RecipeIngredient {self.quantity_needed} {self.unit} of {self.product.name if self.product else "Unknown"}>'
+    def cost(self): return Decimal(self.quantity_needed) * Decimal(self.product.cost_price) if self.product and self.product.cost_price else Decimal('0.0')
+    def __repr__(self): return f'<RecipeIngredient {self.quantity_needed} {self.unit} of {self.product.name if self.product else "Unknown"}>'
 
 class Order(db.Model):
     __tablename__ = 'orders'
@@ -131,28 +98,8 @@ class Order(db.Model):
     notes = db.Column(db.Text)
     total_amount = db.Column(db.Numeric(10, 2), default=0.0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
     items = db.relationship('OrderItem', backref='order', lazy='dynamic', cascade='all, delete-orphan')
-    
-    def get_order_type_display(self):
-        return "Demande Client" if self.order_type == 'customer_order' else "Prod. Comptoir"
-        
-    def get_status_display(self):
-        statuses = {
-            'pending': 'En attente', 'ready_at_shop': 'Prête en boutique',
-            'out_for_delivery': 'En livraison', 'completed': 'Terminée',
-            'awaiting_payment': 'En attente de paiement', 'cancelled': 'Annulée'
-        }
-        return statuses.get(self.status, self.status.replace('_', ' ').capitalize())
-
-    def calculate_total_amount(self):
-        total = sum(item.subtotal for item in self.items)
-        if self.delivery_cost:
-            total += self.delivery_cost
-        self.total_amount = total
-
-    def __repr__(self):
-        return f'<Order #{self.id}>'
+    def __repr__(self): return f'<Order #{self.id}>'
 
 class OrderItem(db.Model):
     __tablename__ = 'order_items'
@@ -162,10 +109,6 @@ class OrderItem(db.Model):
     quantity = db.Column(db.Integer, nullable=False)
     unit_price = db.Column(db.Numeric(10, 2), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
     @property
-    def subtotal(self):
-        return self.quantity * self.unit_price
-    
-    def __repr__(self):
-        return f'<OrderItem {self.quantity} x {self.product.name if self.product else "Unknown"}>'
+    def subtotal(self): return self.quantity * self.unit_price
+    def __repr__(self): return f'<OrderItem {self.quantity} x {self.product.name if self.product else "Unknown"}>'
