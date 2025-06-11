@@ -1,20 +1,22 @@
-# Fichier: app/products/routes.py
-
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, abort
 from flask_login import login_required
 from extensions import db
 from models import Product, Category
-from .forms import ProductForm, CategoryForm # Import local
+from .forms import ProductForm, CategoryForm # Import local depuis le même dossier
 from decorators import admin_required
 
+# Création du Blueprint 'products'
 products = Blueprint('products', __name__)
 
+
 # --- ROUTES POUR LES CATÉGORIES ---
+
 @products.route('/categories')
 @login_required
 @admin_required
 def list_categories():
     categories = Category.query.order_by(Category.name).all()
+    # Le chemin du template est maintenant relatif au dossier 'templates' de l'app
     return render_template('products/list_categories.html', categories=categories, title='Catégories')
 
 @products.route('/category/new', methods=['GET', 'POST'])
@@ -58,6 +60,7 @@ def delete_category(category_id):
 
 
 # --- ROUTES POUR LES PRODUITS ---
+
 @products.route('/')
 @login_required
 def list_products():
@@ -79,6 +82,7 @@ def new_product():
     if form.validate_on_submit():
         product = Product()
         form.populate_obj(product)
+        # L'objet `category` est directement assigné grâce à QuerySelectField
         product.category = form.category.data
         db.session.add(product)
         db.session.commit()
