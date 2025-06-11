@@ -11,8 +11,7 @@ from datetime import datetime, timezone
 from sqlalchemy import func
 from markupsafe import Markup, escape
 
-# ON IMPORTE db ET migrate GLOBALEMENT
-from extensions import db, migrate
+from extensions import db, migrate, login
 from config import config_by_name
 from forms import (LoginForm, ChangePasswordForm, CategoryForm, ProductForm, StockAdjustmentForm,
                    QuickStockEntryForm, OrderForm, OrderStatusForm, RecipeForm)
@@ -40,9 +39,6 @@ def create_app(config_name=None):
     if config_name is None:
         config_name = os.environ.get('FLASK_ENV') or 'default'
     app.config.from_object(config_by_name[config_name])
-
-    # ON IMPORTE login ICI POUR FORCER LE SCOPE LOCAL
-    from extensions import login
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -74,6 +70,7 @@ def create_app(config_name=None):
     def nl2br_filter(s):
         return Markup(escape(s).replace('\n', '<br>\n')) if s else ''
 
+    # --- ROUTES GÉNÉRALES ---
     @app.route('/')
     @app.route('/home')
     def hello_world():
@@ -106,23 +103,15 @@ def create_app(config_name=None):
     def dashboard():
         now_utc = datetime.now(timezone.utc)
         start_of_month_utc = now_utc.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        sales_data = db.session.query(
-            func.count(Order.id), func.sum(Order.total_amount)
-        ).filter(
-            Order.order_type == 'customer_order',
-            Order.status == 'completed',
-            Order.created_at >= start_of_month_utc
+        sales_data = db.session.query(func.count(Order.id), func.sum(Order.total_amount)).filter(
+            Order.order_type == 'customer_order', Order.status == 'completed', Order.created_at >= start_of_month_utc
         ).one()
         sales_count_month = sales_data[0] or 0
         total_revenue_month = sales_data[1] or Decimal('0.00')
         active_products_count = Product.query.filter(Product.quantity_in_stock > 0).count()
         total_items_in_stock = db.session.query(func.sum(Product.quantity_in_stock)).scalar() or 0
-        dashboard_data = {
-            'sales_count_month': sales_count_month,
-            'total_revenue_month': total_revenue_month,
-            'active_products_count': active_products_count,
-            'total_items_in_stock': total_items_in_stock
-        }
+        dashboard_data = {'sales_count_month': sales_count_month, 'total_revenue_month': total_revenue_month,
+                          'active_products_count': active_products_count, 'total_items_in_stock': total_items_in_stock}
         return render_template('dashboard.html', title='Tableau de Bord', data=dashboard_data)
 
     @app.route('/account', methods=['GET', 'POST'])
@@ -136,18 +125,20 @@ def create_app(config_name=None):
             return redirect(url_for('account'))
         return render_template('account.html', form=form, title='Mon Compte')
 
+    # --- ROUTES D'ADMINISTRATION ---
     @app.route('/admin')
     @login_required
     @admin_required
     def admin_dashboard():
-        return render_template('admin_dashboard.html', title='Administration')
+        return render_template('admin/admin_dashboard.html', title='Administration')
 
+    # == GESTION DES CATÉGORIES ==
     @app.route('/admin/categories')
     @login_required
     @admin_required
     def list_categories():
         categories = Category.query.order_by(Category.name).all()
-        return render_template('categories/list_categories.html', categories=categories, title='Catégories')
+        return render_template('admin/categories/list_categories.html', categories=categories, title='Catégories')
 
     @app.route('/admin/category/new', methods=['GET', 'POST'])
     @login_required
@@ -160,7 +151,7 @@ def create_app(config_name=None):
             db.session.commit()
             flash('Nouvelle catégorie ajoutée.', 'success')
             return redirect(url_for('list_categories'))
-        return render_template('categories/category_form.html', form=form, title='Nouvelle Catégorie')
+        return render_template('admin/categories/category_form.html', form=form, title='Nouvelle Catégorie')
 
     @app.route('/admin/category/<int:category_id>/edit', methods=['GET', 'POST'])
     @login_required
@@ -173,7 +164,7 @@ def create_app(config_name=None):
             db.session.commit()
             flash('Catégorie mise à jour.', 'success')
             return redirect(url_for('list_categories'))
-        return render_template('categories/category_form.html', form=form, title=f'Modifier: {category.name}')
+        return render_template('admin/categories/category_form.html', form=form, title=f'Modifier: {category.name}')
 
     @app.route('/admin/category/<int:category_id>/delete', methods=['POST'])
     @login_required
@@ -188,6 +179,7 @@ def create_app(config_name=None):
             flash('Catégorie supprimée.', 'success')
         return redirect(url_for('list_categories'))
 
+    # == GESTION DES PRODUITS ==
     @app.route('/products')
     @login_required
     def list_products():
@@ -242,7 +234,164 @@ def create_app(config_name=None):
             db.session.commit()
             flash('Produit supprimé.', 'success')
         return redirect(url_for('list_products'))
+    
+    # == GESTION DU STOCK ==
+    @app.route('/admin/stock_adjustment', methods=['GET', 'POST'])
+    @login_required
+    @admin_required
+    def stock_adjustment():
+        form = StockAdjustmentForm()
+        if form.validate_on_submit():
+            product_obj = form.product.data
+            quantity_change = form.quantity.data
+            reason = form.reason.data.strip() if form.reason.data else "Ajustement manuel"
+            old_stock = product_obj.quantity_in_stock
+            new_stock = (old_stock or 0) + quantity_change
+            if new_stock < 0:
+                flash(f'Le stock de "{product_obj.name}" ne peut pas devenir négatif.', 'danger')
+            else:
+                product_obj.quantity_in_stock = new_stock
+                db.session.commit()
+                flash(f'Stock de "{product_obj.name}" ajusté à {new_stock}.', 'success')
+                return redirect(url_for('stock_adjustment'))
+        return render_template('admin/stock_adjustment_form.html', form=form, title='Ajustement de Stock')
 
+    @app.route('/admin/quick_stock_entry', methods=['GET', 'POST'])
+    @login_required
+    @admin_required
+    def quick_stock_entry():
+        form = QuickStockEntryForm()
+        if form.validate_on_submit():
+            product_obj = form.product.data
+            quantity_received = form.quantity_received.data
+            product_obj.quantity_in_stock = (product_obj.quantity_in_stock or 0) + quantity_received
+            db.session.commit()
+            flash(f'Stock pour "{product_obj.name}" mis à jour : {product_obj.quantity_in_stock}.', 'success')
+            return redirect(url_for('quick_stock_entry'))
+        return render_template('admin/quick_stock_entry.html', form=form, title='Réception Rapide')
+
+    @app.route('/admin/stock_overview')
+    @login_required
+    @admin_required
+    def stock_overview():
+        low_stock_threshold = app.config.get('LOW_STOCK_THRESHOLD', 5)
+        # S'assure que le filtre fonctionne même si la quantité est None
+        low_stock_products = Product.query.filter(Product.quantity_in_stock != None, Product.quantity_in_stock > 0, Product.quantity_in_stock < low_stock_threshold).order_by(Product.quantity_in_stock).all()
+        out_of_stock_products = Product.query.filter((Product.quantity_in_stock == 0) | (Product.quantity_in_stock == None)).order_by(Product.name).all()
+        return render_template('admin/stock_overview.html', title="Vue d'ensemble du Stock", low_stock_products=low_stock_products, out_of_stock_products=out_of_stock_products)
+
+    # == GESTION DES COMMANDES ==
+    @app.route('/admin/orders')
+    @login_required
+    @admin_required
+    def list_orders():
+        page = request.args.get('page', 1, type=int)
+        orders_pagination = Order.query.order_by(Order.due_date.desc()).paginate(page=page, per_page=app.config.get('ORDERS_PER_PAGE', 10))
+        return render_template('admin/orders/list_orders.html', orders_pagination=orders_pagination, title='Gestion des Commandes')
+
+    @app.route('/admin/order/new', methods=['GET', 'POST'])
+    @login_required
+    @admin_required
+    def new_order():
+        form = OrderForm()
+        if form.validate_on_submit():
+            order = Order(user_id=current_user.id)
+            form.populate_obj(order)
+            db.session.add(order)
+            db.session.flush()
+            
+            for item_data in form.items.data:
+                if item_data['product'] and item_data['quantity'] > 0:
+                    product = item_data['product']
+                    order_item = OrderItem(
+                        order_id=order.id,
+                        product_id=product.id,
+                        quantity=item_data['quantity'],
+                        unit_price=product.price or Decimal('0.00')
+                    )
+                    db.session.add(order_item)
+            
+            order.calculate_total_amount()
+            db.session.commit()
+            flash('Nouvelle commande créée.', 'success')
+            return redirect(url_for('view_order', order_id=order.id))
+        return render_template('admin/orders/order_form_multifield.html', form=form, title='Nouvelle Commande')
+
+    @app.route('/admin/order/<int:order_id>')
+    @login_required
+    @admin_required
+    def view_order(order_id):
+        order = db.session.get(Order, order_id) or abort(404)
+        return render_template('admin/orders/view_order.html', order=order, title=f'Commande #{order.id}')
+
+    @app.route('/admin/order/<int:order_id>/edit', methods=['GET', 'POST'])
+    @login_required
+    @admin_required
+    def edit_order(order_id):
+        order = db.session.get(Order, order_id) or abort(404)
+        form = OrderForm(request.form, obj=order) if request.method == 'POST' else OrderForm(obj=order)
+        if request.method == 'GET':
+            form.items.entries = [] # Vider la liste
+            for item in order.items:
+                form.items.append_entry(item)
+
+        if form.validate_on_submit():
+            form.populate_obj(order)
+            
+            # Suppression des anciens items
+            for item in order.items:
+                db.session.delete(item)
+            db.session.flush()
+            
+            # Ajout des nouveaux
+            for item_data in form.items.data:
+                if item_data['product'] and item_data['quantity'] > 0:
+                    product = item_data['product']
+                    order_item = OrderItem(
+                        order_id=order.id,
+                        product_id=product.id,
+                        quantity=item_data['quantity'],
+                        unit_price=product.price or Decimal('0.00')
+                    )
+                    db.session.add(order_item)
+            
+            order.calculate_total_amount()
+            db.session.commit()
+            flash('Commande mise à jour.', 'success')
+            return redirect(url_for('view_order', order_id=order.id))
+        return render_template('admin/orders/order_form_multifield.html', form=form, title=f'Modifier Commande #{order.id}', edit_mode=True)
+
+    @app.route('/admin/order/<int:order_id>/edit_status', methods=['GET', 'POST'])
+    @login_required
+    @admin_required
+    def edit_order_status(order_id):
+        order = db.session.get(Order, order_id) or abort(404)
+        form = OrderStatusForm(obj=order)
+        if form.validate_on_submit():
+            order.status = form.status.data
+            if form.notes.data:
+                order.notes = (order.notes or '') + f"\n---\nNote du {datetime.now(timezone.utc).strftime('%d/%m/%Y %H:%M')}: {form.notes.data}"
+            db.session.commit()
+            flash('Statut de la commande mis à jour.', 'success')
+            return redirect(url_for('view_order', order_id=order.id))
+        return render_template('admin/orders/order_status_form.html', form=form, order=order, title='Modifier Statut')
+
+    @app.route('/admin/orders/calendar')
+    @login_required
+    @admin_required
+    def orders_calendar():
+        orders = Order.query.filter(Order.due_date.isnot(None)).all()
+        events = []
+        for order in orders:
+            events.append({
+                'id': order.id,
+                'title': f"#{order.id} - {order.customer_name}",
+                'start': order.due_date.isoformat(),
+                'url': url_for('view_order', order_id=order.id)
+            })
+        return render_template('admin/orders/orders_calendar.html', events=events, title="Calendrier des Commandes")
+
+    # == GESTION DES RECETTES ==
     @app.route('/admin/recipes')
     @login_required
     @admin_required
@@ -273,12 +422,9 @@ def create_app(config_name=None):
                 for item_data in form.ingredients.data:
                     if item_data.get('product') and item_data.get('quantity_needed'):
                         ingredient = RecipeIngredient(
-                            recipe_id=recipe.id,
-                            product_id=item_data['product'].id,
-                            quantity_needed=item_data['quantity_needed'],
-                            unit=item_data['unit'],
-                            notes=item_data.get('notes')
-                        )
+                            recipe_id=recipe.id, product_id=item_data['product'].id,
+                            quantity_needed=item_data['quantity_needed'], unit=item_data['unit'],
+                            notes=item_data.get('notes'))
                         db.session.add(ingredient)
                 db.session.commit()
                 flash(f"Recette '{recipe.name}' créée.", 'success')
@@ -288,9 +434,7 @@ def create_app(config_name=None):
                 app.logger.error(f"Erreur création recette: {e}", exc_info=True)
                 flash(f"Erreur serveur: {str(e)}", 'danger')
         ingredient_products = Product.query.filter_by(product_type='ingredient').order_by(Product.name).all()
-        ingredient_products_json = [
-            {"id": p.id, "name": p.name, "unit": p.unit, "suggested_unit": get_unit_suggestion(p.name, p.unit)}
-            for p in ingredient_products]
+        ingredient_products_json = [{"id": p.id, "name": p.name, "unit": p.unit, "suggested_unit": get_unit_suggestion(p.name, p.unit)} for p in ingredient_products]
         if request.method == 'GET' and not form.ingredients.entries:
             form.ingredients.append_entry()
         return render_template('admin/recipes/recipe_form.html', form=form, title='Nouvelle Recette', ingredient_products_json=ingredient_products_json)
@@ -330,9 +474,7 @@ def create_app(config_name=None):
                 app.logger.error(f"Erreur modification recette {recipe_id}: {e}", exc_info=True)
                 flash(f"Erreur serveur: {str(e)}", 'danger')
         ingredient_products = Product.query.filter_by(product_type='ingredient').order_by(Product.name).all()
-        ingredient_products_json = [
-            {"id": p.id, "name": p.name, "unit": p.unit, "suggested_unit": get_unit_suggestion(p.name, p.unit)}
-            for p in ingredient_products]
+        ingredient_products_json = [{"id": p.id, "name": p.name, "unit": p.unit, "suggested_unit": get_unit_suggestion(p.name, p.unit)} for p in ingredient_products]
         return render_template('admin/recipes/recipe_form.html', form=form, title=f"Modifier: {recipe.name}", ingredient_products_json=ingredient_products_json, edit_mode=True)
 
     @app.route('/admin/recipe/<int:recipe_id>/delete', methods=['POST'])
@@ -348,7 +490,8 @@ def create_app(config_name=None):
         else:
             flash("Erreur de sécurité.", 'danger')
         return redirect(url_for('list_recipes'))
-
+        
+    # == GESTION DES ERREURS ==
     @app.errorhandler(403)
     def forbidden_error(error):
         return render_template('errors/403.html', title='Accès Interdit'), 403
