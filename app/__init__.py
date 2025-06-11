@@ -1,4 +1,4 @@
-# Fichier: app/__init__.py (Mis à jour)
+# Fichier: app/__init__.py (Version Complète Finale)
 
 import os
 from flask import Flask
@@ -30,7 +30,7 @@ def create_app(config_name=None):
     def inject_current_year():
         return {'current_year': datetime.utcnow().year}
     
-    # Enregistrement des Blueprints
+    # Enregistrement de tous les Blueprints
     from app.main.routes import main as main_blueprint
     app.register_blueprint(main_blueprint)
 
@@ -40,10 +40,19 @@ def create_app(config_name=None):
     from app.products.routes import products as products_blueprint
     app.register_blueprint(products_blueprint, url_prefix='/admin/products')
 
-    # --- ENREGISTREMENT DU BLUEPRINT ORDERS ---
     from app.orders.routes import orders as orders_blueprint
     app.register_blueprint(orders_blueprint, url_prefix='/admin/orders')
 
+    from app.recipes.routes import recipes as recipes_blueprint
+    app.register_blueprint(recipes_blueprint, url_prefix='/admin/recipes')
+
+    from app.stock.routes import stock as stock_blueprint
+    app.register_blueprint(stock_blueprint, url_prefix='/admin/stock')
+
+    from app.admin.routes import admin as admin_blueprint
+    app.register_blueprint(admin_blueprint, url_prefix='/admin')
+
+    # ... la commande CLI reste ici ...
     @app.cli.command("create-admin")
     def create_admin():
         if User.query.filter_by(email="admin@example.com").first():
