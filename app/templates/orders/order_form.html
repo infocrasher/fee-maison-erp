@@ -8,7 +8,7 @@
         <div class="col-lg-8">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h1 class="h3 mb-0"><i class="bi bi-cart-plus me-2"></i>{{ title }}</h1>
-                <a href="{{ url_for('list_orders') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-list-ul me-1"></i>Toutes les Commandes</a>
+                <a href="{{ url_for('orders.list_orders') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-list-ul me-1"></i>Toutes les Commandes</a>
             </div>
             <div class="alert alert-info mb-4" role="alert"><i class="bi bi-info-circle me-2"></i><strong>Nouvelle commande :</strong> Saisissez les informations du client, les options de service et sélectionnez le produit commandé.</div>
 
@@ -119,7 +119,7 @@
                         </fieldset>
                         
                         <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
-                            <a href="{{ url_for('list_orders') }}" class="btn btn-outline-secondary">Annuler</a>
+                            <a href="{{ url_for('orders.list_orders') }}" class="btn btn-outline-secondary">Annuler</a>
                             {{ form.submit(class="btn btn-primary btn-lg", value="Créer la Commande") }}
                         </div>
                     </form>

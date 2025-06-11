@@ -11,7 +11,7 @@
                 <h1 class="h3 mb-0">
                     <i class="bi bi-tags-fill me-2"></i>Gestion des Catégories
                 </h1>
-                <a href="{{ url_for('new_category') }}" class="btn btn-primary">
+                <a href="{{ url_for('products.new_category') }}" class="btn btn-primary">
                     <i class="bi bi-plus-circle-fill me-1"></i>Nouvelle Catégorie
                 </a>
             </div>
@@ -141,7 +141,7 @@
                         <i class="bi bi-grid-3x3-gap display-1 text-muted mb-3"></i>
                         <h4 class="mb-3">Aucune catégorie pour le moment</h4>
                         <p class="text-muted mb-4">Commencez par ajouter des catégories pour organiser vos produits.</p>
-                        <a href="{{ url_for('new_category') }}" class="btn btn-primary btn-lg">
+                        <a href="{{ url_for('products.new_category') }}" class="btn btn-primary btn-lg">
                             <i class="bi bi-plus-circle-fill me-1"></i>Créer votre première catégorie
                         </a>
                     </div>
@@ -150,10 +150,10 @@
 
             <!-- Navigation -->
             <div class="mt-4 text-center">
-                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary me-2">
+                <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary me-2">
                     <i class="bi bi-arrow-left-circle-fill"></i> Retour à l'Admin Dashboard
                 </a>
-                <a href="{{ url_for('list_products') }}" class="btn btn-outline-info">
+                <a href="{{ url_for('products.list_products') }}" class="btn btn-outline-info">
                     <i class="bi bi-box-seam-fill"></i> Gérer les Produits
                 </a>
             </div>

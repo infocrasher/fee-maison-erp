@@ -39,7 +39,7 @@
                             <h5 class="mb-0"><i class="bi bi-key-fill me-2"></i>Modifier le mot de passe</h5>
                         </div>
                         <div class="card-body">
-                            <form method="POST" action="{{ url_for('account') }}" novalidate>
+                            <form method="POST" action="{{ url_for('auth.account') }}" novalidate>
                                 {{ form.hidden_tag() }}
                                 
                                 <div class="mb-3">
@@ -93,10 +93,10 @@
 
             <!-- Section Actions -->
             <div class="mt-4 text-center">
-                 <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm me-2">
+                 <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary btn-sm me-2">
                     <i class="bi bi-arrow-left-circle"></i> Retour au tableau de bord
                 </a>
-                <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm">
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger btn-sm">
                     <i class="bi bi-box-arrow-right"></i> Se déconnecter
                 </a>
             </div>
