@@ -2,13 +2,13 @@
 
 from datetime import datetime
 from decimal import Decimal
-from flask_sqlalchemy import SQLAlchemy
+# from flask_sqlalchemy import SQLAlchemy  <-- SUPPRIMEZ CETTE LIGNE
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import func
 from extensions import db
 
-db = SQLAlchemy()
+
 
 # Constante pour les conversions, importée par app.py
 CONVERSION_FACTORS = {
