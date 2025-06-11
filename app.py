@@ -7,25 +7,20 @@ from flask_wtf import FlaskForm
 from flask_wtf.csrf import generate_csrf
 from decimal import Decimal
 from datetime import datetime, timezone
+
 from sqlalchemy import func
 from markupsafe import Markup, escape
 
-# --- CORRECTION ---
-# Importer UNIQUEMENT les objets instanciés depuis extensions.py
-from extensions import db, migrate, login, csrf
-
-# Le reste de vos imports
+from extensions import db, migrate, login
 from config import config_by_name
-from forms import (LoginForm, ChangePasswordForm, CategoryForm, ProductForm, StockAdjustmentForm, 
+from forms import (LoginForm, ChangePasswordForm, CategoryForm, ProductForm, StockAdjustmentForm,
                    QuickStockEntryForm, OrderForm, OrderStatusForm, RecipeForm)
-from models import (User, Category, Product, Order, OrderItem, Recipe, 
+from models import (User, Category, Product, Order, OrderItem, Recipe,
                     RecipeIngredient, CONVERSION_FACTORS)
 from decorators import admin_required
 
 
-# Fonction utilitaire (pas de changement)
 def get_unit_suggestion(ingredient_name: str, base_unit: str = None) -> str:
-    # ...
     name_lower = ingredient_name.lower()
     if base_unit and base_unit.lower() in ['g', 'ml', 'pièce', 'unité', 'grammes', 'millilitre']:
         return base_unit
@@ -43,25 +38,20 @@ def create_app(config_name=None):
 
     if config_name is None:
         config_name = os.environ.get('FLASK_ENV') or 'default'
+    app.config.from_object(config_by_name[config_name])
 
-    try:
-        app.config.from_object(config_by_name[config_name])
-        print(f"--- Chargement de la configuration : {config_name} ---")
-    except KeyError:
-        print(f"--- ERREUR : Configuration '{config_name}' non trouvée. Utilisation de 'default'. ---")
-        app.config.from_object(config_by_name['default'])
-
-    # On lie les extensions (importées depuis extensions.py) à l'application
     db.init_app(app)
     migrate.init_app(app, db)
     login.init_app(app)
-    csrf.init_app(app)
+
+    login.login_view = 'login'
+    login.login_message_category = 'info'
+    login.login_message = "Veuillez vous connecter pour accéder à cette page."
 
     @login.user_loader
     def load_user(user_id):
         return db.session.get(User, int(user_id))
 
-    # Configuration du Logging
     if not app.debug and not app.testing:
         if not os.path.exists('logs'):
             os.mkdir('logs')
@@ -72,7 +62,6 @@ def create_app(config_name=None):
         app.logger.setLevel(logging.INFO)
         app.logger.info('Fée Maison startup')
 
-    # Processeurs de contexte et filtres de template
     @app.context_processor
     def inject_manual_csrf_token():
         return dict(manual_csrf_token=generate_csrf)
@@ -81,7 +70,6 @@ def create_app(config_name=None):
     def nl2br_filter(s):
         return Markup(escape(s).replace('\n', '<br>\n')) if s else ''
 
-    # --- ROUTES GÉNÉRALES ---
     @app.route('/')
     @app.route('/home')
     def hello_world():
@@ -114,7 +102,6 @@ def create_app(config_name=None):
     def dashboard():
         now_utc = datetime.now(timezone.utc)
         start_of_month_utc = now_utc.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        
         sales_data = db.session.query(
             func.count(Order.id), func.sum(Order.total_amount)
         ).filter(
@@ -122,12 +109,10 @@ def create_app(config_name=None):
             Order.status == 'completed',
             Order.created_at >= start_of_month_utc
         ).one()
-        
         sales_count_month = sales_data[0] or 0
         total_revenue_month = sales_data[1] or Decimal('0.00')
         active_products_count = Product.query.filter(Product.quantity_in_stock > 0).count()
         total_items_in_stock = db.session.query(func.sum(Product.quantity_in_stock)).scalar() or 0
-
         dashboard_data = {
             'sales_count_month': sales_count_month,
             'total_revenue_month': total_revenue_month,
@@ -147,14 +132,12 @@ def create_app(config_name=None):
             return redirect(url_for('account'))
         return render_template('account.html', form=form, title='Mon Compte')
 
-    # --- ROUTES D'ADMINISTRATION ---
     @app.route('/admin')
     @login_required
     @admin_required
     def admin_dashboard():
         return render_template('admin_dashboard.html', title='Administration')
 
-    # == GESTION DES CATÉGORIES ==
     @app.route('/admin/categories')
     @login_required
     @admin_required
@@ -201,7 +184,6 @@ def create_app(config_name=None):
             flash('Catégorie supprimée.', 'success')
         return redirect(url_for('list_categories'))
 
-    # == GESTION DES PRODUITS ==
     @app.route('/products')
     @login_required
     def list_products():
@@ -250,14 +232,13 @@ def create_app(config_name=None):
     def delete_product(product_id):
         product = db.session.get(Product, product_id) or abort(404)
         if product.recipe_uses.first() or product.order_items.first() or product.recipe_definition:
-            flash(f"Produit '{product.name}' est utilisé dans une recette ou une commande et ne peut être supprimé.", 'danger')
+            flash(f"Produit '{product.name}' est utilisé et ne peut être supprimé.", 'danger')
         else:
             db.session.delete(product)
             db.session.commit()
             flash('Produit supprimé.', 'success')
         return redirect(url_for('list_products'))
 
-    # == GESTION DES RECETTES ==
     @app.route('/admin/recipes')
     @login_required
     @admin_required
@@ -283,10 +264,8 @@ def create_app(config_name=None):
                 recipe = Recipe()
                 form.populate_obj(recipe)
                 recipe.product_id = form.finished_product.data.id
-
                 db.session.add(recipe)
                 db.session.flush()
-
                 for item_data in form.ingredients.data:
                     if item_data.get('product') and item_data.get('quantity_needed'):
                         ingredient = RecipeIngredient(
@@ -297,24 +276,19 @@ def create_app(config_name=None):
                             notes=item_data.get('notes')
                         )
                         db.session.add(ingredient)
-
                 db.session.commit()
-                flash(f"Recette '{recipe.name}' créée avec succès !", 'success')
+                flash(f"Recette '{recipe.name}' créée.", 'success')
                 return redirect(url_for('view_recipe', recipe_id=recipe.id))
             except Exception as e:
                 db.session.rollback()
                 app.logger.error(f"Erreur création recette: {e}", exc_info=True)
-                flash(f"Erreur serveur lors de la création: {str(e)}", 'danger')
-        
+                flash(f"Erreur serveur: {str(e)}", 'danger')
         ingredient_products = Product.query.filter_by(product_type='ingredient').order_by(Product.name).all()
         ingredient_products_json = [
             {"id": p.id, "name": p.name, "unit": p.unit, "suggested_unit": get_unit_suggestion(p.name, p.unit)}
-            for p in ingredient_products
-        ]
-        
+            for p in ingredient_products]
         if request.method == 'GET' and not form.ingredients.entries:
             form.ingredients.append_entry()
-
         return render_template('admin/recipes/recipe_form.html', form=form, title='Nouvelle Recette', ingredient_products_json=ingredient_products_json)
 
     @app.route('/admin/recipe/<int:recipe_id>/edit', methods=['GET', 'POST'])
@@ -323,56 +297,40 @@ def create_app(config_name=None):
     def edit_recipe(recipe_id):
         recipe = db.session.get(Recipe, recipe_id) or abort(404)
         form = RecipeForm(request.form, obj=recipe) if request.method == 'POST' else RecipeForm(obj=recipe)
-
         if request.method == 'GET':
             form.ingredients.entries.clear()
             for ingredient in recipe.ingredients:
-                form.ingredients.append_entry(data={
-                    'product': ingredient.product,
-                    'quantity_needed': ingredient.quantity_needed,
-                    'unit': ingredient.unit,
-                    'notes': ingredient.notes
-                })
+                form.ingredients.append_entry(data={'product': ingredient.product, 'quantity_needed': ingredient.quantity_needed,
+                                                     'unit': ingredient.unit, 'notes': ingredient.notes})
             if not form.ingredients.entries:
                 form.ingredients.append_entry()
-
         if form.validate_on_submit():
             try:
                 form.populate_obj(recipe)
                 recipe.product_id = form.finished_product.data.id
-
                 for old_ingredient in recipe.ingredients:
                     db.session.delete(old_ingredient)
-                
                 db.session.flush()
-
                 for item_data in form.ingredients.data:
                     if item_data.get('product') and item_data.get('quantity_needed'):
                         new_ingredient = RecipeIngredient(
-                            recipe_id=recipe.id,
-                            product_id=item_data['product'].id,
-                            quantity_needed=item_data['quantity_needed'],
-                            unit=item_data['unit'],
-                            notes=item_data.get('notes')
-                        )
+                            recipe_id=recipe.id, product_id=item_data['product'].id,
+                            quantity_needed=item_data['quantity_needed'], unit=item_data['unit'],
+                            notes=item_data.get('notes'))
                         db.session.add(new_ingredient)
-
                 db.session.commit()
-                flash(f"Recette '{recipe.name}' modifiée avec succès !", 'success')
+                flash(f"Recette '{recipe.name}' modifiée.", 'success')
                 return redirect(url_for('view_recipe', recipe_id=recipe.id))
             except Exception as e:
                 db.session.rollback()
                 app.logger.error(f"Erreur modification recette {recipe_id}: {e}", exc_info=True)
-                flash(f"Erreur serveur lors de la modification: {str(e)}", 'danger')
-
+                flash(f"Erreur serveur: {str(e)}", 'danger')
         ingredient_products = Product.query.filter_by(product_type='ingredient').order_by(Product.name).all()
         ingredient_products_json = [
             {"id": p.id, "name": p.name, "unit": p.unit, "suggested_unit": get_unit_suggestion(p.name, p.unit)}
-            for p in ingredient_products
-        ]
-        
+            for p in ingredient_products]
         return render_template('admin/recipes/recipe_form.html', form=form, title=f"Modifier: {recipe.name}", ingredient_products_json=ingredient_products_json, edit_mode=True)
-    
+
     @app.route('/admin/recipe/<int:recipe_id>/delete', methods=['POST'])
     @login_required
     @admin_required
@@ -384,12 +342,9 @@ def create_app(config_name=None):
             db.session.commit()
             flash(f"Recette '{recipe.name}' supprimée.", 'success')
         else:
-            flash("Erreur de sécurité, impossible de supprimer.", 'danger')
+            flash("Erreur de sécurité.", 'danger')
         return redirect(url_for('list_recipes'))
 
-    # ... (autres routes pour commandes, stock, etc.)
-
-    # == GESTION D'ERREURS ==
     @app.errorhandler(403)
     def forbidden_error(error):
         return render_template('errors/403.html', title='Accès Interdit'), 403
@@ -406,32 +361,25 @@ def create_app(config_name=None):
 
     return app
 
-# Création de l'instance principale de l'application
+
 main_app = create_app(os.getenv('FLASK_ENV') or 'default')
 
-# Commande CLI pour créer un utilisateur admin
+
 @main_app.cli.command("create-admin")
 def create_admin():
-    """Crée un utilisateur administrateur."""
     username = "admin"
     email = "admin@example.com"
-    password = "password123" # Changez ceci immédiatement après la connexion !
-    
+    password = "password123"
+
     if User.query.filter_by(email=email).first():
         print(f"L'utilisateur avec l'email {email} existe déjà.")
         return
 
-    admin_user = User(
-        username=username,
-        email=email,
-        role='admin'
-    )
+    admin_user = User(username=username, email=email, role='admin')
     admin_user.set_password(password)
     db.session.add(admin_user)
     db.session.commit()
     print(f"Utilisateur admin '{username}' créé avec succès.")
-    print(f"Email: {email}")
-    print(f"Mot de passe: {password}")
 
 
 if __name__ == '__main__':
