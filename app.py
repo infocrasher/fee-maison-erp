@@ -3,6 +3,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 from flask import Flask, render_template, url_for, flash, redirect, request, abort, jsonify
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
+from extensions import db, migrate, login, csrf
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
