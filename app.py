@@ -1,39 +1,43 @@
-# --- START OF FILE app.py (VERSION COMPLÈTE ET CORRIGÉE) ---
-
 import os
 import logging
 from logging.handlers import RotatingFileHandler
 from flask import Flask, render_template, url_for, flash, redirect, request, abort, jsonify
-from flask.cli import run_command, shell_command, routes_command
-from flask_login import current_user, login_user, logout_user, login_required
+from flask_login import LoginManager, current_user, login_user, logout_user, login_required
+from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
-from flask_wtf.csrf import generate_csrf
+from flask_wtf.csrf import CSRFProtect, generate_csrf
 from decimal import Decimal
 from datetime import datetime, timezone
 from sqlalchemy import func
 from markupsafe import Markup, escape
 
+# --- 1. On instancie les objets d'extension ICI, mais SANS les lier à l'app ---
+db = SQLAlchemy()
+migrate = Migrate()
+login = LoginManager()
+csrf = CSRFProtect()
+
+# --- 2. Configuration de LoginManager (on peut le faire ici) ---
+login.login_view = 'login'
+login.login_message_category = 'info'
+login.login_message = "Veuillez vous connecter pour accéder à cette page."
+
 # Import des configurations
 from config import config_by_name
-
 # Import des formulaires
-from forms import (LoginForm, ChangePasswordForm,
-                   CategoryForm, ProductForm,
-                   StockAdjustmentForm, QuickStockEntryForm,
-                   OrderForm, OrderStatusForm,
-                   RecipeForm)
-
-# Import des modèles et de l'objet db principal
-from models import (db, User, Category, Product, Order, OrderItem, Recipe,
+from forms import (LoginForm, ChangePasswordForm, CategoryForm, ProductForm, StockAdjustmentForm, 
+                   QuickStockEntryForm, OrderForm, OrderStatusForm, RecipeForm)
+# Import des modèles (qui utilisent 'db')
+from models import (User, Category, Product, Order, OrderItem, Recipe, 
                     RecipeIngredient, CONVERSION_FACTORS)
-
 # Import des décorateurs
 from decorators import admin_required
 
 
-# Fonction utilitaire pour les suggestions d'unités
+# Fonction utilitaire
 def get_unit_suggestion(ingredient_name: str, base_unit: str = None) -> str:
-    """Suggère une unité pour une recette, en tenant compte de l'unité de base du produit."""
+    # ... (votre fonction est correcte, pas besoin de la changer)
     name_lower = ingredient_name.lower()
     if base_unit and base_unit.lower() in ['g', 'ml', 'pièce', 'unité', 'grammes', 'millilitre']:
         return base_unit
@@ -49,10 +53,6 @@ def get_unit_suggestion(ingredient_name: str, base_unit: str = None) -> str:
 def create_app(config_name=None):
     app = Flask(__name__)
 
-    # --- CORRECTION APPLIQUÉE ICI ---
-    # Importer les extensions à l'intérieur de la factory pour garantir leur portée
-    from extensions import migrate, login, csrf
-
     if config_name is None:
         config_name = os.environ.get('FLASK_ENV') or 'default'
 
@@ -63,16 +63,11 @@ def create_app(config_name=None):
         print(f"--- ERREUR : Configuration '{config_name}' non trouvée. Utilisation de 'default'. ---")
         app.config.from_object(config_by_name['default'])
 
-    # Initialisation des extensions
+    # --- 3. ON LIE les extensions à l'application ICI ---
     db.init_app(app)
     migrate.init_app(app, db)
     login.init_app(app)
     csrf.init_app(app)
-
-    # Configuration de Flask-Login
-    login.login_view = 'login'
-    login.login_message_category = 'info'
-    login.login_message = "Veuillez vous connecter pour accéder à cette page."
 
     @login.user_loader
     def load_user(user_id):
