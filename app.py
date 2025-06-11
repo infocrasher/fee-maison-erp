@@ -2,43 +2,30 @@ import os
 import logging
 from logging.handlers import RotatingFileHandler
 from flask import Flask, render_template, url_for, flash, redirect, request, abort, jsonify
-from flask_login import LoginManager, current_user, login_user, logout_user, login_required
-from extensions import db, migrate, login, csrf
-from flask_migrate import Migrate
-from flask_sqlalchemy import SQLAlchemy
+from flask_login import current_user, login_user, logout_user, login_required
 from flask_wtf import FlaskForm
-from flask_wtf.csrf import CSRFProtect, generate_csrf
+from flask_wtf.csrf import generate_csrf
 from decimal import Decimal
 from datetime import datetime, timezone
 from sqlalchemy import func
 from markupsafe import Markup, escape
 
-# --- 1. On instancie les objets d'extension ICI, mais SANS les lier à l'app ---
-db = SQLAlchemy()
-migrate = Migrate()
-login = LoginManager()
-csrf = CSRFProtect()
+# --- CORRECTION ---
+# Importer UNIQUEMENT les objets instanciés depuis extensions.py
+from extensions import db, migrate, login, csrf
 
-# --- 2. Configuration de LoginManager (on peut le faire ici) ---
-login.login_view = 'login'
-login.login_message_category = 'info'
-login.login_message = "Veuillez vous connecter pour accéder à cette page."
-
-# Import des configurations
+# Le reste de vos imports
 from config import config_by_name
-# Import des formulaires
 from forms import (LoginForm, ChangePasswordForm, CategoryForm, ProductForm, StockAdjustmentForm, 
                    QuickStockEntryForm, OrderForm, OrderStatusForm, RecipeForm)
-# Import des modèles (qui utilisent 'db')
 from models import (User, Category, Product, Order, OrderItem, Recipe, 
                     RecipeIngredient, CONVERSION_FACTORS)
-# Import des décorateurs
 from decorators import admin_required
 
 
-# Fonction utilitaire
+# Fonction utilitaire (pas de changement)
 def get_unit_suggestion(ingredient_name: str, base_unit: str = None) -> str:
-    # ... (votre fonction est correcte, pas besoin de la changer)
+    # ...
     name_lower = ingredient_name.lower()
     if base_unit and base_unit.lower() in ['g', 'ml', 'pièce', 'unité', 'grammes', 'millilitre']:
         return base_unit
@@ -64,7 +51,7 @@ def create_app(config_name=None):
         print(f"--- ERREUR : Configuration '{config_name}' non trouvée. Utilisation de 'default'. ---")
         app.config.from_object(config_by_name['default'])
 
-    # --- 3. ON LIE les extensions à l'application ICI ---
+    # On lie les extensions (importées depuis extensions.py) à l'application
     db.init_app(app)
     migrate.init_app(app, db)
     login.init_app(app)
