@@ -1,173 +1,116 @@
-from datetime import datetime
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import UserMixin
-from werkzeug.security import generate_password_hash, check_password_hash
+# --- START OF FILE forms.py ---
 
-db = SQLAlchemy()
+from flask_wtf import FlaskForm
+from wtforms import (StringField, PasswordField, BooleanField, SubmitField, TextAreaField, 
+                     SelectField, FloatField, IntegerField, FieldList, FormField,
+                     DateTimeField)
+from wtforms.validators import DataRequired, Email, EqualTo, Length, ValidationError, Optional, NumberRange
+from wtforms_sqlalchemy.fields import QuerySelectField
 
-# Modèle User
-class User(UserMixin, db.Model):
-    __tablename__ = 'users'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(20), nullable=False, default='user')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    @property
-    def is_admin(self):
-        return self.role == 'admin'
-    
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
-    
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
-    
-    def __repr__(self):
-        return f'<User {self.username}>'
+from models import Category, Product, Recipe
 
-# Modèle Category
-class Category(db.Model):
-    __tablename__ = 'categories'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), unique=True, nullable=False)
-    description = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relations
-    products = db.relationship('Product', backref='category', lazy='dynamic')
-    
-    def __repr__(self):
-        return f'<Category {self.name}>'
+# --- FACTORIES ---
+def category_query_factory():
+    return Category.query.order_by(Category.name)
 
-# Modèle Product
-class Product(db.Model):
-    __tablename__ = 'products'
+def finished_product_query_factory():
+    # Produits finis qui n'ont pas encore de recette associée
+    return Product.query.filter_by(product_type='finished').filter(~Product.recipe_definition.has()).order_by(Product.name)
     
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200), nullable=False)
-    product_type = db.Column(db.String(50), nullable=False)  # 'finished', 'ingredient' (utilisé dans finished_product_query_factory_for_orders)
-    description = db.Column(db.Text)
-    price = db.Column(db.Numeric(10, 2))  # Prix de vente (utilisé dans ProductForm)
-    cost_price = db.Column(db.Numeric(10, 2))  # Prix d'achat/coût
-    unit = db.Column(db.String(20), nullable=False)
-    sku = db.Column(db.String(50), unique=True)  # SKU/Référence
-    quantity_in_stock = db.Column(db.Integer, default=0)  # Quantité en stock
-    category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    def __repr__(self):
-        return f'<Product {self.name}>'
+def finished_product_query_factory_for_orders():
+    return Product.query.filter_by(product_type='finished').order_by(Product.name)
 
-# Modèle Recipe
-class Recipe(db.Model):
-    __tablename__ = 'recipes'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200), nullable=False)
-    description = db.Column(db.Text)  # Instructions
-    product_id = db.Column(db.Integer, db.ForeignKey('products.id'))  # Produit fini associé
-    yield_quantity = db.Column(db.Numeric(10, 3), nullable=False, default=1.0)
-    yield_unit = db.Column(db.String(50), nullable=False, default='pièces')
-    preparation_time = db.Column(db.Integer)  # en minutes
-    cooking_time = db.Column(db.Integer)  # en minutes
-    difficulty_level = db.Column(db.String(20))  # 'Facile', 'Moyen', 'Difficile', 'Expert'
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relations
-    ingredients = db.relationship('RecipeIngredient', backref='recipe', lazy='dynamic', cascade='all, delete-orphan')
-    finished_product = db.relationship('Product', foreign_keys=[product_id])
-    
-    @property
-    def total_cost(self):
-        """Calcule le coût total de la recette"""
-        return sum(ing.cost for ing in self.ingredients)
-    
-    @property
-    def cost_per_unit(self):
-        """Calcule le coût par unité produite"""
-        if self.yield_quantity > 0:
-            return self.total_cost / float(self.yield_quantity)
-        return 0.0
-    
-    def __repr__(self):
-        return f'<Recipe {self.name}>'
+def ingredient_product_query_factory():
+    return Product.query.filter_by(product_type='ingredient').order_by(Product.name)
 
-# Modèle RecipeIngredient
-class RecipeIngredient(db.Model):
-    __tablename__ = 'recipe_ingredients'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    recipe_id = db.Column(db.Integer, db.ForeignKey('recipes.id'), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
-    quantity_needed = db.Column(db.Numeric(10, 3), nullable=False)  # Quantité nécessaire
-    unit = db.Column(db.String(50), nullable=False)
-    notes = db.Column(db.String(255))  # Notes optionnelles
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relations
-    product = db.relationship('Product', backref='recipe_uses')
-    
-    @property
-    def cost(self):
-        """Calcule le coût de cet ingrédient dans la recette"""
-        if self.product and self.product.cost_price:
-            return float(self.quantity_needed) * float(self.product.cost_price)
-        return 0.0
-    
-    def __repr__(self):
-        return f'<RecipeIngredient {self.quantity_needed} {self.unit} of {self.product.name if self.product else "Unknown"}>'
+def all_product_query_factory():
+    return Product.query.order_by(Product.name)
 
-# Modèle Order
-class Order(db.Model):
-    __tablename__ = 'orders'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    order_number = db.Column(db.String(50), unique=True, nullable=False)
-    order_type = db.Column(db.String(50), nullable=False, default='customer_order')  # 'customer_order', 'counter_production_request'
-    customer_name = db.Column(db.String(200))
-    customer_phone = db.Column(db.String(20))
-    customer_address = db.Column(db.Text)
-    delivery_option = db.Column(db.String(20), default='pickup')  # 'pickup', 'delivery'
-    due_date = db.Column(db.DateTime, nullable=False)
-    delivery_cost = db.Column(db.Numeric(10, 2), default=0.0)
-    status = db.Column(db.String(50), default='pending')  # 'pending', 'ready_at_shop', 'out_for_delivery', 'completed', 'awaiting_payment', 'cancelled'
-    notes = db.Column(db.Text)
-    total_amount = db.Column(db.Numeric(10, 2), default=0.0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relations
-    items = db.relationship('OrderItem', backref='order', lazy='dynamic', cascade='all, delete-orphan')
-    
-    @property
-    def total_cost(self):
-        """Calcule le coût total de la commande"""
-        return sum(float(item.subtotal) for item in self.items)
-    
-    def __repr__(self):
-        return f'<Order {self.order_number}>'
+# --- FORMS ---
 
-# Modèle OrderItem
-class OrderItem(db.Model):
-    __tablename__ = 'order_items'
+class LoginForm(FlaskForm):
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    password = PasswordField('Mot de passe', validators=[DataRequired()])
+    remember = BooleanField('Se souvenir de moi')
+    submit = SubmitField('Connexion')
+
+class ChangePasswordForm(FlaskForm):
+    new_password = PasswordField('Nouveau mot de passe', validators=[DataRequired(), Length(min=8)])
+    confirm_password = PasswordField('Confirmer le mot de passe', validators=[DataRequired(), EqualTo('new_password')])
+    submit = SubmitField('Changer le mot de passe')
+
+class CategoryForm(FlaskForm):
+    name = StringField('Nom de la catégorie', validators=[DataRequired(), Length(max=100)])
+    description = TextAreaField('Description', validators=[Optional()])
+    submit = SubmitField('Enregistrer')
+
+class ProductForm(FlaskForm):
+    name = StringField('Nom du produit', validators=[DataRequired(), Length(max=200)])
+    description = TextAreaField('Description', validators=[Optional()])
+    sku = StringField('SKU / Référence', validators=[Optional(), Length(max=50)])
+    product_type = SelectField('Type', choices=[('finished', 'Produit Fini'), ('ingredient', 'Ingrédient')], validators=[DataRequired()])
+    unit = StringField('Unité (ex: kg, L, pièce)', validators=[DataRequired(), Length(max=20)])
+    price = FloatField('Prix de vente (€)', validators=[Optional(), NumberRange(min=0)])
+    cost_price = FloatField("Prix d'achat / Coût de revient (€)", validators=[Optional(), NumberRange(min=0)])
+    quantity_in_stock = FloatField('Quantité en stock', default=0, validators=[DataRequired(), NumberRange(min=0)])
+    category = QuerySelectField('Catégorie', query_factory=category_query_factory, get_label='name', allow_blank=False)
+    submit = SubmitField('Enregistrer le produit')
+
+class StockAdjustmentForm(FlaskForm):
+    product = QuerySelectField('Produit', query_factory=all_product_query_factory, get_label='name', allow_blank=False)
+    quantity = FloatField('Changement de quantité (+/-)', validators=[DataRequired()])
+    reason = StringField('Raison', validators=[Optional(), Length(max=255)])
+    submit = SubmitField('Ajuster le stock')
+
+class QuickStockEntryForm(FlaskForm):
+    product = QuerySelectField('Produit', query_factory=all_product_query_factory, get_label='name', allow_blank=False)
+    quantity_received = FloatField('Quantité reçue', validators=[DataRequired(), NumberRange(min=0)])
+    submit = SubmitField('Ajouter au stock')
+
+class OrderItemForm(FlaskForm):
+    product = QuerySelectField('Produit', query_factory=finished_product_query_factory_for_orders, get_label='name', allow_blank=True)
+    quantity = IntegerField('Qté', validators=[Optional(), NumberRange(min=1)])
+
+class OrderForm(FlaskForm):
+    order_type = SelectField('Type', choices=[('customer_order', 'Demande Client'), ('counter_production_request', 'Prod. Comptoir')], default='customer_order')
+    customer_name = StringField('Nom du client', validators=[Optional(), Length(max=200)])
+    customer_phone = StringField('Téléphone', validators=[Optional(), Length(max=20)])
+    customer_address = TextAreaField('Adresse', validators=[Optional()])
+    due_date = DateTimeField("Date de livraison/retrait", format='%Y-%m-%dT%H:%M', validators=[DataRequired()])
+    delivery_option = SelectField('Livraison', choices=[('pickup', 'Retrait'), ('delivery', 'Livraison')], default='pickup')
+    delivery_cost = FloatField('Coût de livraison (€)', default=0.0, validators=[Optional(), NumberRange(min=0)])
+    notes = TextAreaField('Notes', validators=[Optional()])
+    items = FieldList(FormField(OrderItemForm), min_entries=1)
+    submit = SubmitField('Enregistrer la commande')
+
+class OrderStatusForm(FlaskForm):
+    status = SelectField('Nouveau Statut', choices=[
+        ('pending', 'En attente'),
+        ('ready_at_shop', 'Prête en boutique'),
+        ('out_for_delivery', 'En livraison'),
+        ('completed', 'Terminée'),
+        ('awaiting_payment', 'En attente de paiement'),
+        ('cancelled', 'Annulée')
+    ], validators=[DataRequired()])
+    notes = TextAreaField('Ajouter une note (optionnel)', validators=[Optional()])
+    submit = SubmitField('Mettre à jour le statut')
     
-    id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
-    quantity = db.Column(db.Integer, nullable=False)
-    unit_price = db.Column(db.Numeric(10, 2), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relations
-    product = db.relationship('Product', backref='order_items')
-    
-    @property
-    def subtotal(self):
-        return self.quantity * self.unit_price
-    
-    def __repr__(self):
-        return f'<OrderItem {self.quantity} x {self.product.name if self.product else "Unknown"}>'
+class RecipeIngredientForm(FlaskForm):
+    product = QuerySelectField('Ingrédient', query_factory=ingredient_product_query_factory, get_label='name', allow_blank=True)
+    quantity_needed = FloatField('Quantité', validators=[Optional(), NumberRange(min=0.001)])
+    unit = StringField('Unité', validators=[Optional()])
+    notes = StringField('Notes', validators=[Optional()])
+
+class RecipeForm(FlaskForm):
+    name = StringField('Nom de la recette', validators=[DataRequired(), Length(max=200)])
+    description = TextAreaField('Instructions', validators=[DataRequired()])
+    finished_product = QuerySelectField('Produit Fini Associé', query_factory=finished_product_query_factory, get_label='name', allow_blank=False)
+    yield_quantity = FloatField('Quantité Produite', validators=[DataRequired(), NumberRange(min=0.001)])
+    yield_unit = StringField('Unité Produite', validators=[DataRequired()])
+    preparation_time = IntegerField('Temps de préparation (min)', validators=[Optional(), NumberRange(min=0)])
+    cooking_time = IntegerField('Temps de cuisson (min)', validators=[Optional(), NumberRange(min=0)])
+    difficulty_level = SelectField('Difficulté', choices=[
+        ('', 'Non spécifié'), ('Facile', 'Facile'), ('Moyen', 'Moyen'), ('Difficile', 'Difficile'), ('Expert', 'Expert')
+    ], validators=[Optional()])
+    ingredients = FieldList(FormField(RecipeIngredientForm), min_entries=1)
+    submit = SubmitField('Enregistrer la Recette')

@@ -72,7 +72,7 @@
                         {% endif %}
                     </p>
                     {% if order.user %}<p><strong>Saisie par :</strong> {{ order.user.username }}</p>{% endif %}
-                     <p class="small text-muted mt-3">Dernière modification : {{ order.updated_at.strftime('%d/%m/%Y à %H:%M') }}</p>
+                    <p class="small text-muted mt-3">Créé le : {{ order.order_date.strftime('%d/%m/%Y à %H:%M') }}</p>
                 </div>
             </div>
         </div>

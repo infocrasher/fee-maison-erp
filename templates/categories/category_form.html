@@ -3,171 +3,69 @@
 {% block title %}{{ title }} - Fée Maison{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="container">
     <div class="row justify-content-center">
-        <div class="col-lg-8 col-xl-6">
-            <!-- En-tête de la page -->
-            <div class="d-flex align-items-center mb-4">
-                <a href="{{ url_for('list_categories') }}" class="btn btn-outline-secondary me-3" title="Retour à la liste des catégories">
-                    <i class="bi bi-arrow-left"></i>
-                </a>
-                <h1 class="h3 mb-0">
-                    <i class="bi bi-tags-fill me-2"></i>{{ title }}
-                </h1>
-            </div>
-
-            <!-- Formulaire -->
-            <div class="card shadow-sm">
-                <div class="card-header bg-light">
-                    <h5 class="card-title mb-0">
-                        {# L'icône change si 'category' (et donc son id) est passée au template (mode édition) #}
-                        <i class="bi bi-{% if category and category.id %}pencil-fill{% else %}plus-circle-fill{% endif %} me-2"></i>
-                        {{ legend }}
-                    </h5>
+        <div class="col-md-6">
+            <h2>{{ title or 'Nouvelle Catégorie' }}</h2>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category_flash, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category_flash == 'error' else category_flash }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <!-- FORMULAIRE SIMPLIFIÉ ET CORRIGÉ -->
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                
+                <!-- Champ Nom -->
+                <div class="mb-3">
+                    {{ form.name.label(class="form-label") }}
+                    {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+                    {% if form.name.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.name.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                 </div>
-                <div class="card-body p-4">
-                    <form method="POST" novalidate>
-                        {{ form.hidden_tag() }} {# <= S'assure que le token CSRF est inclus pour ce formulaire #}
-                        
-                        <!-- Champ Nom -->
-                        <div class="mb-3">
-                            {{ form.name.label(class="form-label fw-semibold") }}
-                            <span class="text-danger" title="Champ requis">*</span>
-                            {{ form.name(class="form-control form-control-lg" + (" is-invalid" if form.name.errors else ""), 
-                                         placeholder="Ex: Électronique, Fruits & Légumes, Boulangerie...") }}
-                            {% if form.name.errors %}
-                                <div class="invalid-feedback">
-                                    {% for error in form.name.errors %}
-                                        {{ error }}
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                            <div class="form-text">
-                                Le nom doit être unique et contenir entre 2 et 50 caractères.
-                            </div>
-                        </div>
 
-                        <!-- Champ Description -->
-                        <div class="mb-4">
-                            {{ form.description.label(class="form-label fw-semibold") }}
-                            {{ form.description(class="form-control" + (" is-invalid" if form.description.errors else ""), 
-                                               rows=3,
-                                               placeholder="Courte description de ce que contient cette catégorie (optionnel)...") }}
-                            {% if form.description.errors %}
-                                <div class="invalid-feedback">
-                                    {% for error in form.description.errors %}
-                                        {{ error }}
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
+                <!-- Champ Description -->
+                <div class="mb-3">
+                    {{ form.description.label(class="form-label") }}
+                    {{ form.description(class="form-control", rows="3") }}
+                    {% if form.description.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.description.errors %}
+                                {{ error }}
+                            {% endfor %}
                         </div>
-
-                        <!-- Informations supplémentaires pour modification -->
-                        {% if category and category.id %}
-                        <div class="row mb-4">
-                            <div class="col-md-6 mb-3 mb-md-0">
-                                <div class="card bg-light border">
-                                    <div class="card-body text-center">
-                                        <h6 class="card-title text-muted small text-uppercase">Produits Associés</h6>
-                                        <div class="display-6 text-primary">{{ category.products.count() }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card bg-light border">
-                                    <div class="card-body text-center">
-                                        <h6 class="card-title text-muted small text-uppercase">ID Catégorie</h6>
-                                        <div class="display-6 text-muted">{{ category.id }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {% if category.products.count() > 0 %}
-                        <div class="alert alert-info d-flex align-items-center" role="alert">
-                            <i class="bi bi-info-circle-fill me-2"></i>
-                            <div>
-                                Cette catégorie contient {{ category.products.count() }} produit(s). La modification du nom peut affecter leur organisation.
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% endif %}
-
-                        <!-- Boutons d'action -->
-                        <div class="d-flex gap-2 mt-4">
-                            {{ form.submit(class="btn btn-primary btn-lg") }}
-                            <a href="{{ url_for('list_categories') }}" class="btn btn-outline-secondary btn-lg">
-                                <i class="bi bi-x-circle me-1"></i>Annuler
-                            </a>
-
-                            {% if category and category.id and category.products.count() == 0 %}
-                            <button type="button" 
-                                    class="btn btn-outline-danger btn-lg ms-auto" 
-                                    data-bs-toggle="modal" 
-                                    data-bs-target="#deleteCategoryModal{{ category.id }}">
-                                <i class="bi bi-trash-fill me-1"></i>Supprimer
-                            </button>
-                            {% endif %}
-                        </div>
-                    </form>
+                    {% endif %}
                 </div>
-            </div>
 
-            <!-- Modal de suppression (si modification d'une catégorie vide) -->
-            {% if category and category.id and category.products.count() == 0 %}
-            <div class="modal fade" id="deleteCategoryModal{{ category.id }}" tabindex="-1" aria-labelledby="deleteCategoryModalLabel{{ category.id }}" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content">
-                        <div class="modal-header bg-danger text-white">
-                            <h5 class="modal-title" id="deleteCategoryModalLabel{{ category.id }}">
-                                <i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmer la Suppression
-                            </h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <p>Êtes-vous sûr de vouloir supprimer la catégorie <strong>"{{ category.name }}"</strong> ?</p>
-                            <p class="text-danger fw-bold">Cette action est irréversible.</p>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                <i class="bi bi-x-lg me-1"></i>Annuler
-                            </button>
-                            <form method="POST" action="{{ url_for('delete_category', category_id=category.id) }}" style="display: inline;">
-                                <input type="hidden" name="csrf_token" value="{{ manual_csrf_token() }}"/> {# Utilisation de manual_csrf_token #}
-                                <button type="submit" class="btn btn-danger">
-                                    <i class="bi bi-trash-fill me-1"></i>Oui, Supprimer
-                                </button>
-                            </form>
-                        </div>
-                    </div>
+                <!-- Boutons -->
+                <div class="mb-3">
+                    {{ form.submit(class="btn btn-primary") }}
+                    <a href="{{ url_for('list_categories') }}" class="btn btn-secondary">Annuler</a>
                 </div>
-            </div>
-            {% endif %}
+            </form>
         </div>
     </div>
 </div>
 
-<script>
-// Validation JavaScript basique (optionnelle)
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form[method="POST"]');
-    const nameField = document.getElementById('name');
-
-    if (form && nameField) {
-        nameField.addEventListener('input', function() {
-            const value = this.value.trim();
-            if (value.length > 0 && (value.length < 2 || value.length > 50)) {
-                this.classList.add('is-invalid');
-                this.classList.remove('is-valid');
-            } else if (value.length >= 2 && value.length <= 50) {
-                this.classList.remove('is-invalid');
-                this.classList.add('is-valid');
-            } else {
-                 this.classList.remove('is-invalid');
-                 this.classList.remove('is-valid');
-            }
-        });
-    }
-});
-</script>
+<!-- DEBUG INFO (à retirer en production) -->
+<div class="container mt-3">
+    <div class="alert alert-info">
+        <strong>Debug Info:</strong><br>
+        Form errors: {{ form.errors }}<br>
+        Form data: {{ form.data }}<br>
+        CSRF Token présent: {{ form.csrf_token.data|length > 0 }}
+    </div>
+</div>
 {% endblock %}
