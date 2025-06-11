@@ -124,7 +124,7 @@
                     {% if current_user.is_admin %}
                     <a href="{{ url_for('products.new_product') }}" class="btn btn-outline-primary d-block mb-2"><i class="bi bi-plus-circle me-1"></i> Nouveau Produit</a>
                     <a href="{{ url_for('orders.new_order') }}" class="btn btn-outline-success d-block mb-2"><i class="bi bi-cart-plus me-1"></i> Nouvelle Commande/Production</a>
-                    <a href="{{ url_for('quick_stock_entry') }}" class="btn btn-outline-info d-block"><i class="bi bi-box-arrow-in-down me-1"></i> Réception Stock Rapide</a>
+                    <a href="{{ url_for('stock.quick_entry') }}" class="btn btn-outline-info d-block"><i class="bi bi-box-arrow-in-down me-1"></i> Réception Stock Rapide</a>
                     {% else %}
                     <p class="text-muted">Actions rapides non disponibles pour votre rôle.</p>
                     {% endif %}
