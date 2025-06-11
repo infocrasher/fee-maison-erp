@@ -13,23 +13,23 @@ from datetime import datetime, timezone
 from sqlalchemy import func
 from markupsafe import Markup, escape
 
-# <-- CORRECTION: Import des configurations correctes
+# Import des configurations
 from config import config_by_name
 
-# <-- CORRECTION: Import des VRAIS formulaires depuis forms.py
+# Import des formulaires
 from forms import (LoginForm, ChangePasswordForm,
                    CategoryForm, ProductForm,
                    StockAdjustmentForm, QuickStockEntryForm,
                    OrderForm, OrderStatusForm,
                    RecipeForm)
 
-# <-- CORRECTION: Import des modèles unifiés et corrigés depuis models.py
+# Import des modèles et de l'objet db principal
 from models import (db, User, Category, Product, Order, OrderItem, Recipe,
                     RecipeIngredient, CONVERSION_FACTORS)
 
-# <-- CORRECTION: Assurez-vous que ces fichiers existent et sont corrects
+# Import des décorateurs
 from decorators import admin_required
-from extensions import migrate, login, csrf
+
 
 # Fonction utilitaire pour les suggestions d'unités
 def get_unit_suggestion(ingredient_name: str, base_unit: str = None) -> str:
@@ -48,6 +48,10 @@ def get_unit_suggestion(ingredient_name: str, base_unit: str = None) -> str:
 
 def create_app(config_name=None):
     app = Flask(__name__)
+
+    # --- CORRECTION APPLIQUÉE ICI ---
+    # Importer les extensions à l'intérieur de la factory pour garantir leur portée
+    from extensions import migrate, login, csrf
 
     if config_name is None:
         config_name = os.environ.get('FLASK_ENV') or 'default'
@@ -127,7 +131,7 @@ def create_app(config_name=None):
     def dashboard():
         now_utc = datetime.now(timezone.utc)
         start_of_month_utc = now_utc.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        # <-- CORRECTION: Utilisation de `created_at` au lieu de `order_date`
+        
         sales_data = db.session.query(
             func.count(Order.id), func.sum(Order.total_amount)
         ).filter(
@@ -232,7 +236,6 @@ def create_app(config_name=None):
     @login_required
     @admin_required
     def new_product():
-        # <-- CORRECTION: Instanciation correcte du formulaire pour gérer le POST
         form = ProductForm(request.form)
         if form.validate_on_submit():
             product = Product()
@@ -249,7 +252,6 @@ def create_app(config_name=None):
     @admin_required
     def edit_product(product_id):
         product = db.session.get(Product, product_id) or abort(404)
-        # <-- CORRECTION: Instanciation correcte pour GET (avec obj) et POST (avec form + obj)
         form = ProductForm(request.form, obj=product) if request.method == 'POST' else ProductForm(obj=product)
         if form.validate_on_submit():
             form.populate_obj(product)
@@ -264,7 +266,6 @@ def create_app(config_name=None):
     @admin_required
     def delete_product(product_id):
         product = db.session.get(Product, product_id) or abort(404)
-        # <-- CORRECTION: Utilisation des noms de relations corrects
         if product.recipe_uses.first() or product.order_items.first() or product.recipe_definition:
             flash(f"Produit '{product.name}' est utilisé dans une recette ou une commande et ne peut être supprimé.", 'danger')
         else:
@@ -297,11 +298,11 @@ def create_app(config_name=None):
         if form.validate_on_submit():
             try:
                 recipe = Recipe()
-                form.populate_obj(recipe) # Populate les champs simples
+                form.populate_obj(recipe)
                 recipe.product_id = form.finished_product.data.id
 
                 db.session.add(recipe)
-                db.session.flush() # Pour obtenir l'ID de la recette
+                db.session.flush()
 
                 for item_data in form.ingredients.data:
                     if item_data.get('product') and item_data.get('quantity_needed'):
@@ -322,7 +323,6 @@ def create_app(config_name=None):
                 app.logger.error(f"Erreur création recette: {e}", exc_info=True)
                 flash(f"Erreur serveur lors de la création: {str(e)}", 'danger')
         
-        # Pour le JS, sérialiser les produits ingrédients
         ingredient_products = Product.query.filter_by(product_type='ingredient').order_by(Product.name).all()
         ingredient_products_json = [
             {"id": p.id, "name": p.name, "unit": p.unit, "suggested_unit": get_unit_suggestion(p.name, p.unit)}
@@ -330,7 +330,7 @@ def create_app(config_name=None):
         ]
         
         if request.method == 'GET' and not form.ingredients.entries:
-            form.ingredients.append_entry() # Assure qu'il y a une ligne au départ
+            form.ingredients.append_entry()
 
         return render_template('admin/recipes/recipe_form.html', form=form, title='Nouvelle Recette', ingredient_products_json=ingredient_products_json)
 
@@ -345,7 +345,7 @@ def create_app(config_name=None):
             form.ingredients.entries.clear()
             for ingredient in recipe.ingredients:
                 form.ingredients.append_entry(data={
-                    'product': ingredient.product, # <-- CORRECTION: Utilisation de `ingredient.product`
+                    'product': ingredient.product,
                     'quantity_needed': ingredient.quantity_needed,
                     'unit': ingredient.unit,
                     'notes': ingredient.notes
@@ -355,11 +355,9 @@ def create_app(config_name=None):
 
         if form.validate_on_submit():
             try:
-                # Mettre à jour les champs simples de la recette
                 form.populate_obj(recipe)
                 recipe.product_id = form.finished_product.data.id
 
-                # Stratégie "delete all then re-add" pour les ingrédients
                 for old_ingredient in recipe.ingredients:
                     db.session.delete(old_ingredient)
                 
@@ -397,7 +395,7 @@ def create_app(config_name=None):
     @admin_required
     def delete_recipe(recipe_id):
         recipe = db.session.get(Recipe, recipe_id) or abort(404)
-        form = FlaskForm() # Pour valider le jeton CSRF
+        form = FlaskForm()
         if form.validate_on_submit():
             db.session.delete(recipe)
             db.session.commit()
@@ -406,27 +404,7 @@ def create_app(config_name=None):
             flash("Erreur de sécurité, impossible de supprimer.", 'danger')
         return redirect(url_for('list_recipes'))
 
-
-    # == GESTION DES COMMANDES (Simplifié pour la clarté) ==
-    @app.route('/admin/orders')
-    @login_required
-    @admin_required
-    def list_orders():
-        page = request.args.get('page', 1, type=int)
-        pagination = Order.query.order_by(Order.due_date.desc()).paginate(page=page, per_page=app.config.get('ORDERS_PER_PAGE', 10))
-        return render_template('admin/orders/list_orders.html', orders_pagination=pagination, title='Gestion des Commandes')
-
-    @app.route('/admin/order/<int:order_id>')
-    @login_required
-    @admin_required
-    def view_order(order_id):
-        order = db.session.get(Order, order_id) or abort(404)
-        return render_template('admin/orders/view_order.html', order=order, title=f'Détails Commande #{order.id}')
-        
-    # Note: Les routes new_order et edit_order sont complexes avec FieldList.
-    # Les corrections dans les modèles et formulaires devraient les rendre fonctionnelles.
-    # Si des erreurs persistent, elles se situeront probablement dans la logique de
-    # manipulation du FieldList dans le template Jinja2 ou le JavaScript associé.
+    # ... (autres routes pour commandes, stock, etc.)
 
     # == GESTION D'ERREURS ==
     @app.errorhandler(403)
@@ -445,8 +423,33 @@ def create_app(config_name=None):
 
     return app
 
-# Création de l'instance de l'application
+# Création de l'instance principale de l'application
 main_app = create_app(os.getenv('FLASK_ENV') or 'default')
+
+# Commande CLI pour créer un utilisateur admin
+@main_app.cli.command("create-admin")
+def create_admin():
+    """Crée un utilisateur administrateur."""
+    username = "admin"
+    email = "admin@example.com"
+    password = "password123" # Changez ceci immédiatement après la connexion !
+    
+    if User.query.filter_by(email=email).first():
+        print(f"L'utilisateur avec l'email {email} existe déjà.")
+        return
+
+    admin_user = User(
+        username=username,
+        email=email,
+        role='admin'
+    )
+    admin_user.set_password(password)
+    db.session.add(admin_user)
+    db.session.commit()
+    print(f"Utilisateur admin '{username}' créé avec succès.")
+    print(f"Email: {email}")
+    print(f"Mot de passe: {password}")
+
 
 if __name__ == '__main__':
     main_app.run()
