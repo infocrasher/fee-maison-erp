@@ -11,7 +11,8 @@ from datetime import datetime, timezone
 from sqlalchemy import func
 from markupsafe import Markup, escape
 
-from extensions import db, migrate, login
+# ON IMPORTE db ET migrate GLOBALEMENT
+from extensions import db, migrate
 from config import config_by_name
 from forms import (LoginForm, ChangePasswordForm, CategoryForm, ProductForm, StockAdjustmentForm,
                    QuickStockEntryForm, OrderForm, OrderStatusForm, RecipeForm)
@@ -39,6 +40,9 @@ def create_app(config_name=None):
     if config_name is None:
         config_name = os.environ.get('FLASK_ENV') or 'default'
     app.config.from_object(config_by_name[config_name])
+
+    # ON IMPORTE login ICI POUR FORCER LE SCOPE LOCAL
+    from extensions import login
 
     db.init_app(app)
     migrate.init_app(app, db)
