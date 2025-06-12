@@ -6,6 +6,7 @@ from extensions import db
 from models import Product
 from .forms import StockAdjustmentForm, QuickStockEntryForm
 from decorators import admin_required
+from sqlalchemy import func
 
 stock = Blueprint('stock', __name__)
 
