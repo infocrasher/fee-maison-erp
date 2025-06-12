@@ -120,7 +120,7 @@ class TestQuickStockEntry:
 
     def test_quick_stock_entry_page_loads_for_admin(self, admin_client, app):
         with app.test_request_context():
-            response = admin_client.get(url_for('quick_stock_entry'))
+            response = admin_client.get(url_for('stock.quick_entry'))
             assert response.status_code == 200
             # Test plus flexible
             assert "réception" in response.data.decode('utf-8').lower()
@@ -132,7 +132,7 @@ class TestQuickStockEntry:
         
         with app.test_request_context():
             response = admin_client.post(
-                url_for('quick_stock_entry'),
+                url_for('stock.quick_entry'),
                 data={
                     'product': str(product.id),
                     'quantity_received': '8',
@@ -154,7 +154,7 @@ class TestQuickStockEntry:
         # Test quantité négative
         with app.test_request_context():
             response = admin_client.post(
-                url_for('quick_stock_entry'),
+                url_for('stock.quick_entry'),
                 data={
                     'product': str(product.id),
                     'quantity_received': '-2',
@@ -170,13 +170,13 @@ class TestQuickStockEntry:
 
     def test_quick_stock_entry_requires_login(self, client, app):
         with app.test_request_context():
-            response = client.get(url_for('quick_stock_entry'), follow_redirects=False)
+            response = client.get(url_for('stock.quick_entry'), follow_redirects=False)
             assert response.status_code == 302
             assert '/login' in response.location
 
     def test_quick_stock_entry_forbidden_for_regular_user(self, regular_client, app):
         with app.test_request_context():
-            response = regular_client.get(url_for('quick_stock_entry'))
+            response = regular_client.get(url_for('stock.quick_entry'))
             assert response.status_code == 403
 
 class TestStockOverview:
