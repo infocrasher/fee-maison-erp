@@ -67,7 +67,7 @@
         </div>
         <div class="list-group list-group-flush">
             {% for product in out_of_stock_products %}
-            <a href="{{ url_for('view_product', product_id=product.id) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+            <a href="{{ url_for('products.view_product', product_id=product.id) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                 <span>
                     <i class="bi bi-box-seam me-2"></i><strong>{{ product.name }}</strong>
                     {% if product.sku %}<small class="text-muted ms-2">(SKU: {{ product.sku }})</small>{% endif %}
@@ -87,7 +87,7 @@
         </div>
         <div class="list-group list-group-flush">
             {% for product in low_stock_products %}
-            <a href="{{ url_for('view_product', product_id=product.id) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+            <a href="{{ url_for('products.view_product', product_id=product.id) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                  <span>
                     <i class="bi bi-box-seam me-2"></i><strong>{{ product.name }}</strong>
                     {% if product.sku %}<small class="text-muted ms-2">(SKU: {{ product.sku }})</small>{% endif %}

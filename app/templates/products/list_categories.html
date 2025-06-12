@@ -58,7 +58,7 @@
                                         </td>
                                         <td class="text-end align-middle">
                                             <div class="btn-group btn-group-sm" role="group" aria-label="Actions catégorie">
-                                                <a href="{{ url_for('edit_category', category_id=category.id) }}" 
+                                                <a href="{{ url_for('products.edit_category', category_id=category.id) }}" 
                                                    class="btn btn-outline-primary" 
                                                    title="Modifier {{ category.name }}">
                                                     <i class="bi bi-pencil-square"></i> <span class="d-none d-md-inline">Modifier</span>
@@ -103,7 +103,7 @@
                                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                                                         <i class="bi bi-x-lg me-1"></i>Annuler
                                                     </button>
-                                                    <form method="POST" action="{{ url_for('delete_category', category_id=category.id) }}" style="display: inline;">
+                                                    <form method="POST" action="{{ url_for('products.delete_category', category_id=category.id) }}" style="display: inline;">
                                                         <input type="hidden" name="csrf_token" value="{{ manual_csrf_token() }}"/> {# <= Utilisation de manual_csrf_token #}
                                                         <button type="submit" class="btn btn-danger">
                                                             <i class="bi bi-trash-fill me-1"></i>Oui, Supprimer

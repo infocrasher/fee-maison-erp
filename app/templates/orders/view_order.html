@@ -7,10 +7,10 @@
     <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
         <h1 class="h3 mb-0"><i class="bi bi-receipt"></i> {{ title }}</h1>
         <div>
-            <a href="{{ url_for('edit_order_status', order_id=order.id) }}" class="btn btn-info btn-sm me-2">
+            <a href="{{ url_for('orders.edit_order_status', order_id=order.id) }}" class="btn btn-info btn-sm me-2">
                 <i class="bi bi-tag-fill"></i> Modifier Statut
             </a>
-            <a href="{{ url_for('edit_order', order_id=order.id) }}" class="btn btn-primary btn-sm me-2">
+            <a href="{{ url_for('orders.edit_order', order_id=order.id) }}" class="btn btn-primary btn-sm me-2">
                 <i class="bi bi-pencil-fill"></i> Modifier Commande
             </a>
             <a href="{{ url_for('orders.list_orders') }}" class="btn btn-outline-secondary btn-sm">
@@ -89,7 +89,7 @@
                                 {% for item in order.items %}
                                 <tr>
                                     <td>
-                                        <a href="{{ url_for('view_product', product_id=item.product_id) }}">{{ item.product.name }}</a>
+                                        <a href="{{ url_for('products.view_product', product_id=item.product_id) }}">{{ item.product.name }}</a>
                                         {% if item.product.sku %}<br><small class="text-muted">SKU: {{ item.product.sku }}</small>{% endif %}
                                     </td>
                                     <td class="text-end">{{ "%.2f"|format(item.price_at_order|float) }} DA</td>

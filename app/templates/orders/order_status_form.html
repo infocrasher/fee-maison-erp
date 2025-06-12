@@ -7,7 +7,7 @@
     <div class="row justify-content-center">
         <div class="col-lg-7 col-xl-6">
             <div class="d-flex align-items-center mb-4">
-                <a href="{{ url_for('view_order', order_id=order.id) }}" class="btn btn-outline-secondary me-3" title="Retour à la commande">
+                <a href="{{ url_for('orders.view_order', order_id=order.id) }}" class="btn btn-outline-secondary me-3" title="Retour à la commande">
                     <i class="bi bi-arrow-left"></i>
                 </a>
                 <h1 class="h3 mb-0">
@@ -61,7 +61,7 @@
 
                         <div class="d-flex gap-2 mt-4">
                             {{ form.submit(class="btn btn-primary btn-lg") }}
-                            <a href="{{ url_for('view_order', order_id=order.id) }}" class="btn btn-outline-secondary btn-lg">
+                            <a href="{{ url_for('orders.view_order', order_id=order.id) }}" class="btn btn-outline-secondary btn-lg">
                                 <i class="bi bi-x-circle me-1"></i>Annuler
                             </a>
                         </div>

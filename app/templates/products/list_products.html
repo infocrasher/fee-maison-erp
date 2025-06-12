@@ -48,7 +48,7 @@
                                     <tr>
                                         <td class="fw-medium text-muted text-center align-middle">{{ product.id }}</td>
                                         <td class="align-middle">
-                                            <a href="{{ url_for('view_product', product_id=product.id) }}" class="text-decoration-none">
+                                            <a href="{{ url_for('products.view_product', product_id=product.id) }}" class="text-decoration-none">
                                                 <strong class="text-primary">{{ product.name }}</strong>
                                             </a>
                                             {% if product.sku %}<br><small class="text-muted">SKU: {{ product.sku }}</small>{% endif %}
@@ -68,10 +68,10 @@
                                         </td>
                                         <td class="text-end align-middle">
                                             <div class="btn-group btn-group-sm" role="group">
-                                                <a href="{{ url_for('view_product', product_id=product.id) }}" class="btn btn-outline-info" title="Voir {{ product.name }}">
+                                                <a href="{{ url_for('products.view_product', product_id=product.id) }}" class="btn btn-outline-info" title="Voir {{ product.name }}">
                                                     <i class="bi bi-eye-fill"></i> <span class="d-none d-md-inline">Voir</span>
                                                 </a>
-                                                <a href="{{ url_for('edit_product', product_id=product.id) }}" class="btn btn-outline-primary" title="Modifier {{ product.name }}">
+                                                <a href="{{ url_for('products.edit_product', product_id=product.id) }}" class="btn btn-outline-primary" title="Modifier {{ product.name }}">
                                                     <i class="bi bi-pencil-square"></i> <span class="d-none d-md-inline">Modifier</span>
                                                 </a>
                                                 <button type="button" class="btn btn-outline-danger" 
@@ -95,7 +95,7 @@
                                             </div>
                                             <div class="modal-footer">
                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Annuler</button>
-                                                <form method="POST" action="{{ url_for('delete_product', product_id=product.id) }}" style="display: inline;">
+                                                <form method="POST" action="{{ url_for('products.delete_product', product_id=product.id) }}" style="display: inline;">
                                                     <input type="hidden" name="csrf_token" value="{{ manual_csrf_token() }}"/>
                                                     <button type="submit" class="btn btn-danger"><i class="bi bi-trash-fill me-1"></i>Oui, Supprimer</button>
                                                 </form>
@@ -111,14 +111,14 @@
                     <div class="card-footer text-center">
                         <nav aria-label="Pagination des produits">
                             <ul class="pagination justify-content-center mb-0">
-                                <li class="page-item {% if not products_pagination.has_prev %}disabled{% endif %}"><a class="page-link" href="{{ url_for('list_products', page=products_pagination.prev_num if products_pagination.has_prev else '#') }}">Précédent</a></li>
+                                <li class="page-item {% if not products_pagination.has_prev %}disabled{% endif %}"><a class="page-link" href="{{ url_for('products.list_products', page=products_pagination.prev_num if products_pagination.has_prev else '#') }}">Précédent</a></li>
                                 {% for page_num in products_pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
                                     {% if page_num %}
                                         {% if products_pagination.page == page_num %}<li class="page-item active" aria-current="page"><span class="page-link">{{ page_num }}</span></li>
-                                        {% else %}<li class="page-item"><a class="page-link" href="{{ url_for('list_products', page=page_num) }}">{{ page_num }}</a></li>{% endif %}
+                                        {% else %}<li class="page-item"><a class="page-link" href="{{ url_for('products.list_products', page=page_num) }}">{{ page_num }}</a></li>{% endif %}
                                     {% else %}<li class="page-item disabled"><span class="page-link">...</span></li>{% endif %}
                                 {% endfor %}
-                                <li class="page-item {% if not products_pagination.has_next %}disabled{% endif %}"><a class="page-link" href="{{ url_for('list_products', page=products_pagination.next_num if products_pagination.has_next else '#') }}">Suivant</a></li>
+                                <li class="page-item {% if not products_pagination.has_next %}disabled{% endif %}"><a class="page-link" href="{{ url_for('products.list_products', page=products_pagination.next_num if products_pagination.has_next else '#') }}">Suivant</a></li>
                             </ul>
                         </nav>
                     </div>

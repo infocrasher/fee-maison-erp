@@ -42,7 +42,7 @@
                             {% for order in orders_pagination.items %}
                             <tr>
                                 <td class="fw-medium text-muted text-center align-middle">
-                                    <a href="{{ url_for('view_order', order_id=order.id) }}">{{ order.id }}</a>
+                                    <a href="{{ url_for('orders.view_order', order_id=order.id) }}">{{ order.id }}</a>
                                 </td>
                                 <td class="align-middle">
                                     <strong>{{ order.customer_name }}</strong>
@@ -72,8 +72,8 @@
                                 <td class="text-center align-middle"><span class="badge bg-info rounded-pill">{{ order.get_items_count() }}</span></td>
                                 <td class="text-end align-middle">
                                     <div class="btn-group btn-group-sm">
-                                        <a href="{{ url_for('view_order', order_id=order.id) }}" class="btn btn-outline-info" title="Voir Détails"><i class="bi bi-eye-fill"></i></a>
-                                        <a href="{{ url_for('edit_order_status', order_id=order.id) }}" class="btn btn-outline-primary" title="Modifier Statut"><i class="bi bi-pencil-square"></i></a>
+                                        <a href="{{ url_for('orders.view_order', order_id=order.id) }}" class="btn btn-outline-info" title="Voir Détails"><i class="bi bi-eye-fill"></i></a>
+                                        <a href="{{ url_for('orders.edit_order_status', order_id=order.id) }}" class="btn btn-outline-primary" title="Modifier Statut"><i class="bi bi-pencil-square"></i></a>
                                     </div>
                                 </td>
                             </tr>
@@ -89,13 +89,13 @@
                     <ul class="pagination justify-content-center mb-0">
                         {# Lien Précédent #}
                         <li class="page-item {% if not orders_pagination.has_prev %}disabled{% endif %}">
-                            <a class="page-link" href="{{ url_for('list_orders', page=orders_pagination.prev_num if orders_pagination.has_prev else '#') }}">Précédent</a>
+                            <a class="page-link" href="{{ url_for('orders.list_orders', page=orders_pagination.prev_num if orders_pagination.has_prev else '#') }}">Précédent</a>
                         </li>
                         {# Liens des Pages #}
                         {% for page_num in orders_pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
                             {% if page_num %}
                                 <li class="page-item {% if orders_pagination.page == page_num %}active{% endif %}">
-                                    <a class="page-link" href="{{ url_for('list_orders', page=page_num) }}">{{ page_num }}</a>
+                                    <a class="page-link" href="{{ url_for('orders.list_orders', page=page_num) }}">{{ page_num }}</a>
                                 </li>
                             {% else %}
                                 <li class="page-item disabled"><span class="page-link">…</span></li>
@@ -103,7 +103,7 @@
                         {% endfor %}
                         {# Lien Suivant #}
                         <li class="page-item {% if not orders_pagination.has_next %}disabled{% endif %}">
-                            <a class="page-link" href="{{ url_for('list_orders', page=orders_pagination.next_num if orders_pagination.has_next else '#') }}">Suivant</a>
+                            <a class="page-link" href="{{ url_for('orders.list_orders', page=orders_pagination.next_num if orders_pagination.has_next else '#') }}">Suivant</a>
                         </li>
                     </ul>
                 </nav>

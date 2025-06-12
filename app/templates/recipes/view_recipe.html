@@ -50,15 +50,15 @@
                 <p class="view-header-subtitle mb-0">
                     Produit Fini: 
                     {% if recipe.finished_product %}
-                        <a href="{{ url_for('view_product', product_id=recipe.finished_product.id) }}" class="text-white fw-bold">{{ recipe.finished_product.name }}</a>
+                        <a href="{{ url_for('products.view_product', product_id=recipe.finished_product.id) }}" class="text-white fw-bold">{{ recipe.finished_product.name }}</a>
                     {% else %}
                         <span class="fst-italic">Non associé</span>
                     {% endif %}
                 </p>
             </div>
             <div class="btn-group">
-                <a href="{{ url_for('edit_recipe', recipe_id=recipe.id) }}" class="btn btn-light"><i class="bi bi-pencil-fill me-2"></i>Modifier</a>
-                <form action="{{ url_for('delete_recipe', recipe_id=recipe.id) }}" method="POST" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer la recette \'{{ recipe.name }}\' ? Cette action est irréversible.');">
+                <a href="{{ url_for('recipes.edit_recipe', recipe_id=recipe.id) }}" class="btn btn-light"><i class="bi bi-pencil-fill me-2"></i>Modifier</a>
+                <form action="{{ url_for('recipes.delete_recipe', recipe_id=recipe.id) }}" method="POST" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer la recette \'{{ recipe.name }}\' ? Cette action est irréversible.');">
                     {{ form.hidden_tag() }}
                     <button type="submit" class="btn btn-danger"><i class="bi bi-trash-fill me-2"></i>Supprimer</button>
                 </form>
@@ -76,7 +76,7 @@
                         <span class="info-label">Produit Fini:</span>
                         <span class="info-value">
                             {% if recipe.finished_product %}
-                                <a href="{{ url_for('view_product', product_id=recipe.finished_product.id) }}">{{ recipe.finished_product.name }}</a>
+                                <a href="{{ url_for('products.view_product', product_id=recipe.finished_product.id) }}">{{ recipe.finished_product.name }}</a>
                             {% else %}N/A{% endif %}
                         </span>
                     </li>
@@ -171,7 +171,7 @@
                                 <tr>
                                     <td>
                                         {% if ingredient.ingredient_product %}
-                                            <a href="{{ url_for('view_product', product_id=ingredient.ingredient_product.id) }}">{{ ingredient.ingredient_product.name }}</a>
+                                            <a href="{{ url_for('products.view_product', product_id=ingredient.ingredient_product.id) }}">{{ ingredient.ingredient_product.name }}</a>
                                         {% else %}
                                             <span class="text-muted">Ingrédient supprimé</span>
                                         {% endif %}
