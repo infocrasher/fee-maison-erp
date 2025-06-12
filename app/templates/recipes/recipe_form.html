@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{# L'import est correct, nous le gardons #}
 {% from "_form_macros.html" import render_field with context %}
 
 {% block title %}{{ title or 'Formulaire de Recette' }}{% endblock %}
@@ -15,7 +16,7 @@
                 
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        {{ render_field(form.name, class="form-control") }}
+                        {{ render_field(form.name) }}
                     </div>
                     <div class="col-md-6 mb-3">
                         {{ render_field(form.finished_product, class="form-select") }}
@@ -23,15 +24,15 @@
                 </div>
 
                 <div class="mb-3">
-                    {{ render_field(form.description, class="form-control", rows=5, placeholder="Listez les étapes de la recette ici...") }}
+                    {{ render_field(form.description, rows=5, placeholder="Listez les étapes de la recette ici...") }}
                 </div>
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
-                        {{ render_field(form.yield_quantity, class="form-control") }}
+                        {{ render_field(form.yield_quantity) }}
                     </div>
                     <div class="col-md-4 mb-3">
-                        {{ render_field(form.yield_unit, class="form-control") }}
+                        {{ render_field(form.yield_unit) }}
                     </div>
                     <div class="col-md-4 mb-3">
                         {{ render_field(form.difficulty_level, class="form-select") }}
@@ -40,10 +41,10 @@
 
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        {{ render_field(form.preparation_time, class="form-control") }}
+                        {{ render_field(form.preparation_time) }}
                     </div>
                     <div class="col-md-6 mb-3">
-                        {{ render_field(form.cooking_time, class="form-control") }}
+                        {{ render_field(form.cooking_time) }}
                     </div>
                 </div>
 
@@ -54,11 +55,11 @@
                 <div id="ingredient-list">
                     {% for ingredient_form in form.ingredients %}
                     <div class="row ingredient-form-row mb-2 align-items-center">
-                        {# --- CORRECTION APPLIQUÉE ICI : L'argument 'label=False' a été retiré --- #}
-                        <div class="col-md-4">{{ render_field(ingredient_form.product, class="form-select ingredient-select") }}</div>
-                        <div class="col-md-2">{{ render_field(ingredient_form.quantity_needed, class="form-control", placeholder="Quantité") }}</div>
-                        <div class="col-md-2">{{ render_field(ingredient_form.unit, class="form-control", placeholder="Unité") }}</div>
-                        <div class="col-md-3">{{ render_field(ingredient_form.notes, class="form-control", placeholder="Notes") }}</div>
+                        {# --- CORRECTION APPLIQUÉE ICI : Utilisation de label_visible=false --- #}
+                        <div class="col-md-4">{{ render_field(ingredient_form.product, class="form-select ingredient-select", label_visible=false) }}</div>
+                        <div class="col-md-2">{{ render_field(ingredient_form.quantity_needed, placeholder="Quantité", label_visible=false) }}</div>
+                        <div class="col-md-2">{{ render_field(ingredient_form.unit, placeholder="Unité", label_visible=false) }}</div>
+                        <div class="col-md-3">{{ render_field(ingredient_form.notes, placeholder="Notes", label_visible=false) }}</div>
                         <div class="col-md-1">
                             <button type="button" class="btn btn-danger btn-sm remove-ingredient-btn" title="Supprimer l'ingrédient">X</button>
                         </div>
@@ -132,8 +133,9 @@
             rows.forEach((row, index) => {
                 row.querySelectorAll('input, select').forEach(input => {
                     if (input.name) {
-                        input.name = input.name.replace(/ingredients-__INDEX__-/, `ingredients-${index}-`);
-                        input.id = input.name;
+                        const newName = input.name.replace(/ingredients-(__INDEX__|\d+)-/, `ingredients-${index}-`);
+                        input.name = newName;
+                        input.id = newName;
                     }
                 });
             });
