@@ -1,10 +1,9 @@
-# Fichier: app/__init__.py (Version Complète Finale)
-
 import os
-from flask import Flask
+from flask import Flask, url_for
 from config import config_by_name
 from extensions import db, migrate, login
 from datetime import datetime
+from flask_wtf.csrf import generate_csrf # <-- Importer la fonction
 
 def create_app(config_name=None):
     app = Flask(__name__)
@@ -26,11 +25,18 @@ def create_app(config_name=None):
     def load_user(user_id):
         return db.session.get(User, int(user_id))
     
+    # --- PROCESSEURS DE CONTEXTE POUR LES VARIABLES GLOBALES ---
     @app.context_processor
-    def inject_current_year():
-        return {'current_year': datetime.utcnow().year}
+    def inject_global_variables():
+        # Dictionnaire contenant toutes les variables/fonctions à rendre disponibles
+        return dict(
+            # Rend la fonction csrf_token() disponible sous le nom 'csrf_token'
+            csrf_token=generate_csrf,
+            # Vous pouvez garder ce nom si vous le préférez
+            manual_csrf_token=generate_csrf 
+        )
     
-    # Enregistrement de tous les Blueprints
+    # Enregistrement des Blueprints
     from app.main.routes import main as main_blueprint
     app.register_blueprint(main_blueprint)
 
@@ -45,14 +51,15 @@ def create_app(config_name=None):
 
     from app.recipes.routes import recipes as recipes_blueprint
     app.register_blueprint(recipes_blueprint, url_prefix='/admin/recipes')
-
+    
     from app.stock.routes import stock as stock_blueprint
     app.register_blueprint(stock_blueprint, url_prefix='/admin/stock')
 
     from app.admin.routes import admin as admin_blueprint
     app.register_blueprint(admin_blueprint, url_prefix='/admin')
 
-    # ... la commande CLI reste ici ...
+
+    # Commande CLI pour créer un admin
     @app.cli.command("create-admin")
     def create_admin():
         if User.query.filter_by(email="admin@example.com").first():
