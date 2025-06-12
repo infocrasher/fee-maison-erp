@@ -105,25 +105,34 @@
 
 {% block scripts %}
 <script>
+    // Le filtre |safe est essentiel pour que le JSON soit correctement interprété
     const ingredientsData = {{ ingredient_products_json|tojson|safe }};
 
-    function populateSelect(selectElement, selectedValue = null) {
-        while (selectElement.options.length > 1) {
-            selectElement.remove(1);
-        }
-        ingredientsData.forEach(ingredient => {
-            const option = new Option(`${ingredient.name} (${ingredient.unit})`, ingredient.id);
-            if (selectedValue && ingredient.id == selectedValue) {
-                option.selected = true;
-            }
-            selectElement.add(option);
+    function populateSelectWithOptions(selectElement, options, selectedValue = null) {
+        // Sauvegarde la valeur actuellement sélectionnée, si elle existe
+        const previouslySelected = selectedValue || selectElement.value;
+        
+        // Vide le select
+        selectElement.innerHTML = '<option value="" selected>-- Choisir un ingrédient --</option>';
+
+        // Ajoute les nouvelles options
+        options.forEach(ingredient => {
+            const option = document.createElement('option');
+            option.value = ingredient.id;
+            option.textContent = `${ingredient.name} (${ingredient.unit || 'N/A'})`;
+            selectElement.appendChild(option);
         });
+
+        // Réapplique la valeur sélectionnée si elle existe toujours dans la nouvelle liste
+        if (previouslySelected) {
+            selectElement.value = previouslySelected;
+        }
     }
     
     document.addEventListener('DOMContentLoaded', function() {
         const ingredientList = document.getElementById('ingredient-list');
         const addIngredientBtn = document.getElementById('add-ingredient-btn');
-        const template = document.getElementById('ingredient-form-template');
+        const templateNode = document.getElementById('ingredient-form-template');
 
         function updateIndices() {
             const rows = ingredientList.querySelectorAll('.ingredient-form-row');
@@ -131,31 +140,33 @@
                 row.querySelectorAll('input, select').forEach(input => {
                     if (input.name) {
                         input.name = input.name.replace(/ingredients-\d+-/, `ingredients-${index}-`);
+                        input.id = input.name; // Assure que l'ID est aussi unique
                     }
                 });
             });
         }
 
+        // Peuple les menus déroulants déjà sur la page (pour les cas d'édition/erreur)
         document.querySelectorAll('.ingredient-select').forEach(select => {
-            const selectedValue = select.value;
-            populateSelect(select, selectedValue);
+            populateSelectWithOptions(select, ingredientsData);
         });
 
         addIngredientBtn.addEventListener('click', function() {
             const index = ingredientList.children.length;
-            const newRowHtml = template.innerHTML.replace(/{{- 'INDEX' -}}/g, index);
+            const newRowHtml = templateNode.innerHTML.replace(/{{- 'INDEX' -}}/g, index);
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = newRowHtml;
             const newRow = tempDiv.firstElementChild;
             
             ingredientList.appendChild(newRow);
-            populateSelect(newRow.querySelector('.ingredient-select'));
+            populateSelectWithOptions(newRow.querySelector('.ingredient-select'), ingredientsData);
             updateIndices();
         });
 
         ingredientList.addEventListener('click', function(e) {
-            if (e.target && e.target.classList.contains('remove-ingredient-btn')) {
-                e.target.closest('.ingredient-form-row').remove();
+            const removeBtn = e.target.closest('.remove-ingredient-btn');
+            if (removeBtn) {
+                removeBtn.closest('.ingredient-form-row').remove();
                 updateIndices();
             }
         });
