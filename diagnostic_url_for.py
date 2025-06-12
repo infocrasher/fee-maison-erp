@@ -72,15 +72,15 @@ def parse_args(raw_args: str):
     return args
 
 def try_build_url(endpoint: str, args: dict):
-    """Tente d'appeler url_for avec endpoint et args, retourne (success, error_message_or_url)"""
     with app.app_context():
-        try:
-            url = url_for(endpoint, **args)
-            return True, url
-        except BuildError as e:
-            return False, str(e)
-        except Exception as e:
-            return False, f"Autre exception: {str(e)}\n{traceback.format_exc()}"
+        with app.test_request_context():
+            try:
+                url = url_for(endpoint, **args)
+                return True, url
+            except BuildError as e:
+                return False, str(e)
+            except Exception as e:
+                return False, f"Autre exception: {str(e)}\n{traceback.format_exc()}"
 
 def render_report(invalid, valid):
     print("\n==== DIAGNOSTIC url_for DANS LES TEMPLATES ====\n")
