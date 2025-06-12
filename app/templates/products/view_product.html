@@ -119,7 +119,7 @@
             <div class="mt-4">
                 <h5 class="mb-3"><i class="bi bi-lightning-fill me-1"></i>Actions Rapides Admin</h5>
                 <div class="btn-group">
-                    <a href="{{ url_for('stock_adjustment') }}?product_id={{ product.id }}" class="btn btn-outline-info">
+                    <a href="{{ url_for('stock.adjustment') }}?product_id={{ product.id }}" class="btn btn-outline-info">
                         <i class="bi bi-kanban me-1"></i>Ajuster Stock de ce Produit
                     </a>
                     <a href="{{ url_for('quick_stock_entry') }}?product_id={{ product.id }}" class="btn btn-outline-success">

@@ -32,7 +32,7 @@ class TestStockAdjustment:
 
     def test_stock_adjustment_page_loads_for_admin(self, admin_client, app):
         with app.test_request_context():
-            response = admin_client.get(url_for('stock_adjustment'))
+            response = admin_client.get(url_for('stock.adjustment'))
             assert response.status_code == 200
             # Test plus flexible
             assert "stock" in response.data.decode('utf-8').lower()
@@ -44,7 +44,7 @@ class TestStockAdjustment:
         
         with app.test_request_context():
             response = admin_client.post(
-                url_for('stock_adjustment'),
+                url_for('stock.adjustment'),
                 data={
                     'product': str(product.id),
                     'quantity': '5',
@@ -67,7 +67,7 @@ class TestStockAdjustment:
         
         with app.test_request_context():
             response = admin_client.post(
-                url_for('stock_adjustment'),
+                url_for('stock.adjustment'),
                 data={
                     'product': str(product.id),
                     'quantity': '-3',
@@ -89,7 +89,7 @@ class TestStockAdjustment:
         
         with app.test_request_context():
             response = admin_client.post(
-                url_for('stock_adjustment'),
+                url_for('stock.adjustment'),
                 data={
                     'product': str(product.id),
                     'quantity': '-5',
@@ -107,13 +107,13 @@ class TestStockAdjustment:
 
     def test_stock_adjustment_requires_login(self, client, app):
         with app.test_request_context():
-            response = client.get(url_for('stock_adjustment'), follow_redirects=False)
+            response = client.get(url_for('stock.adjustment'), follow_redirects=False)
             assert response.status_code == 302
             assert '/login' in response.location
 
     def test_stock_adjustment_forbidden_for_regular_user(self, regular_client, app):
         with app.test_request_context():
-            response = regular_client.get(url_for('stock_adjustment'))
+            response = regular_client.get(url_for('stock.adjustment'))
             assert response.status_code == 403
 
 class TestQuickStockEntry:
