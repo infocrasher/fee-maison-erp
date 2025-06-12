@@ -17,8 +17,22 @@ def overview():
     low_stock_threshold = current_app.config.get('LOW_STOCK_THRESHOLD', 5)
     low_stock_products = Product.query.filter(Product.quantity_in_stock != None, Product.quantity_in_stock > 0, Product.quantity_in_stock < low_stock_threshold).order_by(Product.quantity_in_stock).all()
     out_of_stock_products = Product.query.filter((Product.quantity_in_stock == 0) | (Product.quantity_in_stock == None)).order_by(Product.name).all()
-    return render_template('stock/stock_overview.html', title="Vue d'ensemble du Stock", low_stock_products=low_stock_products, out_of_stock_products=out_of_stock_products)
+    
+    # --- CORRECTION ICI ---
+    # Calcule la valeur totale du stock (quantité * prix de revient)
+    # Coalesce est utilisé pour traiter les valeurs None comme 0
+    total_value_query = db.session.query(
+        func.sum(func.coalesce(Product.quantity_in_stock, 0) * func.coalesce(Product.cost_price, 0))
+    ).scalar()
+    total_stock_value = total_value_query or 0.0
 
+    return render_template(
+        'stock/stock_overview.html', 
+        title="Vue d'ensemble du Stock", 
+        low_stock_products=low_stock_products, 
+        out_of_stock_products=out_of_stock_products,
+        total_stock_value=total_stock_value  # On passe la variable au template
+    )
 @stock.route('/quick_entry', methods=['GET', 'POST'])
 @login_required
 @admin_required
