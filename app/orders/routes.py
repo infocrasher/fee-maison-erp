@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, abort
 from flask_login import login_required, current_user
 from extensions import db
-from models import Order, OrderItem, Product
+from models import Order, OrderItem, Product 
 from .forms import OrderForm, OrderStatusForm
 from decorators import admin_required
 from decimal import Decimal
