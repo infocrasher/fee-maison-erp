@@ -23,13 +23,14 @@ def list_categories():
 @login_required
 @admin_required
 def new_category():
-    form = CategoryForm()
+    form = CategoryForm() # On crée une instance du formulaire
     if form.validate_on_submit():
         category = Category(name=form.name.data, description=form.description.data)
         db.session.add(category)
         db.session.commit()
         flash('Nouvelle catégorie ajoutée.', 'success')
         return redirect(url_for('products.list_categories'))
+    # On passe le formulaire au template
     return render_template('products/category_form.html', form=form, title='Nouvelle Catégorie')
 
 @products.route('/category/<int:category_id>/edit', methods=['GET', 'POST'])
