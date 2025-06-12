@@ -26,12 +26,26 @@ def new_order():
     form = OrderForm()
     if form.validate_on_submit():
         try:
-            order = Order(user_id=current_user.id)
-            form.populate_obj(order)
+            # Crée la commande principale avec les données du formulaire
+            order = Order(
+                user_id=current_user.id,
+                order_type=form.order_type.data,
+                customer_name=form.customer_name.data,
+                customer_phone=form.customer_phone.data,
+                customer_address=form.customer_address.data,
+                delivery_option=form.delivery_option.data,
+                due_date=form.due_date.data,
+                delivery_cost=form.delivery_cost.data,
+                notes=form.notes.data,
+                status='pending' # Statut par défaut
+            )
             db.session.add(order)
+            # 'flush' permet d'obtenir un ID pour la commande avant le commit final
             db.session.flush()
 
+            # Boucle sur les articles soumis avec le formulaire
             for item_data in form.items.data:
+                # On ne traite que les lignes où un produit et une quantité valide ont été saisis
                 if item_data.get('product') and item_data.get('quantity', 0) > 0:
                     product = item_data['product']
                     order_item = OrderItem(
@@ -42,15 +56,37 @@ def new_order():
                     )
                     db.session.add(order_item)
             
-            # Recalculer le total après avoir ajouté les articles
+            # Une fois tous les articles ajoutés, on calcule le montant total
             order.calculate_total_amount()
+            
+            # On sauvegarde tout dans la base de données
             db.session.commit()
+            
             flash('Nouvelle commande créée avec succès.', 'success')
             return redirect(url_for('orders.view_order', order_id=order.id))
+            
         except Exception as e:
             db.session.rollback()
-            flash(f"Une erreur est survenue: {e}", "danger")
-    return render_template('orders/order_form_multifield.html', form=form, title='Nouvelle Commande')
+            flash(f"Une erreur est survenue lors de la création de la commande: {e}", "danger")
+    
+    # --- LOGIQUE POUR L'AFFICHAGE DU FORMULAIRE (GET) ---
+    
+    # Récupérer les produits pour les menus déroulants du formulaire
+    products_for_template = Product.query.filter_by(product_type='finished').order_by(Product.name).all()
+    
+    # Créer une liste de produits qui est "JSON-safe" pour le JavaScript
+    products_serializable = [
+        {'id': p.id, 'name': p.name, 'price': float(p.price or 0.0)}
+        for p in products_for_template
+    ]
+
+    return render_template(
+        'orders/order_form_multifield.html', 
+        form=form, 
+        title='Nouvelle Commande',
+        # On passe la liste JSON-safe au template
+        products_serializable=products_serializable 
+    )
 
 @orders.route('/<int:order_id>')
 @login_required
