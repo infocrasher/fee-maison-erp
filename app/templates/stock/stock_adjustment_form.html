@@ -8,7 +8,7 @@
         <div class="col-lg-8 col-xl-7">
             <!-- En-tête de la page -->
             <div class="d-flex align-items-center mb-4">
-                <a href="{{ url_for('stock_overview') }}" class="btn btn-outline-secondary me-3" title="Retour à la vue d'ensemble du stock">
+                <a href="{{ url_for('stock.overview') }}" class="btn btn-outline-secondary me-3" title="Retour à la vue d'ensemble du stock">
                     <i class="bi bi-arrow-left"></i>
                 </a>
                 <h1 class="h3 mb-0">
@@ -88,7 +88,7 @@
                         <!-- Boutons -->
                         <div class="d-flex gap-2">
                             {{ form.submit(class="btn btn-primary btn-lg") }}
-                            <a href="{{ url_for('stock_overview') }}" class="btn btn-outline-secondary btn-lg">
+                            <a href="{{ url_for('stock.overview') }}" class="btn btn-outline-secondary btn-lg">
                                 <i class="bi bi-x-circle me-1"></i>Annuler
                             </a>
                         </div>
