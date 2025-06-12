@@ -90,33 +90,15 @@ replacements = {
     'delete_recipe': 'recipes.delete_recipe',
 
     # stock
+    # Nouveaux noms de fonction
     'overview': 'stock.overview',
     'quick_entry': 'stock.quick_entry',
     'adjustment': 'stock.adjustment',
-
-    # --- Noms de routes potentiellement anciens à mapper ---
-    'new_product_route': 'products.new_product' 
+    
+    # --- Mappage des anciens noms de routes vers les nouveaux ---
+    # C'est la section la plus importante pour la rétro-compatibilité des templates
+    'stock_overview': 'stock.overview',
+    'quick_stock_entry': 'stock.quick_entry',
+    'stock_adjustment': 'stock.adjustment',
+    'new_product_route': 'products.new_product' # Un ancien nom que nous avions
 }
-
-# 📁 Chemin vers votre dossier de templates
-template_dir = './app/templates'
-
-# ==============================================================================
-# 🚀 EXÉCUTION DU SCRIPT
-# ==============================================================================
-if __name__ == "__main__":
-    print("🔄 Début de la mise à jour des templates...")
-    files_changed, total_changes = replace_url_for_in_html_files(template_dir, replacements)
-
-    print("\n" + "="*50)
-    print("✅  Opération terminée !")
-    print(f"Total des fichiers modifiés : {len(files_changed)}")
-    print(f"Total des remplacements   : {total_changes}")
-    print("="*50 + "\n")
-
-    if files_changed:
-        print("📋 Détail des modifications :")
-        for filepath, count in files_changed:
-            print(f"  - {filepath} ({count} remplacement(s))")
-    else:
-        print("ℹ️  Aucun remplacement n'était nécessaire.")
