@@ -1,71 +1,76 @@
 {% extends "base.html" %}
 
-{% block title %}{{ title }} - Fée Maison{% endblock %}
+{# Pas besoin d'importer de macro si nous écrivons les champs manuellement comme ci-dessous #}
+
+{% block title %}{{ title or 'Nouvelle Catégorie' }} - Fée Maison{% endblock %}
 
 {% block content %}
 <div class="container">
     <div class="row justify-content-center">
-        <div class="col-md-6">
-            <h2>{{ title or 'Nouvelle Catégorie' }}</h2>
-            
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category_flash, message in messages %}
-                        <div class="alert alert-{{ 'danger' if category_flash == 'error' else category_flash }} alert-dismissible fade show" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-            
-            <!-- FORMULAIRE SIMPLIFIÉ ET CORRIGÉ -->
-            <form method="POST">
-                {{ form.hidden_tag() }}
-                
-                <!-- Champ Nom -->
-                <div class="mb-3">
-                    {{ form.name.label(class="form-label") }}
-                    {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
-                    {% if form.name.errors %}
-                        <div class="invalid-feedback">
-                            {% for error in form.name.errors %}
-                                {{ error }}
-                            {% endfor %}
-                        </div>
-                    {% endif %}
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h3>{{ title or 'Nouvelle Catégorie' }}</h3>
                 </div>
+                <div class="card-body">
+                    {# La méthode POST sans 'action' soumettra à la même URL, ce qui est correct #}
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        
+                        <!-- Champ Nom -->
+                        <div class="mb-3">
+                            {{ form.name.label(class="form-label") }}
+                            
+                            {# On ajoute une classe is-invalid si des erreurs existent pour ce champ #}
+                            {% if form.name.errors %}
+                                {{ form.name(class="form-control is-invalid") }}
+                                <div class="invalid-feedback">
+                                    {% for error in form.name.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.name(class="form-control") }}
+                            {% endif %}
+                        </div>
 
-                <!-- Champ Description -->
-                <div class="mb-3">
-                    {{ form.description.label(class="form-label") }}
-                    {{ form.description(class="form-control", rows="3") }}
-                    {% if form.description.errors %}
-                        <div class="invalid-feedback d-block">
-                            {% for error in form.description.errors %}
-                                {{ error }}
-                            {% endfor %}
+                        <!-- Champ Description -->
+                        <div class="mb-3">
+                            {{ form.description.label(class="form-label") }}
+                            
+                            {# Même logique pour la description #}
+                            {% if form.description.errors %}
+                                {{ form.description(class="form-control is-invalid", rows="4") }}
+                                <div class="invalid-feedback">
+                                    {% for error in form.description.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.description(class="form-control", rows="4") }}
+                            {% endif %}
                         </div>
-                    {% endif %}
-                </div>
 
-                <!-- Boutons -->
-                <div class="mb-3">
-                    {{ form.submit(class="btn btn-primary") }}
-                    <a href="{{ url_for('products.list_categories') }}" class="btn btn-secondary">Annuler</a>
+                        <!-- Boutons -->
+                        <div class="d-flex justify-content-end mt-4">
+                            <a href="{{ url_for('products.list_categories') }}" class="btn btn-outline-secondary me-2">Annuler</a>
+                            {{ form.submit(class="btn btn-primary") }}
+                        </div>
+                    </form>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- DEBUG INFO (à retirer en production) -->
-<div class="container mt-3">
-    <div class="alert alert-info">
-        <strong>Debug Info:</strong><br>
-        Form errors: {{ form.errors }}<br>
-        Form data: {{ form.data }}<br>
-        CSRF Token présent: {{ form.csrf_token.data|length > 0 }}
+<!-- DEBUG INFO (peut être retiré en production) -->
+<div class="container mt-4">
+    <div class="alert alert-light border-secondary small">
+        <p class="mb-1"><strong>Informations de Débogage :</strong></p>
+        <ul class="mb-0">
+            <li>Erreurs du formulaire (global) : {{ form.errors if form.errors else 'Aucune' }}</li>
+            <li>Données soumises : {{ form.data }}</li>
+        </ul>
     </div>
 </div>
 {% endblock %}
