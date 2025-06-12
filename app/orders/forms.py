@@ -22,7 +22,7 @@ class OrderForm(FlaskForm):
     # Le format doit correspondre à celui attendu par les navigateurs pour datetime-local
     due_date = DateTimeField("Date de livraison/retrait", format='%Y-%m-%dT%H:%M', validators=[DataRequired()])
     delivery_option = SelectField('Livraison', choices=[('pickup', 'Retrait'), ('delivery', 'Livraison')], default='pickup')
-    delivery_cost = FloatField('Coût de livraison (€)', default=0.0, validators=[Optional(), NumberRange(min=0)])
+    delivery_cost = FloatField('Coût de livraison (DA)', default=0.0, validators=[Optional(), NumberRange(min=0)])
     notes = TextAreaField('Notes', validators=[Optional()])
     items = FieldList(FormField(OrderItemForm), min_entries=1, label="Articles")
     submit = SubmitField('Enregistrer la commande')
