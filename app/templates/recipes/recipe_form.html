@@ -105,7 +105,7 @@
 
 {% block scripts %}
 <script>
-    const ingredientsData = {{ ingredient_products_json | tojson | safe }};
+    const ingredientsData = {{ ingredient_products_json|tojson|safe }};
 
     function populateSelect(selectElement, selectedValue = null) {
         while (selectElement.options.length > 1) {
