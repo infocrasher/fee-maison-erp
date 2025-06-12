@@ -7,7 +7,7 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 mb-0 text-gray-800"><i class="bi bi-journal-richtext me-2"></i>{{ title }}</h1>
-        <a href="{{ url_for('new_recipe') }}" class="btn btn-primary">
+        <a href="{{ url_for('recipes.new_recipe') }}" class="btn btn-primary">
             <i class="bi bi-plus-lg me-1"></i> Nouvelle Recette
         </a>
     </div>
@@ -71,7 +71,7 @@
             {% else %}
                 <div class="text-center py-4">
                     <p class="mb-1">Aucune recette n'a été trouvée.</p>
-                    <a href="{{ url_for('new_recipe') }}" class="btn btn-success btn-sm">Créer la première recette</a>
+                    <a href="{{ url_for('recipes.new_recipe') }}" class="btn btn-success btn-sm">Créer la première recette</a>
                 </div>
             {% endif %}
 
