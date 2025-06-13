@@ -1,6 +1,7 @@
 {# templates/_form_macros.html #}
 
-{% macro render_field(field, label_visible=true, class="", placeholder="", type="", rows=None, cols=None) %}
+{# ### MODIFICATION : Ajout de l'argument 'attrs' pour plus de flexibilité ### #}
+{% macro render_field(field, label_visible=true, class="", placeholder="", type="", rows=None, cols=None, attrs={}) %}
   <div class="form-group mb-3">
     {% if label_visible %}
       {{ field.label(class="form-label fw-medium") }}
@@ -28,7 +29,11 @@
     {% if cols %}
         {% set _ = field_attrs.update({'cols': cols}) %}
     {% endif %}
-    
+    {# ### AJOUT : Fusion des attributs supplémentaires passés via 'attrs' ### #}
+    {% if attrs %}
+        {% set _ = field_attrs.update(attrs) %}
+    {% endif %}
+
     {# Rendu du champ avec tous les attributs #}
     {{ field(**field_attrs) }}
     

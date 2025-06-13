@@ -8,7 +8,6 @@
     <div class="card shadow-sm">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h3>{{ title or 'Nouvelle Recette' }}</h3>
-            <!-- ### AJOUT : Affichage du coût total ### -->
             <h4 class="mb-0">Coût Total: <strong id="total-recipe-cost" class="text-primary">0.00 €</strong></h4>
         </div>
         <div class="card-body">
@@ -26,7 +25,6 @@
                 <h4 class="mb-3">Ingrédients</h4>
                 
                 <div id="ingredient-list">
-                    <!-- ### MODIFICATION : Ajout d'en-têtes de colonne ### -->
                     <div class="row fw-bold d-none d-md-flex mb-2">
                         <div class="col-md-4">Ingrédient</div>
                         <div class="col-md-2">Quantité</div>
@@ -38,13 +36,12 @@
 
                     {% for ingredient_form in form.ingredients %}
                     <div class="row ingredient-form-row mb-2 align-items-center">
-                        <div class="col-md-4">{{ render_field(ingredient_form.product, class="form-select ingredient-select") }}</div>
-                        <!-- ### MODIFICATION : type="number" et step="any" pour la quantité ### -->
-                        <div class="col-md-2">{{ render_field(ingredient_form.quantity_needed, class="form-control quantity-input", placeholder="Quantité", type="number", step="any") }}</div>
-                        <div class="col-md-2">{{ render_field(ingredient_form.unit, class="form-control unit-input", placeholder="Unité") }}</div>
-                        <!-- ### AJOUT : Colonne pour le coût de l'ingrédient ### -->
+                        <!-- ### CORRECTION FINALE : Utilisation correcte de la macro améliorée ### -->
+                        <div class="col-md-4">{{ render_field(ingredient_form.product, label_visible=false, class="form-select ingredient-select") }}</div>
+                        <div class="col-md-2">{{ render_field(ingredient_form.quantity_needed, label_visible=false, class="form-control quantity-input", placeholder="Quantité", type="number", attrs={'step': 'any'}) }}</div>
+                        <div class="col-md-2">{{ render_field(ingredient_form.unit, label_visible=false, class="form-control unit-input", placeholder="Unité") }}</div>
                         <div class="col-md-2"><span class="ingredient-cost fw-bold">0.00 €</span></div>
-                        <div class="col-md-1">{{ render_field(ingredient_form.notes, class="form-control", placeholder="Notes") }}</div>
+                        <div class="col-md-1">{{ render_field(ingredient_form.notes, label_visible=false, class="form-control", placeholder="Notes") }}</div>
                         <div class="col-md-1">
                             <button type="button" class="btn btn-danger btn-sm remove-ingredient-btn" title="Supprimer l'ingrédient">X</button>
                         </div>
@@ -68,6 +65,7 @@
 </div>
 
 <template id="ingredient-form-template">
+    <!-- Le template JS n'utilise pas la macro, donc il est déjà correct -->
     <div class="row ingredient-form-row mb-2 align-items-center">
         <div class="col-md-4"><select name="ingredients-__INDEX__-product" class="form-select ingredient-select"></select></div>
         <div class="col-md-2"><input type="number" step="any" name="ingredients-__INDEX__-quantity_needed" class="form-control quantity-input" placeholder="Quantité"></div>
@@ -82,6 +80,7 @@
 {% endblock %}
 
 {% block scripts %}
+{# Le bloc scripts est identique à la proposition précédente, il est déjà correct #}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const dataElement = document.getElementById('ingredients-data');
@@ -112,16 +111,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     const baseUnit = productData.unit.toUpperCase();
                     const basePrice = productData.cost_price;
                     
-                    if (conversionFactors[baseUnit]) { // Si c'est KG ou L
+                    if (conversionFactors[baseUnit]) {
                         const factor = conversionFactors[baseUnit];
-                        if (unit === 'G' && baseUnit === 'KG' || unit === 'ML' && baseUnit === 'L') {
+                        if ((unit === 'G' && baseUnit === 'KG') || (unit === 'ML' && baseUnit === 'L')) {
                             rowCost = (quantity / factor) * basePrice;
                         } else {
-                            // Si les unités sont les mêmes (ex: KG et KG)
                             rowCost = quantity * basePrice; 
                         }
-                    } else { // Unité de base est 'pièce', etc.
-                         if (unit === baseUnit) {
+                    } else {
+                         if (unit === productData.unit.toUpperCase()) {
                             rowCost = quantity * basePrice;
                          }
                     }
@@ -162,34 +160,53 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateIndices() {
-        // ... (code inchangé pour updateIndices)
+        const rows = ingredientList.querySelectorAll('.ingredient-form-row');
+        rows.forEach((row, index) => {
+            row.querySelectorAll('input, select, textarea').forEach(field => {
+                if (field.name) {
+                    const nameAttr = field.getAttribute('name');
+                    field.name = nameAttr.replace(/ingredients-\d+-/, `ingredients-${index}-`);
+                    field.id = field.name; 
+                }
+            });
+        });
     }
 
-    // --- Event Listeners ---
-    
-    ingredientList.addEventListener('change', function(e) {
-        if (e.target && e.target.classList.contains('ingredient-select')) {
-            updateRowAfterProductChange(e.target);
-        }
-    });
-
-    ingredientList.addEventListener('input', function(e) {
-        if (e.target && (e.target.classList.contains('quantity-input') || e.target.classList.contains('unit-input'))) {
+    function addRowEventListeners(row) {
+        row.querySelector('.remove-ingredient-btn').addEventListener('click', (e) => {
+            e.target.closest('.ingredient-form-row').remove();
+            updateIndices();
             calculateAllCosts();
-        }
+        });
+        row.querySelector('.ingredient-select').addEventListener('change', (e) => updateRowAfterProductChange(e.target));
+        row.querySelectorAll('.quantity-input, .unit-input').forEach(input => {
+            input.addEventListener('input', calculateAllCosts);
+        });
+    }
+
+    addButton.addEventListener('click', () => {
+        let index = ingredientList.querySelectorAll('.ingredient-form-row').length;
+        const newRowHtml = template.innerHTML.replace(/__INDEX__/g, index);
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = newRowHtml;
+        const newRow = tempDiv.firstElementChild;
+        
+        ingredientList.appendChild(newRow);
+        
+        populateSelectWithOptions(newRow.querySelector('.ingredient-select'), ingredientsData);
+        addRowEventListeners(newRow);
+        updateIndices();
     });
-
-    addButton.addEventListener('click', () => { /* ... (logique d'ajout existante) ... */ });
-    ingredientList.addEventListener('click', function(e) { /* ... (logique de suppression existante) ... */ });
-
-    // --- Initialisation ---
     
-    ingredientList.querySelectorAll('.ingredient-select').forEach(select => {
+    // Initialisation
+    ingredientList.querySelectorAll('.ingredient-form-row').forEach(row => {
+        const select = row.querySelector('.ingredient-select');
         const currentValue = select.value;
         populateSelectWithOptions(select, ingredientsData, currentValue);
+        addRowEventListeners(row);
     });
 
-    calculateAllCosts(); // Calculer les coûts au chargement de la page (pour le mode édition)
+    calculateAllCosts();
 });
 </script>
 {% endblock %}
