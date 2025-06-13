@@ -1,11 +1,10 @@
-# Fichier: app/recipes/routes.py
-
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, abort
 from flask_login import login_required
 from extensions import db
 from models import Recipe, Product, RecipeIngredient
 from .forms import RecipeForm, ingredient_product_query_factory
 from decorators import admin_required
+import json
 
 recipes = Blueprint('recipes', __name__, url_prefix='/admin/recipes')
 
@@ -33,11 +32,19 @@ def new_recipe():
     form = RecipeForm()
     
     all_ingredients = ingredient_product_query_factory().all()
-    ingredients_json = [{'id': p.id, 'name': p.name, 'unit': p.unit, 'cost_price': float(p.cost_price) if p.cost_price is not None else 0.0} for p in all_ingredients]
+    ingredients_json = [
+        {
+            'id': p.id, 
+            'name': p.name, 
+            'unit': p.unit, 
+            'cost_price': float(p.cost_price) if p.cost_price is not None else 0.0
+        } 
+        for p in all_ingredients
+    ]
 
     if form.validate_on_submit():
         try:
-            # ### CORRECTION : Mapping manuel du champ de formulaire 'finished_product' vers le champ de modèle 'product_id' ###
+            # ✅ CORRECTION : Mapping du champ 'finished_product' vers 'product_id'
             recipe = Recipe(
                 name=form.name.data,
                 description=form.description.data,
@@ -81,11 +88,19 @@ def edit_recipe(recipe_id):
     form = RecipeForm(obj=recipe)
     
     all_ingredients = ingredient_product_query_factory().all()
-    ingredients_json = [{'id': p.id, 'name': p.name, 'unit': p.unit, 'cost_price': float(p.cost_price) if p.cost_price is not None else 0.0} for p in all_ingredients]
+    ingredients_json = [
+        {
+            'id': p.id, 
+            'name': p.name, 
+            'unit': p.unit, 
+            'cost_price': float(p.cost_price) if p.cost_price is not None else 0.0
+        } 
+        for p in all_ingredients
+    ]
 
     if form.validate_on_submit():
         try:
-            # ### CORRECTION : Mapping manuel également pour la mise à jour ###
+            # ✅ CORRECTION : Mapping du champ 'finished_product' vers 'product_id'
             recipe.name = form.name.data
             recipe.description = form.description.data
             recipe.yield_quantity = form.yield_quantity.data
@@ -118,7 +133,7 @@ def edit_recipe(recipe_id):
         flash("Le formulaire contient des erreurs. Veuillez les corriger.", "danger")
         current_app.logger.warning(f"Erreurs de validation du formulaire de recette (edit {recipe_id}): {form.errors}")
     
-    # ### CORRECTION : Pré-remplissage du champ SelectField et des ingrédients pour l'affichage ###
+    # ✅ CORRECTION : Pré-remplissage du champ finished_product
     if request.method == 'GET':
         form.finished_product.data = recipe.product_id
         
@@ -132,7 +147,11 @@ def edit_recipe(recipe_id):
                 'notes': item.notes
             })
 
-    return render_template('recipes/recipe_form.html', form=form, title=f"Modifier Recette: {recipe.name}", edit_mode=True, ingredient_products_json=ingredients_json)
+    return render_template('recipes/recipe_form.html', 
+                         form=form, 
+                         title=f"Modifier Recette: {recipe.name}", 
+                         edit_mode=True, 
+                         ingredient_products_json=ingredients_json)
 
 @recipes.route('/<int:recipe_id>/delete', methods=['POST'])
 @login_required
