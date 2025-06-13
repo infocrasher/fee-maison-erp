@@ -1,5 +1,5 @@
 import os
-from flask import Flask, url_for
+from flask import Flask, url_for, render_template  # ← CORRECTION: ajout render_template
 from config import config_by_name
 from extensions import db, migrate, login
 from datetime import datetime
@@ -136,12 +136,12 @@ def create_app(config_name=None):
     # Gestionnaire d'erreurs personnalisés
     @app.errorhandler(404)
     def not_found_error(error):
-        return render_template('errors/404.html'), 404
+        return render_template('errors/404.html'), 404  # ← Maintenant défini
     
     @app.errorhandler(500)
     def internal_error(error):
         db.session.rollback()
-        return render_template('errors/500.html'), 500
+        return render_template('errors/500.html'), 500  # ← Maintenant défini
 
     # Commande CLI pour créer un admin
     @app.cli.command("create-admin")
