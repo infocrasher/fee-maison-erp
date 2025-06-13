@@ -23,7 +23,6 @@ from sqlalchemy import or_
 def ingredient_product_query_factory():
     """
     Retourne une requête pour obtenir tous les produits de type 'ingrédient'.
-    Utiliser une factory permet de ne pas exécuter la requête au chargement du module.
     """
     return Product.query.filter_by(product_type='ingredient').order_by(Product.name)
 
@@ -36,19 +35,10 @@ class IngredientForm(FlaskForm):
     """
     Sous-formulaire représentant une seule ligne d'ingrédient dans la recette.
     """
-    # Champ caché pour stocker l'ID de l'ingrédient en mode édition
     id = IntegerField(widget=HiddenInput(), validators=[Optional()])
-    
-    # Champ de sélection pour choisir l'ingrédient
     product = SelectField('Ingrédient', coerce=int, validators=[DataRequired("Veuillez choisir un ingrédient.")])
-    
-    # Champ pour la quantité nécessaire (ex: 500.5)
     quantity_needed = DecimalField('Quantité', validators=[DataRequired("La quantité est requise."), NumberRange(min=0.001)])
-    
-    # Champ pour l'unité de la quantité (ex: 'G', 'ML', 'pièces')
     unit = StringField('Unité', validators=[DataRequired(), Length(max=50)])
-    
-    # Champ optionnel pour des notes sur l'ingrédient
     notes = StringField('Notes', validators=[Optional(), Length(max=200)])
 
     def __init__(self, *args, **kwargs):
@@ -56,10 +46,13 @@ class IngredientForm(FlaskForm):
         Constructeur pour populer dynamiquement la liste des choix d'ingrédients.
         """
         super(IngredientForm, self).__init__(*args, **kwargs)
-        # On ne peuple les choix que si ce n'est pas une requête POST (pour préserver les données soumises)
-        if not self.is_submitted():
-             self.product.choices = [(p.id, f"{p.name} ({p.unit})") for p in ingredient_product_query_factory().all()]
-             self.product.choices.insert(0, (0, '-- Choisir un ingrédient --'))
+        
+        # ### CORRECTION ###
+        # On supprime la condition "if not self.is_submitted()".
+        # La liste de choix DOIT être disponible aussi pendant la validation (POST)
+        # pour que WTForms puisse vérifier que la valeur soumise est valide.
+        self.product.choices = [(p.id, f"{p.name} ({p.unit})") for p in ingredient_product_query_factory().all()]
+        self.product.choices.insert(0, (0, '-- Choisir un ingrédient --'))
 
 
 # ==============================================================================
@@ -73,7 +66,6 @@ class RecipeForm(FlaskForm):
     name = StringField('Nom de la recette', validators=[DataRequired("Le nom est requis."), Length(max=100)])
     description = TextAreaField('Description / Instructions', validators=[Optional(), Length(max=5000)])
     
-    # --- Champs pour la logique de rendement (Yield) ---
     yield_quantity = IntegerField(
         'Quantité Produite', 
         validators=[DataRequired("La quantité produite est requise."), NumberRange(min=1, message="Le rendement doit être d'au moins 1.")], 
@@ -86,13 +78,9 @@ class RecipeForm(FlaskForm):
         default='pièces',
         description="Quelle est l'unité ? (ex: pièces, portions, gâteaux)"
     )
-    # --- Fin des champs de rendement ---
 
     finished_product = SelectField('Produit Fini Associé', coerce=int, validators=[Optional()])
-    
-    # Liste dynamique des sous-formulaires d'ingrédients
     ingredients = FieldList(FormField(IngredientForm), min_entries=1, label="Ingrédients")
-    
     submit = SubmitField('Enregistrer la Recette')
 
     def __init__(self, *args, **kwargs):
@@ -101,18 +89,17 @@ class RecipeForm(FlaskForm):
         """
         super(RecipeForm, self).__init__(*args, **kwargs)
         
-        # On ne peuple les choix que si ce n'est pas une requête POST
-        if not self.is_submitted():
-            # Logique pour le mode édition : on veut pouvoir re-sélectionner le produit déjà associé
-            recipe_obj = kwargs.get('obj')
-            
-            query = Product.query.filter_by(product_type='finished')
-            
-            # Si on est en mode édition, on inclut les produits sans recette ET le produit actuellement lié
-            if recipe_obj and recipe_obj.product_id:
-                query = query.filter(or_(Product.recipe_definition == None, Product.id == recipe_obj.product_id))
-            else: # Sinon, on ne montre que les produits sans recette
-                query = query.filter(Product.recipe_definition == None)
-            
-            self.finished_product.choices = [(p.id, p.name) for p in query.order_by(Product.name).all()]
-            self.finished_product.choices.insert(0, (0, '-- Aucun --'))
+        # ### CORRECTION ###
+        # On supprime également la condition "if not self.is_submitted()" ici
+        # pour la même raison que dans IngredientForm.
+        recipe_obj = kwargs.get('obj')
+        
+        query = Product.query.filter_by(product_type='finished')
+        
+        if recipe_obj and recipe_obj.product_id:
+            query = query.filter(or_(Product.recipe_definition == None, Product.id == recipe_obj.product_id))
+        else:
+            query = query.filter(Product.recipe_definition == None)
+        
+        self.finished_product.choices = [(p.id, p.name) for p in query.order_by(Product.name).all()]
+        self.finished_product.choices.insert(0, (0, '-- Aucun --'))
