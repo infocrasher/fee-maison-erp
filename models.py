@@ -54,7 +54,7 @@ class Recipe(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
-    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), unique=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=True, unique=True)
     yield_quantity = db.Column(db.Numeric(10, 3), nullable=False, default=1.0)
     yield_unit = db.Column(db.String(50), nullable=False, default='pièces')
     preparation_time = db.Column(db.Integer)
