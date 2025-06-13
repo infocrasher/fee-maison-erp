@@ -71,13 +71,13 @@
                                 </div>
 
                                 <div class="mb-3">
-                                    {{ form.confirm_new_password.label(class="form-label") }}
-                                    {{ form.confirm_new_password(class="form-control" + (" is-invalid" if form.confirm_new_password.errors else "")) }}
-                                    {% if form.confirm_new_password.errors %}
+                                    {{ form.confirm_password.label(class="form-label") }}
+                                    {{ form.confirm_password(class="form-control" + (" is-invalid" if form.confirm_password.errors else "")) }}
+                                    {% if form.confirm_password.errors %}
                                         <div class="invalid-feedback">
-                                            {% for error in form.confirm_new_password.errors %}
+                                             {% for error in form.confirm_password.errors %}
                                                 {{ error }}
-                                            {% endfor %}
+                                             {% endfor %}
                                         </div>
                                     {% endif %}
                                 </div>
