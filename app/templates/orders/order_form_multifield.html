@@ -1,211 +1,339 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container-fluid">
-    <div class="row justify-content-center">
-        <div class="col-lg-10">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="h3 mb-0"><i class="bi bi-cart-plus me-2"></i>Nouvelle Commande</h1>
-                <a href="{{ url_for('orders.list_orders') }}" class="btn btn-outline-secondary"><i class="bi bi-list me-1"></i>Liste Demandes</a>
-            </div>
+<style>
+/* Style inspiré d'Odoo */
+.form-container {
+    background: #f8f9fa;
+    min-height: 100vh;
+    padding: 20px 0;
+}
 
-            {% for field, errors in form.errors.items() %}
-                {% for error in errors %}
-                    <div class="alert alert-danger" role="alert">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ form[field].label.text if field in form else field }}: {{ error }}
-                    </div>
+.card {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.card-header {
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    padding: 15px 20px;
+    border-radius: 7px 7px 0 0;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+.form-control {
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 14px;
+}
+
+.form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+.btn-primary {
+    background: #017e84;
+    border-color: #017e84;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.btn-primary:hover {
+    background: #015a5f;
+    border-color: #015a5f;
+}
+
+.order-summary {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.field-required {
+    color: #dc3545;
+}
+
+.badge-info {
+    background: #017e84;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+</style>
+
+<div class="form-container">
+    <div class="container-fluid">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <!-- En-tête -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1 class="h3 mb-0 text-dark">
+                        <i class="bi bi-cart-plus me-2 text-primary"></i>Nouvelle Commande
+                    </h1>
+                    <a href="{{ url_for('orders.list_orders') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-list me-1"></i>Liste des Commandes
+                    </a>
+                </div>
+
+                <!-- Messages d'erreur -->
+                {% for field, errors in form.errors.items() %}
+                    {% for error in errors %}
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            {{ form[field].label.text if field in form else field }}: {{ error }}
+                        </div>
+                    {% endfor %}
                 {% endfor %}
-            {% endfor %}
 
-            <form method="POST" id="order-form">
-                {{ form.hidden_tag() }}
+                <form method="POST" id="order-form">
+                    {{ form.hidden_tag() }}
 
-                <div class="card mb-4">
-                    <div class="card-header"><h5 class="card-title mb-0"><i class="bi bi-tag me-2"></i>Type de Demande</h5></div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                {{ form.order_type.label(class="form-label", id="order_type_label") }}
-                                {{ form.order_type(class="form-select", id="order_type") }}
-                            </div>
+                    <!-- Type de commande -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-tag me-2 text-primary"></i>Type de Commande
+                            </h5>
                         </div>
-                    </div>
-                </div>
-
-                <div class="card mb-4" id="customer_section_card">
-                    <div class="card-header"><h5 class="card-title mb-0"><i class="bi bi-person me-2"></i>Informations Client</h5></div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                {{ form.customer_name.label(class="form-label") }}
-                                {{ form.customer_name(class="form-control" + (' is-invalid' if form.customer_name.errors else ""), id="customer_name_input") }}
-                                {% for error in form.customer_name.errors %}
-                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                {% endfor %}
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                {{ form.customer_phone.label(class="form-label") }}
-                                {{ form.customer_phone(class="form-control" + (' is-invalid' if form.customer_phone.errors else ""), id="customer_phone_input") }}
-                                {% for error in form.customer_phone.errors %}
-                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                {% endfor %}
-                            </div>
-                            <div class="col-12" id="customer_address_wrapper">
-                                {{ form.customer_address.label(class="form-label") }}
-                                {{ form.customer_address(class="form-control" + (' is-invalid' if form.customer_address.errors else ""), id="customer_address_input", placeholder="Adresse complète...") }}
-                                {% for error in form.customer_address.errors %}
-                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card mb-4" id="service_and_planning_section_card">
-                    <div class="card-header"><h5 class="card-title mb-0"><i class="bi bi-truck me-2"></i>Options de Service et Planification</h5></div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6 mb-3" id="delivery_option_wrapper_div">
-                                {{ form.delivery_option.label(class="form-label") }}
-                                {{ form.delivery_option(class="form-select", id="delivery_option") }}
-                            </div>
-                            <div class="col-md-6 mb-3" id="due_date_wrapper_div">
-                                {{ form.due_date.label(class="form-label") }}
-                                {{ form.due_date(class="form-control" + (" is-invalid" if form.due_date.errors else ""), id="due_date", type="datetime-local") }}
-                                {% if form.due_date.errors %}
-                                    <div class="invalid-feedback d-block">{% for error in form.due_date.errors %}{{ error }}{% endfor %}</div>
-                                {% endif %}
-                                <div class="form-text">Date et heure prévues.</div>
-                            </div>
-                            <div class="col-md-6 mb-3 price-related" id="delivery_cost_field_wrapper_div">
-                                {{ form.delivery_cost.label(class="form-label") }}
-                                <div class="input-group">
-                                    {{ form.delivery_cost(class="form-control" + (' is-invalid' if form.delivery_cost.errors else ""), id="delivery_cost", step="0.01") }}
-                                    <span class="input-group-text">DA</span>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    {{ form.order_type.label(class="form-label fw-bold") }}
+                                    <span class="field-required">*</span>
+                                    {{ form.order_type(class="form-select form-control", id="order_type") }}
                                 </div>
-                                {% for error in form.delivery_cost.errors %}
-                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                {% endfor %}
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Bloc articles (FieldList + FormField) intégré ICI -->
-                <div class="card mb-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0"><i class="bi bi-list me-2"></i>Articles Demandés</h5>
-                        <span class="badge bg-primary" id="items-count">{{ form.items|length }} article(s)</span>
+                    <!-- Informations Client -->
+                    <div class="card" id="customer_section_card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-person me-2 text-primary"></i>Informations Client
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    {{ form.customer_name.label(class="form-label fw-bold") }}
+                                    <span class="field-required">*</span>
+                                    {{ form.customer_name(class="form-control" + (' is-invalid' if form.customer_name.errors else ""), id="customer_name_input") }}
+                                    {% for error in form.customer_name.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    {{ form.customer_phone.label(class="form-label fw-bold") }}
+                                    <span class="field-required">*</span>
+                                    {{ form.customer_phone(class="form-control" + (' is-invalid' if form.customer_phone.errors else ""), id="customer_phone_input") }}
+                                    {% for error in form.customer_phone.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="order-items-container">
+
+                    <!-- Options de Service -->
+                    <div class="card" id="service_section_card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-truck me-2 text-primary"></i>Options de Service
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3" id="delivery_option_wrapper">
+                                    {{ form.delivery_option.label(class="form-label fw-bold") }}
+                                    <span class="field-required">*</span>
+                                    {{ form.delivery_option(class="form-select form-control", id="delivery_option") }}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    {{ form.due_date.label(class="form-label fw-bold") }}
+                                    <span class="field-required">*</span>
+                                    {{ form.due_date(class="form-control" + (" is-invalid" if form.due_date.errors else ""), id="due_date", type="datetime-local") }}
+                                    {% if form.due_date.errors %}
+                                        <div class="invalid-feedback d-block">{% for error in form.due_date.errors %}{{ error }}{% endfor %}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-12 mb-3" id="customer_address_wrapper" style="display: none;">
+                                    {{ form.customer_address.label(class="form-label fw-bold") }}
+                                    <span class="field-required">*</span>
+                                    {{ form.customer_address(class="form-control" + (' is-invalid' if form.customer_address.errors else ""), id="customer_address_input", placeholder="Adresse complète de livraison...") }}
+                                    {% for error in form.customer_address.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-md-6 mb-3" id="delivery_cost_wrapper">
+                                    {{ form.delivery_cost.label(class="form-label fw-bold") }}
+                                    <div class="input-group">
+                                        {{ form.delivery_cost(class="form-control" + (' is-invalid' if form.delivery_cost.errors else ""), id="delivery_cost", step="0.01") }}
+                                        <span class="input-group-text">DA</span>
+                                    </div>
+                                    {% for error in form.delivery_cost.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Articles -->
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-list me-2 text-primary"></i>Articles Commandés
+                            </h5>
+                            <span class="badge badge-info" id="items-count">{{ form.items|length }} article(s)</span>
+                        </div>
+                        <div class="card-body">
                             <div id="items-container">
                                 {% for subform in form.items %}
-                                    <div class="item-row" data-index="{{ loop.index0 }}">
+                                    <div class="item-row border-bottom pb-3 mb-3" data-index="{{ loop.index0 }}">
                                         <div class="row">
                                             <div class="col-md-6 mb-3">
-                                                {{ subform.product.label(class="form-label") }}
-                                                {{ subform.product(class="form-select product-select initial-item-select", id="items-{{ loop.index0 }}-product", data_index=loop.index0) }}
-                                                {% for error in subform.product.errors %}
-                                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                                {% endfor %}
+                                                {{ subform.product.label(class="form-label fw-bold") }}
+                                                <span class="field-required">*</span>
+                                                {{ subform.product(class="form-select form-control product-select", id="items-{{ loop.index0 }}-product", data_index=loop.index0) }}
                                             </div>
                                             <div class="col-md-3 mb-3">
-                                                {{ subform.quantity.label(class="form-label") }}
+                                                {{ subform.quantity.label(class="form-label fw-bold") }}
+                                                <span class="field-required">*</span>
                                                 <div class="input-group">
                                                     {{ subform.quantity(class="form-control quantity-input", min="1", id="items-{{ loop.index0 }}-quantity", data_index=loop.index0) }}
                                                     <span class="input-group-text">unité(s)</span>
                                                 </div>
-                                                {% for error in subform.quantity.errors %}
-                                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                                {% endfor %}
                                             </div>
-                                            <div class="col-md-3 mb-3 price-related">
-                                                <label class="form-label">Sous-total Article</label>
+                                            <div class="col-md-3 mb-3">
+                                                <label class="form-label fw-bold">Sous-total</label>
                                                 <div class="form-control-plaintext fw-bold text-success item-subtotal" data-index="{{ loop.index0 }}">0.00 DA</div>
-                                                <div class="price-preview" data-index="{{ loop.index0 }}">Prix unit.: <span class="unit-price">0.00</span> DA</div>
+                                                <div class="text-muted small price-preview" data-index="{{ loop.index0 }}">Prix unit.: <span class="unit-price">0.00</span> DA</div>
                                             </div>
                                         </div>
-                                        {% if subform.errors %}
-                                            <div class="row">
-                                                <div class="col-12">
-                                                    {% for fieldname, errors in subform.errors.items() %}
-                                                        {% for error in errors %}
-                                                            <div class="text-danger small mt-1">{{ error }}</div>
-                                                        {% endfor %}
-                                                    {% endfor %}
-                                                </div>
-                                            </div>
-                                        {% endif %}
                                     </div>
                                 {% endfor %}
                             </div>
-                            <button type="button" class="add-item-btn mt-3" onclick="addItem()">
-                                <i class="bi bi-plus-circle me-2"></i>Ajouter un Produit
+                            <button type="button" class="btn btn-outline-primary" onclick="addItem()">
+                                <i class="bi bi-plus-circle me-2"></i>Ajouter un Article
                             </button>
                         </div>
                     </div>
-                </div>
-                <!-- fin du bloc articles -->
 
-                <div class="card mb-4">
-                    <div class="card-header"><h5 class="card-title mb-0"><i class="bi bi-chat-text me-2"></i>Notes Spéciales</h5></div>
-                    <div class="card-body">
-                        {{ form.notes.label(class="form-label") }}
-                        {{ form.notes(class="form-control", id="notes_input", placeholder="Instructions spéciales...") }}
-                    </div>
-                </div>
-
-                <div class="order-summary price-related">
-                    <h5><i class="bi bi-calculator me-2"></i>Résumé de la Commande</h5>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="d-flex justify-content-between"><span>Sous-total articles:</span><span class="fw-bold" id="items-total">0.00 DA</span></div>
-                            <div class="d-flex justify-content-between" id="delivery_total_summary_line_display"><span>Frais de livraison:</span><span class="fw-bold" id="delivery-total">0.00 DA</span></div>
-                            <hr>
-                            <div class="d-flex justify-content-between fs-5"><span><strong>Total Général:</strong></span><span class="fw-bold text-success" id="grand-total">0.00 DA</span></div>
+                    <!-- Notes -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-chat-text me-2 text-primary"></i>Notes Spéciales
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {{ form.notes(class="form-control", id="notes_input", placeholder="Instructions spéciales...", rows="3") }}
                         </div>
                     </div>
-                </div>
 
-                <div class="d-flex gap-2 mt-4">
-                    <input class="btn btn-primary btn-lg" id="submit" name="submit" type="submit" value="Enregistrer la commande">
-                    <a href="{{ url_for('orders.list_orders') }}" class="btn btn-secondary btn-lg"><i class="bi bi-arrow-left me-1"></i>Annuler</a>
-                </div>
-            </form>
+                    <!-- Résumé -->
+                    <div class="order-summary" id="order_summary">
+                        <h5 class="mb-3">
+                            <i class="bi bi-calculator me-2 text-primary"></i>Résumé de la Commande
+                        </h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Sous-total articles:</span>
+                                    <span class="fw-bold" id="items-total">0.00 DA</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2" id="delivery_total_line">
+                                    <span>Frais de livraison:</span>
+                                    <span class="fw-bold" id="delivery-total">0.00 DA</span>
+                                </div>
+                                <hr>
+                                <div class="d-flex justify-content-between fs-5">
+                                    <span><strong>Total Général:</strong></span>
+                                    <span class="fw-bold text-success" id="grand-total">0.00 DA</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Boutons -->
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle me-2"></i>Enregistrer la Commande
+                        </button>
+                        <a href="{{ url_for('orders.list_orders') }}" class="btn btn-secondary btn-lg">
+                            <i class="bi bi-arrow-left me-1"></i>Annuler
+                        </a>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-function updateAddressFieldVisibility() {
+function updateFormVisibility() {
     const orderType = document.getElementById('order_type').value;
     const deliveryOption = document.getElementById('delivery_option').value;
-    const addressWrapper = document.getElementById('customer_address_wrapper');
-    if (orderType === 'customer_order' && deliveryOption === 'delivery') {
-        addressWrapper.style.display = 'block';
-    } else {
-        addressWrapper.style.display = 'none';
-    }
-}
-function updateCustomerSectionVisibility() {
-    const orderType = document.getElementById('order_type').value;
+    
     const customerSection = document.getElementById('customer_section_card');
+    const serviceSection = document.getElementById('service_section_card');
+    const deliveryOptionWrapper = document.getElementById('delivery_option_wrapper');
+    const deliveryCostWrapper = document.getElementById('delivery_cost_wrapper');
+    const addressWrapper = document.getElementById('customer_address_wrapper');
+    const deliveryTotalLine = document.getElementById('delivery_total_line');
+    
     if (orderType === 'customer_order') {
+        // Commande client : tout afficher
         customerSection.style.display = 'block';
+        deliveryOptionWrapper.style.display = 'block';
+        deliveryCostWrapper.style.display = 'block';
+        deliveryTotalLine.style.display = 'flex';
+        
+        // Adresse uniquement si livraison
+        if (deliveryOption === 'delivery') {
+            addressWrapper.style.display = 'block';
+        } else {
+            addressWrapper.style.display = 'none';
+        }
     } else {
+        // Production comptoir : cacher client et livraison
         customerSection.style.display = 'none';
+        deliveryOptionWrapper.style.display = 'none';
+        deliveryCostWrapper.style.display = 'none';
+        addressWrapper.style.display = 'none';
+        deliveryTotalLine.style.display = 'none';
     }
 }
-document.addEventListener('DOMContentLoaded', function () {
+
+document.addEventListener('DOMContentLoaded', function() {
     const orderType = document.getElementById('order_type');
     const deliveryOption = document.getElementById('delivery_option');
-    orderType.addEventListener('change', function () {
-        updateAddressFieldVisibility();
-        updateCustomerSectionVisibility();
-    });
-    deliveryOption.addEventListener('change', updateAddressFieldVisibility);
-    updateAddressFieldVisibility();
-    updateCustomerSectionVisibility();
+    
+    orderType.addEventListener('change', updateFormVisibility);
+    deliveryOption.addEventListener('change', updateFormVisibility);
+    
+    // Initialiser l'affichage
+    updateFormVisibility();
 });
+
+// Fonction pour ajouter un article (à adapter selon votre logique existante)
+function addItem() {
+    // Votre logique d'ajout d'article ici
+    console.log('Ajouter un article');
+}
 </script>
 {% endblock %}
