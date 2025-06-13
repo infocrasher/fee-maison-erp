@@ -164,8 +164,8 @@ def audit_template_variables():
     
     print(f"📝 Analysé {template_count} templates")
     print(f"   Variables {{ }}: {len(found_vars)}")
-    print(f"   Conditions {% if %}: {len(found_conditions)}")
-    print(f"   Boucles {% for %}: {len(found_loops)}")
+    print(f"   Conditions {%%} if {%%}: {len(found_conditions)}")
+    print(f"   Boucles {%%} for {%%}: {len(found_loops)}")
     
     return {
         'variables': found_vars,
@@ -346,8 +346,9 @@ def verify_database_connection():
         with app.app_context():
             from extensions import db
             
-            # Test de connexion simple (lecture seule)
-            result = db.engine.execute("SELECT 1")
+            # ✅ CORRECTION: Utilisation moderne de SQLAlchemy
+            from sqlalchemy import text
+            result = db.session.execute(text("SELECT 1"))
             result.close()
             
             # Informations sur la DB
