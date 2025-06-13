@@ -379,7 +379,7 @@ function addItem() {
     // Ajouter bouton de suppression
     const removeCol = newItem.querySelector('.col-md-2.d-flex.align-items-end');
     if (removeCol) {
-        removeCol.innerHTML = `<button type="button" class="btn btn-remove" onclick="removeItem(${newIndex})"><i class="bi bi-trash"></i></button>`;
+    removeCol.innerHTML = '<button type="button" class="btn btn-remove" onclick="removeItem(' + newIndex + ')"><i class="bi bi-trash"></i></button>';
     }
 
     container.appendChild(newItem);
