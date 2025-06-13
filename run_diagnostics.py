@@ -49,12 +49,12 @@ def suggest_fixes(error_text):
     lines = error_text.splitlines()
     
     error_patterns = {
-        r"'bool' object is not callable": "❗ @property appelée comme fonction. Retirez les () : current_user.is_admin au lieu de current_user.is_admin()",
-        r"'([\w_]+)' is undefined": "❗ Variable Jinja2 manquante : '{var}'. Vérifiez render_template() ou context_processor",
-        r"werkzeug.routing.exceptions.BuildError": "❗ Route inexistante dans url_for(). Vérifiez l'endpoint et les blueprints",
-        r"jinja2.exceptions.TemplateNotFound": "❗ Template manquant. Vérifiez le chemin et l'existence du fichier",
-        r"sqlalchemy.*OperationalError": "❗ Erreur de connexion base de données. Vérifiez la configuration DB",
-        r"ImportError.*No module named": "❗ Module manquant. Vérifiez les imports et requirements.txt",
+        r"'bool' object is not callable": "ERREUR: @property appelee comme fonction. Retirez les () : current_user.is_admin au lieu de current_user.is_admin()",
+        r"'([\w_]+)' is undefined": "ERREUR: Variable Jinja2 manquante : '{var}'. Verifiez render_template() ou context_processor",
+        r"werkzeug.routing.exceptions.BuildError": "ERREUR: Route inexistante dans url_for(). Verifiez l'endpoint et les blueprints",
+        r"jinja2.exceptions.TemplateNotFound": "ERREUR: Template manquant. Verifiez le chemin et l'existence du fichier",
+        r"sqlalchemy.*OperationalError": "ERREUR: Erreur de connexion base de donnees. Verifiez la configuration DB",
+        r"ImportError.*No module named": "ERREUR: Module manquant. Verifiez les imports et requirements.txt",
     }
     
     for line in lines:
@@ -65,22 +65,22 @@ def suggest_fixes(error_text):
                     return message.format(var=match.group(1))
                 return message
     
-    return "❗ Erreur non reconnue. Consultez la stack trace complète."
+    return "ERREUR: Erreur non reconnue. Consultez la stack trace complete."
 
 def test_get_routes_only(app):
-    """🛡️ SAFE: Teste uniquement les routes GET sans modification"""
+    """SAFE: Teste uniquement les routes GET sans modification"""
     routes = get_routes(app)
     errors = []
     success_count = 0
     
-    print(f"🔍 Test de {len(routes)} routes (GET seulement)...")
+    print(f"Test de {len(routes)} routes (GET seulement)...")
     
     for rule in routes:
         url, url_kwargs = build_url(rule)
         if not url:
             continue
         
-        # ✅ SAFE: Tests GET uniquement
+        # SAFE: Tests GET uniquement
         try:
             response = client.get(url)
             
@@ -90,10 +90,10 @@ def test_get_routes_only(app):
                 errors.append({
                     'url': url, 
                     'status': response.status_code,
-                    'error': error_message[:500],  # Limite pour lisibilité
+                    'error': error_message[:500],
                     'suggestion': suggestion
                 })
-                print(f"❌ GET {url} - {response.status_code}")
+                print(f"ERREUR GET {url} - {response.status_code}")
             elif b'jinja2.exceptions.UndefinedError' in response.data:
                 error_message = response.data.decode("utf8", errors="ignore")
                 suggestion = suggest_fixes(error_message)
@@ -103,13 +103,13 @@ def test_get_routes_only(app):
                     'error': error_message[:500],
                     'suggestion': suggestion
                 })
-                print(f"❌ GET {url} - Erreur Jinja2")
+                print(f"ERREUR GET {url} - Erreur Jinja2")
             else:
                 success_count += 1
-                if response.status_code in [200, 302, 401, 403]:  # Codes "normaux"
-                    print(f"✅ GET {url} - {response.status_code}")
+                if response.status_code in [200, 302, 401, 403]:
+                    print(f"OK GET {url} - {response.status_code}")
                 else:
-                    print(f"⚠️ GET {url} - {response.status_code}")
+                    print(f"WARN GET {url} - {response.status_code}")
                     
         except Exception as e:
             tb = traceback.format_exc()
@@ -120,21 +120,21 @@ def test_get_routes_only(app):
                 'error': str(e),
                 'suggestion': suggestion
             })
-            print(f"💥 GET {url} - Exception: {str(e)[:50]}")
+            print(f"EXCEPTION GET {url} - {str(e)[:50]}")
 
-    print(f"\n📊 Résultat routes GET: {success_count}/{len(routes)} OK, {len(errors)} erreurs")
+    print(f"\nResultat routes GET: {success_count}/{len(routes)} OK, {len(errors)} erreurs")
     return errors
 
 def audit_template_variables():
-    """🛡️ SAFE: Analyse les variables utilisées dans les templates"""
+    """SAFE: Analyse les variables utilisees dans les templates"""
     found_vars = set()
     found_conditions = set()
     found_loops = set()
     
-    # Patterns pour différents usages Jinja2
-    var_pattern = re.compile(r"{{\s*([\w_]+)[\s\(|}]")  # {{ variable }}
-    condition_pattern = re.compile(r"{% if\s+([\w_.]+)")  # {% if variable %}
-    loop_pattern = re.compile(r"{% for\s+\w+\s+in\s+([\w_.]+)")  # {% for x in variable %}
+    # Patterns pour differents usages Jinja2
+    var_pattern = re.compile(r"{{\s*([\w_]+)[\s\(|}]")
+    condition_pattern = re.compile(r"{% if\s+([\w_.]+)")
+    loop_pattern = re.compile(r"{% for\s+\w+\s+in\s+([\w_.]+)")
     
     template_count = 0
     
@@ -160,12 +160,12 @@ def audit_template_variables():
                             found_loops.add(m.group(1))
                             
                 except Exception as e:
-                    print(f"⚠️ Erreur lecture template {path}: {e}")
+                    print(f"WARN Erreur lecture template {path}: {e}")
     
-    print(f"📝 Analysé {template_count} templates")
-    print(f"   Variables {{ }}: {len(found_vars)}")
-    print(f"   Conditions {%%} if {%%}: {len(found_conditions)}")
-    print(f"   Boucles {%%} for {%%}: {len(found_loops)}")
+    print(f"Analyse {template_count} templates")
+    print(f"   Variables: {len(found_vars)}")
+    print(f"   Conditions: {len(found_conditions)}")
+    print(f"   Boucles: {len(found_loops)}")
     
     return {
         'variables': found_vars,
@@ -174,7 +174,7 @@ def audit_template_variables():
     }
 
 def context_processors_from_app(app):
-    """🛡️ SAFE: Liste les context processors déclarés"""
+    """SAFE: Liste les context processors declares"""
     processors = set()
     
     try:
@@ -196,12 +196,12 @@ def context_processors_from_app(app):
                 except:
                     pass
     except Exception as e:
-        print(f"⚠️ Erreur analyse context processors: {e}")
+        print(f"WARN Erreur analyse context processors: {e}")
     
     return processors
 
 def check_static_files():
-    """🛡️ SAFE: Vérifie l'existence des fichiers/dossiers statiques"""
+    """SAFE: Verifie l'existence des fichiers/dossiers statiques"""
     checks = []
     
     # Dossiers essentiels
@@ -234,19 +234,19 @@ def check_static_files():
         else:
             checks.append({'type': 'file', 'path': template, 'status': 'MISSING'})
     
-    # Résumé
+    # Resume
     missing = [c for c in checks if c['status'] == 'MISSING']
     if missing:
-        print(f"⚠️ {len(missing)} fichier(s)/dossier(s) manquant(s):")
+        print(f"WARN {len(missing)} fichier(s)/dossier(s) manquant(s):")
         for item in missing:
             print(f"   - {item['path']}")
     else:
-        print("✅ Tous les fichiers/dossiers essentiels sont présents")
+        print("OK Tous les fichiers/dossiers essentiels sont presents")
     
     return checks
 
 def check_forms_load():
-    """🛡️ SAFE: Vérifie que les formulaires se chargent (GET seulement)"""
+    """SAFE: Verifie que les formulaires se chargent (GET seulement)"""
     form_urls = [
         '/admin/products/category/new',
         '/admin/products/new',
@@ -257,12 +257,12 @@ def check_forms_load():
     
     results = []
     
-    print("📋 Test chargement des formulaires...")
+    print("Test chargement des formulaires...")
     for url in form_urls:
         try:
             response = client.get(url)
             
-            # Vérifications basiques
+            # Verifications basiques
             has_form = b'<form' in response.data
             has_csrf = b'csrf_token' in response.data
             
@@ -275,14 +275,14 @@ def check_forms_load():
             }
             
             if status['loadable']:
-                print(f"✅ {url} - Formulaire chargeable")
+                print(f"OK {url} - Formulaire chargeable")
             else:
-                print(f"❌ {url} - Erreur {response.status_code}")
+                print(f"ERREUR {url} - Erreur {response.status_code}")
             
             results.append(status)
             
         except Exception as e:
-            print(f"💥 {url} - Exception: {str(e)}")
+            print(f"EXCEPTION {url} - Exception: {str(e)}")
             results.append({
                 'url': url,
                 'status_code': 'exception',
@@ -291,12 +291,12 @@ def check_forms_load():
             })
     
     loadable_count = sum(1 for r in results if r.get('loadable', False))
-    print(f"📊 Formulaires: {loadable_count}/{len(form_urls)} chargeables")
+    print(f"Formulaires: {loadable_count}/{len(form_urls)} chargeables")
     
     return results
 
 def check_app_configuration():
-    """🛡️ SAFE: Vérifie la configuration de l'application"""
+    """SAFE: Verifie la configuration de l'application"""
     config_checks = []
     
     try:
@@ -327,98 +327,103 @@ def check_app_configuration():
             if hasattr(app, 'extensions'):
                 extensions = list(app.extensions.keys())
             
-            print("⚙️ Configuration de l'application:")
+            print("Configuration de l'application:")
             for check in config_checks:
-                symbol = "✅" if check['status'] == 'SET' else "❌"
+                symbol = "OK" if check['status'] == 'SET' else "ERREUR"
                 print(f"   {symbol} {check['key']}: {check['value']}")
             
-            print(f"🔌 Extensions chargées: {', '.join(extensions) if extensions else 'Aucune détectée'}")
+            print(f"Extensions chargees: {', '.join(extensions) if extensions else 'Aucune detectee'}")
             
     except Exception as e:
-        print(f"⚠️ Erreur vérification config: {e}")
+        print(f"WARN Erreur verification config: {e}")
         config_checks.append({'error': str(e)})
     
     return config_checks
 
 def verify_database_connection():
-    """🛡️ SAFE: Vérifie la connexion DB sans modification"""
+    """SAFE: Verifie la connexion DB sans modification"""
     try:
         with app.app_context():
             from extensions import db
-            
-            # ✅ CORRECTION: Utilisation moderne de SQLAlchemy
             from sqlalchemy import text
+            
             result = db.session.execute(text("SELECT 1"))
             result.close()
             
             # Informations sur la DB
             db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
-            db_type = 'postgresql' if 'postgresql' in db_url else 'sqlite' if 'sqlite' in db_url else 'autre'
             
-            print(f"✅ Connexion base de données OK ({db_type})")
+            if 'postgresql' in db_url:
+                db_type = 'postgresql'
+            elif 'sqlite' in db_url:
+                db_type = 'sqlite'
+            else:
+                db_type = 'autre'
+            
+            print(f"OK Connexion base de donnees OK ({db_type})")
             return True
             
     except Exception as e:
-        print(f"❌ Erreur connexion base de données: {e}")
+        print(f"ERREUR Erreur connexion base de donnees: {e}")
         return False
 
 def main():
-    """🛡️ Diagnostic complet SANS RISQUE - Read-Only uniquement"""
-    print("\n==== 🛡️ DIAGNOSTIC SÉCURISÉ (READ-ONLY) ====\n")
+    """Diagnostic complet SANS RISQUE - Read-Only uniquement"""
+    print("\n==== DIAGNOSTIC SECURISE (READ-ONLY) ====\n")
     print("Mode: Lecture seule - Aucune modification de l'application\n")
     
-    # 1. Vérification configuration
-    print("⚙️ Vérification de la configuration...")
+    # 1. Verification configuration
+    print("Verification de la configuration...")
     config_status = check_app_configuration()
     
-    print("\n🗄️ Test de connexion base de données...")
+    print("\nTest de connexion base de donnees...")
     db_status = verify_database_connection()
     
-    # 2. Vérification fichiers statiques
-    print("\n📁 Vérification des fichiers essentiels...")
+    # 2. Verification fichiers statiques
+    print("\nVerification des fichiers essentiels...")
     static_status = check_static_files()
     
     # 3. Tests des routes GET
-    print("\n🌐 Test des routes (GET seulement)...")
+    print("\nTest des routes (GET seulement)...")
     route_errors = test_get_routes_only(app)
     
     # 4. Test formulaires
-    print("\n📋 Test de chargement des formulaires...")
+    print("\nTest de chargement des formulaires...")
     form_status = check_forms_load()
     
     # 5. Audit templates
-    print("\n📝 Audit des templates...")
+    print("\nAudit des templates...")
     template_vars = audit_template_variables()
     injected_vars = context_processors_from_app(app)
     
     missing_vars = template_vars['variables'] - injected_vars
     
-    # 6. Résumé final
+    # 6. Resume final
     print("\n" + "="*60)
-    print("📊 RÉSUMÉ DU DIAGNOSTIC SÉCURISÉ")
+    print("RESUME DU DIAGNOSTIC SECURISE")
     print("="*60)
     
-    print(f"🗄️  Base de données: {'✅ OK' if db_status else '❌ Erreur'}")
-    print(f"📁 Fichiers statiques: ✅ OK")
-    print(f"🌐 Routes testées: {len(get_routes(app))}")
-    print(f"❌ Erreurs de routes: {len(route_errors)}")
+    print(f"Base de donnees: {'OK' if db_status else 'ERREUR'}")
+    print(f"Fichiers statiques: OK")
+    print(f"Routes testees: {len(get_routes(app))}")
+    print(f"Erreurs de routes: {len(route_errors)}")
     
     loadable_forms = sum(1 for f in form_status if f.get('loadable', False))
-    print(f"📋 Formulaires chargeables: {loadable_forms}/{len(form_status)}")
+    print(f"Formulaires chargeables: {loadable_forms}/{len(form_status)}")
     
-    print(f"📝 Variables template: {len(template_vars['variables'])}")
-    print(f"⚠️  Variables potentiellement manquantes: {len(missing_vars)}")
+    print(f"Variables template: {len(template_vars['variables'])}")
+    print(f"Variables potentiellement manquantes: {len(missing_vars)}")
     
     if route_errors:
-        print(f"\n🚨 ERREURS DÉTECTÉES ({len(route_errors)}):")
+        print(f"\nERREURS DETECTEES ({len(route_errors)}):")
         for error in route_errors[:5]:  # Top 5
-            print(f"   - {error['url']}: {error.get('suggestion', 'Erreur non classifiée')}")
+            print(f"   - {error['url']}: {error.get('suggestion', 'Erreur non classifiee')}")
         
         if len(route_errors) > 5:
             print(f"   ... et {len(route_errors) - 5} autres erreurs")
     
     if missing_vars:
-        print(f"\n📝 Variables template à vérifier:")
+        print(f"\nVariables template a verifier:")
         for var in sorted(list(missing_vars)[:10]):  # Top 10
             print(f"   - {var}")
         
@@ -426,10 +431,10 @@ def main():
             print(f"   ... et {len(missing_vars) - 10} autres variables")
     
     if not route_errors and len(missing_vars) < 5:
-        print(f"\n🎉 Application en excellente santé !")
-        print("✅ Aucune erreur critique détectée")
+        print(f"\nApplication en excellente sante !")
+        print("Aucune erreur critique detectee")
     
-    print(f"\n🛡️ Diagnostic terminé - Aucune modification effectuée")
+    print(f"\nDiagnostic termine - Aucune modification effectuee")
     print("="*60 + "\n")
 
 if __name__ == "__main__":
