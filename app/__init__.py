@@ -28,13 +28,57 @@ def create_app(config_name=None):
     # --- PROCESSEURS DE CONTEXTE POUR LES VARIABLES GLOBALES ---
     @app.context_processor
     def inject_global_variables():
-        # Dictionnaire contenant toutes les variables/fonctions à rendre disponibles
-        return dict(
-            # Rend la fonction csrf_token() disponible sous le nom 'csrf_token'
-            csrf_token=generate_csrf,
-            # Vous pouvez garder ce nom si vous le préférez
-            manual_csrf_token=generate_csrf 
-        )
+        """
+        Injecte des variables globales dans tous les templates
+        """
+        try:
+            # Variables toujours disponibles
+            base_vars = {
+                # Tokens CSRF
+                'csrf_token': generate_csrf,
+                'manual_csrf_token': generate_csrf,
+                # Date courante
+                'current_year': datetime.now().year,
+            }
+            
+            # Variables nécessitant un context d'application
+            with app.app_context():
+                from models import Product
+                
+                # Statistiques pour dashboard (avec gestion d'erreur)
+                try:
+                    total_products = Product.query.count()
+                    low_stock = Product.query.filter(Product.quantity_in_stock <= 5).count()
+                    out_of_stock = Product.query.filter(Product.quantity_in_stock <= 0).count()
+                    
+                    base_vars.update({
+                        'total_products_count': total_products,
+                        'low_stock_products': low_stock,
+                        'out_of_stock_products': out_of_stock,
+                    })
+                except Exception as e:
+                    # En cas d'erreur DB, fournir des valeurs par défaut
+                    app.logger.warning(f"Erreur context processor statistiques: {e}")
+                    base_vars.update({
+                        'total_products_count': 0,
+                        'low_stock_products': 0,
+                        'out_of_stock_products': 0,
+                    })
+            
+            return base_vars
+            
+        except Exception as e:
+            # Fallback minimal en cas d'erreur totale
+            app.logger.error(f"Erreur context processor: {e}")
+            return {
+                'csrf_token': generate_csrf,
+                'manual_csrf_token': generate_csrf,
+                'current_year': datetime.now().year,
+                'total_products_count': 0,
+                'low_stock_products': 0,
+                'out_of_stock_products': 0,
+            }
+    
     @app.template_filter('nl2br')
     def nl2br_filter(text):
         """Convertit les retours à la ligne en <br>"""
@@ -42,6 +86,31 @@ def create_app(config_name=None):
             return text
         from markupsafe import Markup
         return Markup(text.replace('\n', '<br>'))
+    
+    @app.template_filter('currency')
+    def currency_filter(amount):
+        """Formate un montant en devise"""
+        if amount is None:
+            return "0,00 DA"
+        try:
+            return f"{float(amount):,.2f} DA".replace(',', ' ')
+        except (ValueError, TypeError):
+            return "0,00 DA"
+    
+    @app.template_filter('stock_status')
+    def stock_status_filter(quantity):
+        """Retourne une classe CSS selon le niveau de stock"""
+        try:
+            qty = float(quantity) if quantity is not None else 0
+            if qty <= 0:
+                return 'text-danger'  # Rouge pour rupture
+            elif qty <= 5:
+                return 'text-warning'  # Orange pour stock bas
+            else:
+                return 'text-success'  # Vert pour stock OK
+        except (ValueError, TypeError):
+            return 'text-muted'
+    
     # Enregistrement des Blueprints
     from app.main.routes import main as main_blueprint
     app.register_blueprint(main_blueprint)
@@ -64,17 +133,53 @@ def create_app(config_name=None):
     from app.admin.routes import admin as admin_blueprint
     app.register_blueprint(admin_blueprint, url_prefix='/admin')
 
+    # Gestionnaire d'erreurs personnalisés
+    @app.errorhandler(404)
+    def not_found_error(error):
+        return render_template('errors/404.html'), 404
+    
+    @app.errorhandler(500)
+    def internal_error(error):
+        db.session.rollback()
+        return render_template('errors/500.html'), 500
 
     # Commande CLI pour créer un admin
     @app.cli.command("create-admin")
     def create_admin():
+        """Crée un utilisateur administrateur"""
+        from models import User
+        
         if User.query.filter_by(email="admin@example.com").first():
             print("L'utilisateur admin existe déjà.")
             return
+        
         admin_user = User(username="admin", email="admin@example.com", role='admin')
         admin_user.set_password("password123")
         db.session.add(admin_user)
         db.session.commit()
         print("Utilisateur admin créé avec succès.")
+        print("Email: admin@example.com")
+        print("Mot de passe: password123")
+
+    # Commande CLI pour les statistiques
+    @app.cli.command("stats")
+    def show_stats():
+        """Affiche les statistiques de l'application"""
+        from models import User, Product, Recipe, Order
+        
+        print("=== STATISTIQUES FÉE MAISON ===")
+        print(f"Utilisateurs: {User.query.count()}")
+        print(f"Produits: {Product.query.count()}")
+        print(f"Recettes: {Recipe.query.count()}")
+        print(f"Commandes: {Order.query.count()}")
+        
+        # Statistiques détaillées produits
+        ingredients = Product.query.filter_by(product_type='ingredient').count()
+        finished = Product.query.filter_by(product_type='finished').count()
+        low_stock = Product.query.filter(Product.quantity_in_stock <= 5).count()
+        
+        print(f"\nProduits - Ingrédients: {ingredients}")
+        print(f"Produits - Finis: {finished}")
+        print(f"Produits - Stock bas: {low_stock}")
 
     return app
