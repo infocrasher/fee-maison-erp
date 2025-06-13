@@ -103,3 +103,378 @@
 
                 <!-- Messages d'erreur -->
                 {% for field, errors in form.errors.items() %}
+                    {% for error in errors %}
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            {{ form[field].label.text if field in form else field }}: {{ error }}
+                        </div>
+                    {% endfor %}
+                {% endfor %}
+
+                <form method="POST" id="order-form">
+                    {{ form.hidden_tag() }}
+
+                    <!-- Type de commande -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-tag me-2 text-primary"></i>Type de Commande
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    {{ form.order_type.label(class="form-label fw-bold") }}
+                                    <span class="field-required">*</span>
+                                    {{ form.order_type(class="form-select form-control", id="order_type") }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Informations Client -->
+                    <div class="card" id="customer_section_card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-person me-2 text-primary"></i>Informations Client
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    {{ form.customer_name.label(class="form-label fw-bold") }}
+                                    <span class="field-required">*</span>
+                                    {{ form.customer_name(class="form-control" + (' is-invalid' if form.customer_name.errors else ""), id="customer_name_input") }}
+                                    {% for error in form.customer_name.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    {{ form.customer_phone.label(class="form-label fw-bold") }}
+                                    <span class="field-required">*</span>
+                                    {{ form.customer_phone(class="form-control" + (' is-invalid' if form.customer_phone.errors else ""), id="customer_phone_input") }}
+                                    {% for error in form.customer_phone.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Options de Service -->
+                    <div class="card" id="service_section_card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-truck me-2 text-primary"></i>Options de Service
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3" id="delivery_option_wrapper">
+                                    {{ form.delivery_option.label(class="form-label fw-bold") }}
+                                    <span class="field-required">*</span>
+                                    {{ form.delivery_option(class="form-select form-control", id="delivery_option") }}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    {{ form.due_date.label(class="form-label fw-bold") }}
+                                    <span class="field-required">*</span>
+                                    {{ form.due_date(class="form-control" + (" is-invalid" if form.due_date.errors else ""), id="due_date", type="datetime-local") }}
+                                    {% if form.due_date.errors %}
+                                        <div class="invalid-feedback d-block">{% for error in form.due_date.errors %}{{ error }}{% endfor %}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-12 mb-3" id="customer_address_wrapper" style="display: none;">
+                                    {{ form.customer_address.label(class="form-label fw-bold") }}
+                                    <span class="field-required">*</span>
+                                    {{ form.customer_address(class="form-control" + (' is-invalid' if form.customer_address.errors else ""), id="customer_address_input", placeholder="Adresse complète de livraison...") }}
+                                    {% for error in form.customer_address.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-md-6 mb-3" id="delivery_cost_wrapper">
+                                    {{ form.delivery_cost.label(class="form-label fw-bold") }}
+                                    <div class="input-group">
+                                        {{ form.delivery_cost(class="form-control" + (' is-invalid' if form.delivery_cost.errors else ""), id="delivery_cost", step="0.01") }}
+                                        <span class="input-group-text">DA</span>
+                                    </div>
+                                    {% for error in form.delivery_cost.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Articles -->
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-list me-2 text-primary"></i>Articles Commandés
+                            </h5>
+                            <span class="badge badge-info" id="items-count">{{ form.items|length }} article(s)</span>
+                        </div>
+                        <div class="card-body">
+                            <div id="items-container">
+                                {% for subform in form.items %}
+                                    <div class="item-row border-bottom pb-3 mb-3" data-index="{{ loop.index0 }}">
+                                        <div class="row">
+                                            <div class="col-md-5 mb-3">
+                                                {{ subform.product.label(class="form-label fw-bold") }}
+                                                <span class="field-required">*</span>
+                                                {{ subform.product(class="form-select form-control product-select", id="items-{{ loop.index0 }}-product", name="items-{{ loop.index0 }}-product", data_index=loop.index0) }}
+                                            </div>
+                                            <div class="col-md-2 mb-3">
+                                                {{ subform.quantity.label(class="form-label fw-bold") }}
+                                                <span class="field-required">*</span>
+                                                <div class="input-group">
+                                                    {{ subform.quantity(class="form-control quantity-input", min="1", id="items-{{ loop.index0 }}-quantity", name="items-{{ loop.index0 }}-quantity", data_index=loop.index0) }}
+                                                    <span class="input-group-text">unité(s)</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label class="form-label fw-bold">Sous-total</label>
+                                                <div class="form-control-plaintext fw-bold text-success item-subtotal" data-index="{{ loop.index0 }}">0.00 DA</div>
+                                                <div class="text-muted small price-preview" data-index="{{ loop.index0 }}">Prix unit.: <span class="unit-price">0.00</span> DA</div>
+                                            </div>
+                                            <div class="col-md-2 mb-3 d-flex align-items-end">
+                                                {% if loop.index0 > 0 %}
+                                                <button type="button" class="btn btn-remove" onclick="removeItem({{ loop.index0 }})">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            <button type="button" class="btn btn-outline-primary" onclick="addItem()">
+                                <i class="bi bi-plus-circle me-2"></i>Ajouter un Article
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-chat-text me-2 text-primary"></i>Notes Spéciales
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {{ form.notes(class="form-control", id="notes_input", placeholder="Instructions spéciales...", rows="3") }}
+                        </div>
+                    </div>
+
+                    <!-- Résumé -->
+                    <div class="order-summary" id="order_summary">
+                        <h5 class="mb-3">
+                            <i class="bi bi-calculator me-2 text-primary"></i>Résumé de la Commande
+                        </h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Sous-total articles:</span>
+                                    <span class="fw-bold" id="items-total">0.00 DA</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2" id="delivery_total_line">
+                                    <span>Frais de livraison:</span>
+                                    <span class="fw-bold" id="delivery-total">0.00 DA</span>
+                                </div>
+                                <hr>
+                                <div class="d-flex justify-content-between fs-5">
+                                    <span><strong>Total Général:</strong></span>
+                                    <span class="fw-bold text-success" id="grand-total">0.00 DA</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Boutons -->
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle me-2"></i>Enregistrer la Commande
+                        </button>
+                        <a href="{{ url_for('orders.list_orders') }}" class="btn btn-secondary btn-lg">
+                            <i class="bi bi-arrow-left me-1"></i>Annuler
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Données des produits avec leurs prix (à remplir via AJAX ou template)
+let productPrices = {};
+
+// Fonction pour récupérer le prix d'un produit (peut être remplacée par un appel AJAX)
+function getProductPrice(productId) {
+    return productPrices[productId] || 0;
+}
+
+// Fonction pour mettre à jour les sous-totaux
+function updateSubtotals() {
+    let total = 0;
+    document.querySelectorAll('.item-row').forEach(function(row) {
+        const index = row.getAttribute('data-index');
+        const productSelect = document.getElementById('items-' + index + '-product');
+        const quantityInput = document.getElementById('items-' + index + '-quantity');
+        const unitPriceElem = row.querySelector('.unit-price');
+        const subtotalElem = row.querySelector('.item-subtotal');
+        
+        let quantity = parseInt(quantityInput.value) || 0;
+        let unitPrice = 0;
+        
+        // Récupérer le prix du produit sélectionné
+        if (productSelect && productSelect.value) {
+            unitPrice = getProductPrice(productSelect.value);
+            // Mettre à jour l'affichage du prix unitaire
+            unitPriceElem.textContent = unitPrice.toFixed(2);
+        }
+        
+        let subtotal = quantity * unitPrice;
+        subtotalElem.textContent = subtotal.toFixed(2) + ' DA';
+        total += subtotal;
+    });
+    
+    document.getElementById('items-total').textContent = total.toFixed(2) + ' DA';
+    
+    // Mettre à jour le total général en incluant les frais de livraison
+    let deliveryCost = parseFloat(document.getElementById('delivery_cost').value) || 0;
+    document.getElementById('delivery-total').textContent = deliveryCost.toFixed(2) + ' DA';
+    let grandTotal = total + deliveryCost;
+    document.getElementById('grand-total').textContent = grandTotal.toFixed(2) + ' DA';
+}
+
+// Fonction pour ajouter un article
+function addItem() {
+    const container = document.getElementById('items-container');
+    const currentItems = container.querySelectorAll('.item-row');
+    const newIndex = currentItems.length;
+
+    // Cloner le dernier item-row
+    const newItem = currentItems[currentItems.length - 1].cloneNode(true);
+    newItem.setAttribute('data-index', newIndex);
+
+    // Mettre à jour les ids et noms des champs dans le clone
+    newItem.querySelectorAll('select, input').forEach(function(input) {
+        const id = input.id;
+        const name = input.name;
+        const newId = id.replace(/items-\d+-/, 'items-' + newIndex + '-');
+        const newName = name.replace(/items-\d+-/, 'items-' + newIndex + '-');
+        input.id = newId;
+        input.name = newName;
+        input.setAttribute('data-index', newIndex);
+        
+        // Réinitialiser les valeurs
+        if(input.type === 'number' || input.tagName.toLowerCase() === 'select') {
+            input.value = '';
+        }
+    });
+
+    // Réinitialiser les sous-totaux
+    newItem.querySelector('.item-subtotal').textContent = '0.00 DA';
+    newItem.querySelector('.unit-price').textContent = '0.00';
+
+    // LIGNE 241 CORRIGÉE - Ajouter bouton de suppression
+    const removeCol = newItem.querySelector('.col-md-2.d-flex.align-items-end');
+    if (removeCol) {
+        removeCol.innerHTML = '<button type="button" class="btn btn-remove" onclick="removeItem(' + newIndex + ')"><i class="bi bi-trash"></i></button>';
+    }
+
+    container.appendChild(newItem);
+
+    // Mettre à jour le compteur d'articles
+    document.getElementById('items-count').textContent = (newIndex + 1) + ' article(s)';
+    
+    // Ajouter les event listeners pour le nouveau champ
+    attachEventListeners(newItem);
+    
+    // Recalculer les totaux
+    updateSubtotals();
+}
+
+// Fonction pour supprimer un article
+function removeItem(index) {
+    const item = document.querySelector('.item-row[data-index="' + index + '"]');
+    if (item) {
+        item.remove();
+        updateSubtotals();
+        
+        // Mettre à jour le compteur
+        const remainingItems = document.querySelectorAll('.item-row').length;
+        document.getElementById('items-count').textContent = remainingItems + ' article(s)';
+    }
+}
+
+// Fonction pour attacher les event listeners à un élément
+function attachEventListeners(element) {
+    const quantityInput = element.querySelector('.quantity-input');
+    const productSelect = element.querySelector('.product-select');
+    
+    if (quantityInput) {
+        quantityInput.addEventListener('input', updateSubtotals);
+    }
+    
+    if (productSelect) {
+        productSelect.addEventListener('change', updateSubtotals);
+    }
+}
+
+// Fonction pour gérer la visibilité des sections
+function updateFormVisibility() {
+    const orderType = document.getElementById('order_type').value;
+    const deliveryOption = document.getElementById('delivery_option').value;
+    
+    const customerSection = document.getElementById('customer_section_card');
+    const deliveryOptionWrapper = document.getElementById('delivery_option_wrapper');
+    const deliveryCostWrapper = document.getElementById('delivery_cost_wrapper');
+    const addressWrapper = document.getElementById('customer_address_wrapper');
+    const deliveryTotalLine = document.getElementById('delivery_total_line');
+    
+    if (orderType === 'customer_order') {
+        // Commande client : tout afficher
+        customerSection.style.display = 'block';
+        deliveryOptionWrapper.style.display = 'block';
+        deliveryCostWrapper.style.display = 'block';
+        deliveryTotalLine.style.display = 'flex';
+        
+        // Adresse uniquement si livraison
+        if (deliveryOption === 'delivery') {
+            addressWrapper.style.display = 'block';
+        } else {
+            addressWrapper.style.display = 'none';
+        }
+    } else {
+        // Production comptoir : cacher client et livraison
+        customerSection.style.display = 'none';
+        deliveryOptionWrapper.style.display = 'none';
+        deliveryCostWrapper.style.display = 'none';
+        addressWrapper.style.display = 'none';
+        deliveryTotalLine.style.display = 'none';
+    }
+}
+
+// Événements
+document.addEventListener('DOMContentLoaded', function() {
+    const orderType = document.getElementById('order_type');
+    const deliveryOption = document.getElementById('delivery_option');
+    const deliveryCost = document.getElementById('delivery_cost');
+    
+    // Event listeners pour les changements de type et options
+    orderType.addEventListener('change', updateFormVisibility);
+    deliveryOption.addEventListener('change', updateFormVisibility);
+    deliveryCost.addEventListener('input', updateSubtotals);
+    
+    // Attacher les event listeners aux champs existants
+    document.querySelectorAll('.item-row').forEach(function(row) {
+        attachEventListeners(row);
+    });
+    
+    // Initialiser l'affichage
+    updateFormVisibility();
+    updateSubtotals();
+});
+</script>
+{% endblock %}
