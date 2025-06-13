@@ -63,6 +63,8 @@ class Recipe(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     ingredients = db.relationship('RecipeIngredient', backref='recipe', lazy='dynamic', cascade='all, delete-orphan')
     finished_product = db.relationship('Product', foreign_keys=[product_id], backref='recipe_definition')
+    yield_quantity = db.Column(db.Integer, nullable=False, default=1, server_default='1')
+    yield_unit = db.Column(db.String(50), nullable=False, default='pièces', server_default='pièces')
     @property
     def total_cost(self): return sum(ing.cost for ing in self.ingredients)
     @property
