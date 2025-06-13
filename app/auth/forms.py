@@ -9,6 +9,7 @@ class LoginForm(FlaskForm):
     submit = SubmitField('Connexion')
 
 class ChangePasswordForm(FlaskForm):
+    current_password = PasswordField('Mot de passe actuel', validators=[DataRequired()])
     new_password = PasswordField('Nouveau mot de passe', validators=[DataRequired(), Length(min=8)])
     confirm_password = PasswordField('Confirmer le mot de passe', validators=[DataRequired(), EqualTo('new_password')])
     submit = SubmitField('Changer le mot de passe')
