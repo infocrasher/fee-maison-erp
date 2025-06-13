@@ -15,14 +15,25 @@ class OrderItemForm(FlaskForm):
     quantity = IntegerField('Qté', validators=[Optional(), NumberRange(min=1)])
 
 class OrderForm(FlaskForm):
-    order_type = SelectField('Type', choices=[('customer_order', 'Demande Client'), ('counter_production_request', 'Prod. Comptoir')], default='customer_order')
+    # CORRECTIONS DES LABELS
+    order_type = SelectField('Type', choices=[
+        ('customer_order', 'Commande Client'), 
+        ('counter_production_request', 'Prod. Comptoir')
+    ], default='customer_order')
+    
     customer_name = StringField('Nom du client', validators=[Optional(), Length(max=200)])
     customer_phone = StringField('Téléphone', validators=[Optional(), Length(max=20)])
-    customer_address = TextAreaField('Adresse', validators=[Optional()])
+    customer_address = TextAreaField('Adresse de livraison', validators=[Optional()])
     due_date = DateTimeField("Date de livraison/retrait", format='%Y-%m-%dT%H:%M', validators=[DataRequired()])
-    delivery_option = SelectField('Livraison', choices=[('pickup', 'Retrait'), ('delivery', 'Livraison')], default='pickup')
+    
+    # CORRECTION DU LABEL
+    delivery_option = SelectField('Option de retrait', choices=[
+        ('pickup', 'Retrait en magasin'), 
+        ('delivery', 'Livraison à domicile')
+    ], default='pickup')
+    
     delivery_cost = FloatField('Coût de livraison (DA)', default=0.0, validators=[Optional(), NumberRange(min=0)])
-    notes = TextAreaField('Notes', validators=[Optional()])
+    notes = TextAreaField('Notes spéciales', validators=[Optional()])
     items = FieldList(FormField(OrderItemForm), min_entries=1, label="Articles")
     submit = SubmitField('Enregistrer la commande')
 
