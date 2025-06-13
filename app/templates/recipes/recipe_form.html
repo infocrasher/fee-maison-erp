@@ -1,96 +1,66 @@
 {% extends "base.html" %}
-{# L'import est correct, nous le gardons #}
-{% from "_form_macros.html" import render_field with context %}
-
-{% block title %}{{ title or 'Formulaire de Recette' }}{% endblock %}
+{% from "_form_macros.html" import render_field %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="card shadow-sm">
-        <div class="card-header">
-            <h3>{{ title or 'Nouvelle Recette' }}</h3>
-        </div>
-        <div class="card-body">
-            <form method="POST" action="">
-                {{ form.hidden_tag() }}
-                
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        {{ render_field(form.name) }}
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        {{ render_field(form.finished_product, class="form-select") }}
-                    </div>
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">{{ title }}</h3>
                 </div>
+                <div class="card-body">
+                    <form method="POST" novalidate>
+                        {{ form.hidden_tag() }}
 
-                <div class="mb-3">
-                    {{ render_field(form.description, rows=5, placeholder="Listez les étapes de la recette ici...") }}
-                </div>
-
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        {{ render_field(form.yield_quantity) }}
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        {{ render_field(form.yield_unit) }}
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        {{ render_field(form.difficulty_level, class="form-select") }}
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        {{ render_field(form.preparation_time) }}
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        {{ render_field(form.cooking_time) }}
-                    </div>
-                </div>
-
-                <hr class="my-4">
-                
-                <h4 class="mb-3">Ingrédients</h4>
-                
-                <div id="ingredient-list">
-                    {% for ingredient_form in form.ingredients %}
-                    <div class="row ingredient-form-row mb-2 align-items-center">
-                        {# --- CORRECTION APPLIQUÉE ICI : Utilisation de label_visible=false --- #}
-                        <div class="col-md-4">{{ render_field(ingredient_form.product, class="form-select ingredient-select", label_visible=false) }}</div>
-                        <div class="col-md-2">{{ render_field(ingredient_form.quantity_needed, placeholder="Quantité", label_visible=false) }}</div>
-                        <div class="col-md-2">{{ render_field(ingredient_form.unit, placeholder="Unité", label_visible=false) }}</div>
-                        <div class="col-md-3">{{ render_field(ingredient_form.notes, placeholder="Notes", label_visible=false) }}</div>
-                        <div class="col-md-1">
-                            <button type="button" class="btn btn-danger btn-sm remove-ingredient-btn" title="Supprimer l'ingrédient">X</button>
+                        <div class="row">
+                            <div class="col-md-6">{{ render_field(form.name, class="form-control") }}</div>
+                            <div class="col-md-6">{{ render_field(form.finished_product, class="form-control") }}</div>
                         </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                
-                <button type="button" id="add-ingredient-btn" class="btn btn-success btn-sm mt-2">
-                    <i class="bi bi-plus-circle"></i> Ajouter un ingrédient
-                </button>
-                
-                <hr class="my-4">
+                        
+                        {{ render_field(form.description, class="form-control", rows=3) }}
 
-                <div class="d-flex justify-content-end">
-                    <a href="{{ url_for('recipes.list_recipes') }}" class="btn btn-outline-secondary me-2">Annuler</a>
-                    {{ form.submit(class="btn btn-primary") }}
+                        <hr>
+                        <h4>Ingrédients</h4>
+                        
+                        <div id="ingredients-container">
+                            {{ form.ingredients.hidden_tag() }}
+                            {% for subform in form.ingredients %}
+                                <div class="row ingredient-form-row mb-2 align-items-center">
+                                    <div class="col-md-4">{{ render_field(subform.product, class="form-control ingredient-select", label=False) }}</div>
+                                    <div class="col-md-2">{{ render_field(subform.quantity_needed, class="form-control", label=False, placeholder="Qté") }}</div>
+                                    <div class="col-md-2">{{ render_field(subform.unit, class="form-control", label=False, placeholder="Unité") }}</div>
+                                    <div class="col-md-3">{{ render_field(subform.notes, class="form-control", label=False, placeholder="Notes") }}</div>
+                                    <div class="col-md-1">
+                                        <button type="button" class="btn btn-danger btn-sm remove-ingredient-btn" title="Supprimer l'ingrédient">X</button>
+                                    </div>
+                                    {{ subform.id }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <button type="button" id="add-ingredient-btn" class="btn btn-secondary btn-sm mt-2">Ajouter un ingrédient</button>
+                        
+                        <hr>
+                        <div class="form-group text-center">
+                            <a href="{{ url_for('recipes.list_recipes') }}" class="btn btn-outline-secondary">Annuler</a>
+                            {{ form.submit(class="btn btn-primary") }}
+                        </div>
+                    </form>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
 
+<!-- Template pour les nouveaux ingrédients -->
 <template id="ingredient-form-template">
     <div class="row ingredient-form-row mb-2 align-items-center">
         <div class="col-md-4">
-            <select name="ingredients-__INDEX__-product" class="form-select ingredient-select">
-                <option value="" selected>-- Choisir un ingrédient --</option>
-            </select>
+            <select name="ingredients-__INDEX__-product" class="form-control ingredient-select"></select>
         </div>
         <div class="col-md-2">
-            <input type="number" step="any" name="ingredients-__INDEX__-quantity_needed" class="form-control" placeholder="Quantité">
+            <input type="number" step="any" name="ingredients-__INDEX__-quantity_needed" class="form-control" placeholder="Qté">
         </div>
         <div class="col-md-2">
             <input type="text" name="ingredients-__INDEX__-unit" class="form-control" placeholder="Unité">
@@ -103,66 +73,81 @@
         </div>
     </div>
 </template>
+
+<!-- ### CORRECTION ### Données passées via un attribut data-* -->
+<div id="ingredients-data" data-ingredients='{{ ingredient_products_json|tojson|safe }}' style="display: none;"></div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-    const ingredientsData = {{ ingredient_products_json|tojson|safe }};
+document.addEventListener('DOMContentLoaded', function () {
+    // ### CORRECTION ### Lire les données depuis l'attribut data-*
+    const dataElement = document.getElementById('ingredients-data');
+    const ingredientsData = JSON.parse(dataElement.dataset.ingredients);
 
+    const container = document.getElementById('ingredients-container');
+    const addButton = document.getElementById('add-ingredient-btn');
+    const template = document.getElementById('ingredient-form-template');
+    
+    let index = container.querySelectorAll('.ingredient-form-row').length;
+
+    // Fonction pour populer un <select> avec la liste des ingrédients
     function populateSelectWithOptions(selectElement, options, selectedValue = null) {
         const previouslySelected = selectedValue || selectElement.value;
-        selectElement.innerHTML = '<option value="" selected>-- Choisir un ingrédient --</option>';
+        selectElement.innerHTML = '<option value="" selected>--- Choisir un ingrédient ---</option>';
         options.forEach(ingredient => {
             const option = document.createElement('option');
             option.value = ingredient.id;
             option.textContent = `${ingredient.name} (${ingredient.unit || 'N/A'})`;
             selectElement.appendChild(option);
         });
+
         if (previouslySelected) {
             selectElement.value = previouslySelected;
         }
     }
     
-    document.addEventListener('DOMContentLoaded', function() {
-        const ingredientList = document.getElementById('ingredient-list');
-        const addIngredientBtn = document.getElementById('add-ingredient-btn');
-        const templateNode = document.getElementById('ingredient-form-template');
-
-        function updateIndices() {
-            const rows = ingredientList.querySelectorAll('.ingredient-form-row');
-            rows.forEach((row, index) => {
-                row.querySelectorAll('input, select').forEach(input => {
-                    if (input.name) {
-                        const newName = input.name.replace(/ingredients-(__INDEX__|\d+)-/, `ingredients-${index}-`);
-                        input.name = newName;
-                        input.id = newName;
-                    }
-                });
-            });
+    // Fonction pour mettre à jour l'unité auto
+    function updateUnit(selectElement) {
+        const selectedId = parseInt(selectElement.value, 10);
+        const selectedIngredient = ingredientsData.find(p => p.id === selectedId);
+        const row = selectElement.closest('.ingredient-form-row');
+        const unitInput = row.querySelector('input[name*="unit"]');
+        if (unitInput && selectedIngredient) {
+            unitInput.value = selectedIngredient.unit || '';
         }
+    }
 
-        document.querySelectorAll('.ingredient-select').forEach(select => {
-            populateSelectWithOptions(select, ingredientsData);
-        });
-
-        addIngredientBtn.addEventListener('click', function() {
-            const index = ingredientList.children.length;
-            const newRowHtml = templateNode.innerHTML.replace(/__INDEX__/g, index);
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = newRowHtml;
-            const newRow = tempDiv.firstElementChild;
-            
-            ingredientList.appendChild(newRow);
-            populateSelectWithOptions(newRow.querySelector('.ingredient-select'), ingredientsData);
-        });
-
-        ingredientList.addEventListener('click', function(e) {
-            const removeBtn = e.target.closest('.remove-ingredient-btn');
-            if (removeBtn) {
-                removeBtn.closest('.ingredient-form-row').remove();
-                updateIndices();
-            }
-        });
+    // Gérer l'ajout d'un nouvel ingrédient
+    addButton.addEventListener('click', () => {
+        const clone = template.content.cloneNode(true);
+        const newRow = clone.firstElementChild;
+        
+        // Remplacer l'index placeholder
+        newRow.innerHTML = newRow.innerHTML.replace(/__INDEX__/g, index);
+        container.appendChild(newRow);
+        
+        const newSelect = newRow.querySelector('.ingredient-select');
+        populateSelectWithOptions(newSelect, ingredientsData);
+        newSelect.addEventListener('change', () => updateUnit(newSelect));
+        
+        index++;
     });
+
+    // Gérer la suppression d'un ingrédient
+    container.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('remove-ingredient-btn')) {
+            e.target.closest('.ingredient-form-row').remove();
+        }
+    });
+
+    // Initialiser les <select> existants et attacher les listeners
+    container.querySelectorAll('.ingredient-select').forEach(select => {
+        const currentValue = select.value;
+        populateSelectWithOptions(select, ingredientsData, currentValue);
+        select.addEventListener('change', () => updateUnit(select));
+    });
+});
 </script>
 {% endblock %}
