@@ -41,6 +41,7 @@ class TestingConfig(Config):
 
 class ProductionConfig(Config):
     DEBUG = False
+    WTF_CSRF_ENABLED = True
     TESTING = False
     
     # Récupérer les variables d'environnement au niveau de la classe
