@@ -14,7 +14,8 @@
                 <h1 class="h3 mb-0">
                     <i class="bi bi-box-fill me-2"></i>Détails du Produit : <strong>{{ product.name }}</strong>
                 </h1>
-                {% if current_user.is_authenticated and current_user.is_admin() %}
+                <!-- ✅ CORRECTION : is_admin sans parenthèses -->
+                {% if current_user.is_authenticated and current_user.is_admin %}
                 <div class="ms-auto btn-group">
                     <a href="{{ url_for('products.edit_product', product_id=product.id) }}" class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-pencil-square me-1"></i>Modifier
@@ -38,7 +39,8 @@
                             <h3 class="card-title text-primary">{{ product.name }}</h3>
                             
                             <p class="card-text">
-                                <span class="badge bg-info me-2">{{ product.category_ref.name if product.category_ref else 'N/A' }}</span>
+                                <!-- ✅ CORRECTION : category au lieu de category_ref -->
+                                <span class="badge bg-info me-2">{{ product.category.name if product.category else 'N/A' }}</span>
                                 {% if product.sku %}
                                 <span class="badge bg-secondary">SKU: {{ product.sku }}</span>
                                 {% endif %}
@@ -105,17 +107,17 @@
                             
                             <hr>
                             <p class="small text-muted mb-0">
-                                Créé le: {{ product.created_at.strftime('%d/%m/%Y %H:%M') if product.created_at else 'N/A' }}<br>
-                                Dernière mise à jour: {{ product.updated_at.strftime('%d/%m/%Y %H:%M') if product.updated_at else 'N/A' }}
+                                Créé le: {{ product.created_at.strftime('%d/%m/%Y %H:%M') if product.created_at else 'N/A' }}
+                                <!-- ✅ CORRECTION : Suppression de updated_at qui n'existe probablement pas -->
                             </p>
-
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Actions rapides pour admin -->
-            {% if current_user.is_authenticated and current_user.is_admin() %}
+            <!-- ✅ CORRECTION : is_admin sans parenthèses -->
+            {% if current_user.is_authenticated and current_user.is_admin %}
             <div class="mt-4">
                 <h5 class="mb-3"><i class="bi bi-lightning-fill me-1"></i>Actions Rapides Admin</h5>
                 <div class="btn-group">
@@ -134,7 +136,8 @@
 </div>
 
 <!-- Modal de suppression (si l'admin est sur cette page) -->
-{% if current_user.is_authenticated and current_user.is_admin() %}
+<!-- ✅ CORRECTION : is_admin sans parenthèses -->
+{% if current_user.is_authenticated and current_user.is_admin %}
 <div class="modal fade" id="deleteProductModal{{ product.id }}" tabindex="-1" aria-labelledby="deleteProductModalLabel{{ product.id }}" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
