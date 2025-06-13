@@ -10,7 +10,7 @@ def finished_product_query_factory_for_orders():
 
 class OrderItemForm(FlaskForm):
     class Meta:
-        csrf = False  # Désactive CSRF pour chaque item
+        csrf = False  # Désactive CSRF pour les sous-formulaires dynamiques
     product = QuerySelectField('Produit', query_factory=finished_product_query_factory_for_orders, get_label='name', allow_blank=True)
     quantity = IntegerField('Qté', validators=[Optional(), NumberRange(min=1)])
 
@@ -33,11 +33,11 @@ class OrderForm(FlaskForm):
 
         # Validation conditionnelle
         if self.order_type.data == 'customer_order':
-            if not self.customer_name.data or not self.customer_phone.data:
-                if not self.customer_name.data:
-                    self.customer_name.errors.append("Champ requis pour une commande client.")
-                if not self.customer_phone.data:
-                    self.customer_phone.errors.append("Champ requis pour une commande client.")
+            if not self.customer_name.data:
+                self.customer_name.errors.append("Champ requis pour une commande client.")
+                return False
+            if not self.customer_phone.data:
+                self.customer_phone.errors.append("Champ requis pour une commande client.")
                 return False
             if self.delivery_option.data == 'delivery' and not self.customer_address.data:
                 self.customer_address.errors.append("Adresse obligatoire en cas de livraison.")

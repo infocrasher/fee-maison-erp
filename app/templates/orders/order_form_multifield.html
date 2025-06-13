@@ -90,7 +90,62 @@
                     </div>
                 </div>
 
-                {% include "orders/_order_items_fieldlist.html" %}
+                <!-- Bloc articles (FieldList + FormField) intégré ICI -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0"><i class="bi bi-list me-2"></i>Articles Demandés</h5>
+                        <span class="badge bg-primary" id="items-count">{{ form.items|length }} article(s)</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="order-items-container">
+                            <div id="items-container">
+                                {% for subform in form.items %}
+                                    <div class="item-row" data-index="{{ loop.index0 }}">
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                {{ subform.product.label(class="form-label") }}
+                                                {{ subform.product(class="form-select product-select initial-item-select", id="items-{{ loop.index0 }}-product", name="items-{{ loop.index0 }}-product", data_index=loop.index0) }}
+                                                {% for error in subform.product.errors %}
+                                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                {{ subform.quantity.label(class="form-label") }}
+                                                <div class="input-group">
+                                                    {{ subform.quantity(class="form-control quantity-input", min="1", id="items-{{ loop.index0 }}-quantity", name="items-{{ loop.index0 }}-quantity", data_index=loop.index0) }}
+                                                    <span class="input-group-text">unité(s)</span>
+                                                </div>
+                                                {% for error in subform.quantity.errors %}
+                                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                            <div class="col-md-3 mb-3 price-related">
+                                                <label class="form-label">Sous-total Article</label>
+                                                <div class="form-control-plaintext fw-bold text-success item-subtotal" data-index="{{ loop.index0 }}">0.00 DA</div>
+                                                <div class="price-preview" data-index="{{ loop.index0 }}">Prix unit.: <span class="unit-price">0.00</span> DA</div>
+                                            </div>
+                                        </div>
+                                        {% if subform.errors %}
+                                            <div class="row">
+                                                <div class="col-12">
+                                                    {% for fieldname, errors in subform.errors.items() %}
+                                                        {% for error in errors %}
+                                                            <div class="text-danger small mt-1">{{ error }}</div>
+                                                        {% endfor %}
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            <button type="button" class="add-item-btn mt-3" onclick="addItem()">
+                                <i class="bi bi-plus-circle me-2"></i>Ajouter un Produit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- fin du bloc articles -->
 
                 <div class="card mb-4">
                     <div class="card-header"><h5 class="card-title mb-0"><i class="bi bi-chat-text me-2"></i>Notes Spéciales</h5></div>
