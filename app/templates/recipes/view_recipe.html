@@ -110,15 +110,18 @@
                 <ul class="list-group list-group-flush">
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         <span class="info-label">Coût Total Ingrédients:</span>
-                        <span class="info-value fw-bold">{{ "%.2f DA"|format(recipe.current_total_cost_of_ingredients) }}</span>
+                        <!-- ✅ CORRECTION : Utilise recipe.total_cost -->
+                        <span class="info-value fw-bold">{{ "%.2f DA"|format(recipe.total_cost) }}</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         <span class="info-label">Coût / {{ recipe.yield_unit }}:</span>
-                        <span class="info-value fw-bold">{{ "%.2f DA"|format(recipe.current_cost_per_yield_unit) }}</span>
+                        <!-- ✅ CORRECTION : Utilise recipe.cost_per_unit -->
+                        <span class="info-value fw-bold">{{ "%.2f DA"|format(recipe.cost_per_unit) }}</span>
                     </li>
                     
                     {% if recipe.finished_product and recipe.finished_product.price is not none %}
-                        {% set cost_per_yield = recipe.current_cost_per_yield_unit %}
+                        <!-- ✅ CORRECTION : Utilise recipe.cost_per_unit -->
+                        {% set cost_per_yield = recipe.cost_per_unit %}
                         {% set selling_price_per_unit = recipe.finished_product.price %}
                         
                         {% if cost_per_yield > 0 and selling_price_per_unit > 0 %}
@@ -147,6 +150,7 @@
             <div class="card info-card">
                 <div class="card-header"><i class="bi bi-text-left me-2"></i>Description & Instructions</div>
                 <div class="card-body">
+                    <!-- ✅ CORRECTION : nl2br maintenant défini -->
                     {{ recipe.description|nl2br|safe }}
                 </div>
             </div>
@@ -170,8 +174,9 @@
                                 {% for ingredient in recipe.ingredients.all() %}
                                 <tr>
                                     <td>
-                                        {% if ingredient.ingredient_product %}
-                                            <a href="{{ url_for('products.view_product', product_id=ingredient.ingredient_product.id) }}">{{ ingredient.ingredient_product.name }}</a>
+                                        <!-- ✅ CORRECTION : Utilise ingredient.product -->
+                                        {% if ingredient.product %}
+                                            <a href="{{ url_for('products.view_product', product_id=ingredient.product.id) }}">{{ ingredient.product.name }}</a>
                                         {% else %}
                                             <span class="text-muted">Ingrédient supprimé</span>
                                         {% endif %}

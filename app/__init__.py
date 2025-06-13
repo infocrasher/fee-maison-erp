@@ -35,7 +35,13 @@ def create_app(config_name=None):
             # Vous pouvez garder ce nom si vous le préférez
             manual_csrf_token=generate_csrf 
         )
-    
+    @app.template_filter('nl2br')
+    def nl2br_filter(text):
+        """Convertit les retours à la ligne en <br>"""
+        if not text:
+            return text
+        from markupsafe import Markup
+        return Markup(text.replace('\n', '<br>'))
     # Enregistrement des Blueprints
     from app.main.routes import main as main_blueprint
     app.register_blueprint(main_blueprint)
