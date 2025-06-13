@@ -1,5 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, abort
 from flask_login import login_required
+from flask_wtf import FlaskForm
+from wtforms import SubmitField
 from extensions import db
 from models import Recipe, Product, RecipeIngredient
 from .forms import RecipeForm, ingredient_product_query_factory
@@ -8,22 +10,41 @@ import json
 
 recipes = Blueprint('recipes', __name__, url_prefix='/admin/recipes')
 
+# ✅ AJOUT : Classe pour formulaires d'actions rapides
+class QuickActionForm(FlaskForm):
+    delete = SubmitField('Supprimer')
+
 @recipes.route('/')
 @login_required
 @admin_required
 def list_recipes():
+    # ✅ CORRECTION : Créer un formulaire pour CSRF
+    form = QuickActionForm()
+    
     page = request.args.get('page', 1, type=int)
     pagination = Recipe.query.order_by(Recipe.name).paginate(
         page=page, per_page=current_app.config.get('ITEMS_PER_PAGE', 10)
     )
-    return render_template('recipes/list_recipes.html', recipes_pagination=pagination, title='Gestion des Recettes')
+    
+    # ✅ CORRECTION : Ajouter form dans le render_template
+    return render_template('recipes/list_recipes.html', 
+                         recipes_pagination=pagination, 
+                         form=form,  # ← Variable manquante ajoutée
+                         title='Gestion des Recettes')
 
 @recipes.route('/<int:recipe_id>')
 @login_required
 @admin_required
 def view_recipe(recipe_id):
     recipe = db.session.get(Recipe, recipe_id) or abort(404)
-    return render_template('recipes/view_recipe.html', recipe=recipe, title=f"Recette : {recipe.name}")
+    
+    # ✅ Formulaire pour actions du template
+    form = QuickActionForm()
+    
+    return render_template('recipes/view_recipe.html', 
+                         recipe=recipe, 
+                         form=form,
+                         title=f"Recette : {recipe.name}")
 
 @recipes.route('/new', methods=['GET', 'POST'])
 @login_required
@@ -44,7 +65,6 @@ def new_recipe():
 
     if form.validate_on_submit():
         try:
-            # ✅ CORRECTION : Mapping du champ 'finished_product' vers 'product_id'
             recipe = Recipe(
                 name=form.name.data,
                 description=form.description.data,
@@ -100,7 +120,6 @@ def edit_recipe(recipe_id):
 
     if form.validate_on_submit():
         try:
-            # ✅ CORRECTION : Mapping du champ 'finished_product' vers 'product_id'
             recipe.name = form.name.data
             recipe.description = form.description.data
             recipe.yield_quantity = form.yield_quantity.data
@@ -133,7 +152,6 @@ def edit_recipe(recipe_id):
         flash("Le formulaire contient des erreurs. Veuillez les corriger.", "danger")
         current_app.logger.warning(f"Erreurs de validation du formulaire de recette (edit {recipe_id}): {form.errors}")
     
-    # ✅ CORRECTION : Pré-remplissage du champ finished_product
     if request.method == 'GET':
         form.finished_product.data = recipe.product_id
         
