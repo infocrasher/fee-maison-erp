@@ -122,7 +122,7 @@
                                 {{ form.delivery_option(class="form-select" + (" is-invalid" if form.delivery_option.errors else ""), id="delivery_option") }}
                                 {% if form.delivery_option.errors %}<div class="invalid-feedback d-block">{% for error in form.delivery_option.errors %}{{ error }}{% endfor %}</div>{% endif %}
                             </div>
-                            <div class="col-md-6 mb-3" id="due_date_wrapper_div"> 
+<div class="col-md-6 mb-3" id="due_date_wrapper_div"> 
     {{ form.due_date.label(class="form-label") }}
     {{ form.due_date(class="form-control" + (" is-invalid" if form.due_date.errors else ""), id="due_date", type="datetime-local") }}
     {% if form.due_date.errors %}
