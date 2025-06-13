@@ -11,6 +11,8 @@ class Config:
     POSTS_PER_PAGE = 10
     ORDERS_PER_PAGE = 10
     PRODUCTS_PER_PAGE = 10
+    WTF_CSRF_ENABLED = True
+    WTF_CSRF_TIME_LIMIT = 3600
 
 class DevelopmentConfigSQLite(Config):
     DEBUG = True
