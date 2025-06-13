@@ -7,7 +7,7 @@ from models import Recipe, Product, RecipeIngredient
 from .forms import RecipeForm, ingredient_product_query_factory
 from decorators import admin_required
 
-recipes = Blueprint('recipes', __name__)
+recipes = Blueprint('recipes', __name__, url_prefix='/admin/recipes') # J'ajoute un préfixe pour la clarté
 
 @recipes.route('/')
 @login_required
@@ -30,37 +30,36 @@ def view_recipe(recipe_id):
 def new_recipe():
     form = RecipeForm()
     
-    # ### AJOUT : Préparation des données pour le JSON ###
-    # On récupère tous les ingrédients possibles pour les passer au template.
-    # On les transforme en une liste de dictionnaires pour être sérialisables en JSON.
-    # C'est la correction clé pour le JavaScript du formulaire.
+    # ### MODIFICATION : On ajoute le cost_price au JSON ###
     all_ingredients = ingredient_product_query_factory().all()
     ingredients_json = [
-        {'id': p.id, 'name': p.name, 'unit': p.unit} 
+        {
+            'id': p.id, 
+            'name': p.name, 
+            'unit': p.unit, 
+            # On convertit le Decimal en float pour le JSON
+            'cost_price': float(p.cost_price) if p.cost_price is not None else 0.0 
+        } 
         for p in all_ingredients
     ]
 
     if form.validate_on_submit():
         try:
             recipe = Recipe()
-            # On ne populate que les champs simples, pas le FieldList directement
             form.populate_obj(recipe)
             recipe.finished_product = form.finished_product.data
             
             db.session.add(recipe)
-            db.session.flush() # flush pour obtenir l'ID de la recette
+            db.session.flush()
 
-            # Traitement explicite des ingrédients
-            recipe.ingredients = [] # Assure que la liste est vide avant ajout
+            recipe.ingredients = []
             for item_data in form.ingredients.data:
-                # On s'assure que l'ingrédient et la quantité sont bien présents
                 if item_data.get('product') and item_data.get('quantity_needed') is not None:
-                    # 'product' est déjà un objet Product grâce à WTForms, on peut l'utiliser directement
                     ingredient = RecipeIngredient(
                         recipe_id=recipe.id,
                         product_id=item_data['product'].id,
                         quantity_needed=item_data['quantity_needed'],
-                        unit=item_data['unit'],
+                        unit=item_data['unit'], # L'unité est celle saisie (ex: G ou ML)
                         notes=item_data['notes']
                     )
                     db.session.add(ingredient)
@@ -71,8 +70,13 @@ def new_recipe():
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f"Erreur lors de la création de la recette: {e}", exc_info=True)
-            flash(f"Erreur inattendue lors de la création de la recette. Consulter les logs.", 'danger')
+            flash(f"Erreur inattendue lors de la création. Consulter les logs.", 'danger')
     
+    # Gérer les erreurs de validation pour le débogage
+    if form.errors:
+        flash("Le formulaire contient des erreurs. Veuillez les corriger.", "danger")
+        current_app.logger.warning(f"Erreurs de validation du formulaire de recette : {form.errors}")
+
     if request.method == 'GET' and not form.ingredients.entries:
         form.ingredients.append_entry()
         
@@ -80,10 +84,11 @@ def new_recipe():
         'recipes/recipe_form.html', 
         form=form, 
         title='Nouvelle Recette',
-        # ### AJOUT : Passage des données JSON au template ###
         ingredient_products_json=ingredients_json
     )
 
+
+# La route edit_recipe doit aussi être mise à jour de la même manière pour le JSON
 @recipes.route('/<int:recipe_id>/edit', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -91,28 +96,31 @@ def edit_recipe(recipe_id):
     recipe = db.session.get(Recipe, recipe_id) or abort(404)
     form = RecipeForm(obj=recipe)
     
-    # ### AJOUT : Préparation des données pour le JSON (identique à new_recipe) ###
+    # ### MODIFICATION : On ajoute le cost_price au JSON (identique à new_recipe) ###
     all_ingredients = ingredient_product_query_factory().all()
-    # On ajoute le produit fini de la recette actuelle à la liste des choix, au cas où on voudrait le modifier
+    ingredients_json = [
+        {
+            'id': p.id, 
+            'name': p.name, 
+            'unit': p.unit, 
+            'cost_price': float(p.cost_price) if p.cost_price is not None else 0.0
+        }
+        for p in all_ingredients
+    ]
+    
+    # Logique pour le champ select du produit fini
     if recipe.finished_product:
         form.finished_product.query = Product.query.filter_by(product_type='finished').filter((Product.recipe_definition == None) | (Product.id == recipe.product_id)).order_by(Product.name)
 
-    ingredients_json = [
-        {'id': p.id, 'name': p.name, 'unit': p.unit}
-        for p in all_ingredients
-    ]
-
     if form.validate_on_submit():
         try:
-            # Vider les anciens ingrédients
-            for item in recipe.ingredients:
-                db.session.delete(item)
+            # Vider et reconstruire proprement
+            RecipeIngredient.query.filter_by(recipe_id=recipe.id).delete()
             db.session.flush()
 
             form.populate_obj(recipe)
             recipe.finished_product = form.finished_product.data
             
-            # Ajouter les nouveaux
             for item_data in form.ingredients.data:
                  if item_data.get('product') and item_data.get('quantity_needed') is not None:
                     ingredient = RecipeIngredient(
@@ -130,25 +138,20 @@ def edit_recipe(recipe_id):
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f"Erreur lors de la mise à jour: {e}", exc_info=True)
-            flash(f"Erreur inattendue lors de la mise à jour. Consulter les logs.", 'danger')
+            flash(f"Erreur inattendue lors de la mise à jour.", 'danger')
 
-    if request.method == 'GET':
-        # Re-populer le formulaire avec les données existantes
-        form.process(obj=recipe)
-        # Vider et re-remplir les ingrédients manuellement pour être sûr
-        while len(form.ingredients.entries) > 0:
-            form.ingredients.pop_entry()
-        for item in recipe.ingredients:
-            form.ingredients.append_entry(item)
+    if form.errors:
+        flash("Le formulaire contient des erreurs. Veuillez les corriger.", "danger")
+        current_app.logger.warning(f"Erreurs de validation du formulaire de recette (edit) : {form.errors}")
     
     return render_template(
         'recipes/recipe_form.html', 
         form=form, 
         title=f"Modifier Recette: {recipe.name}", 
         edit_mode=True,
-        # ### AJOUT : Passage des données JSON au template ###
         ingredient_products_json=ingredients_json
     )
+
 
 @recipes.route('/<int:recipe_id>/delete', methods=['POST'])
 @login_required
@@ -162,5 +165,5 @@ def delete_recipe(recipe_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Erreur lors de la suppression de la recette {recipe_id}: {e}", exc_info=True)
-        flash(f"Erreur lors de la suppression de la recette. Elle est peut-être utilisée ailleurs.", 'danger')
+        flash(f"Erreur lors de la suppression de la recette.", 'danger')
     return redirect(url_for('recipes.list_recipes'))
