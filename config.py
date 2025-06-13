@@ -16,6 +16,7 @@ class Config:
 
 class DevelopmentConfigSQLite(Config):
     DEBUG = True
+    WTF_CSRF_ENABLED = True
     SQLITE_DB_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'fee_maison.db')
     SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL_SQLITE') or \
         f'sqlite:///{SQLITE_DB_PATH}'
