@@ -99,9 +99,50 @@ class RecipeIngredient(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     product = db.relationship('Product', backref='recipe_uses')
     
+    def _convert_unit_cost(self):
+        """Convertit le coût unitaire selon les unités utilisées"""
+        if not self.product or not self.product.cost_price:
+            return Decimal('0.0')
+            
+        product_unit = self.product.unit.upper()
+        recipe_unit = self.unit.upper()
+        base_cost = Decimal(self.product.cost_price)
+        
+        # Si même unité, pas de conversion
+        if product_unit == recipe_unit:
+            return base_cost
+        
+        # ✅ CORRECTION : Conversions courantes avec les résultats du test
+        conversions = {
+            # De KG vers G : 1 KG coûte X, donc 1 G coûte X/1000
+            ('KG', 'G'): base_cost / 1000,
+            # De L vers ML : 1 L coûte X, donc 1 ML coûte X/1000
+            ('L', 'ML'): base_cost / 1000,
+            # Conversions inverses si nécessaire
+            ('G', 'KG'): base_cost * 1000,
+            ('ML', 'L'): base_cost * 1000,
+            # Autres conversions possibles
+            ('KG', 'MG'): base_cost / 1000000,
+            ('L', 'CL'): base_cost / 100,
+        }
+        
+        conversion_key = (product_unit, recipe_unit)
+        if conversion_key in conversions:
+            return conversions[conversion_key]
+        
+        # Si pas de conversion trouvée, log une erreur et utilise le prix de base
+        print(f"⚠️ Conversion non trouvée: {product_unit} → {recipe_unit} pour {self.product.name}")
+        return base_cost
+    
     @property
     def cost(self):
-        return Decimal(self.quantity_needed) * Decimal(self.product.cost_price) if self.product and self.product.cost_price else Decimal('0.0')
+        """Calcule le coût de cet ingrédient avec conversion d'unités"""
+        if not self.product or not self.product.cost_price:
+            return Decimal('0.0')
+        
+        # ✅ CORRECTION : Utilise la conversion d'unités
+        converted_cost_per_unit = self._convert_unit_cost()
+        return Decimal(self.quantity_needed) * converted_cost_per_unit
     
     def __repr__(self):
         return f'<RecipeIngredient {self.quantity_needed} {self.unit} of {self.product.name if self.product else "Unknown"}>'
