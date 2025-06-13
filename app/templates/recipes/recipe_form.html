@@ -5,93 +5,123 @@
 
 {% block content %}
 <div class="container-fluid mt-4">
-    <div class="card shadow-sm">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h3>{{ title or 'Nouvelle Recette' }}</h3>
-            <h4 class="mb-0">Coût Total: <strong id="total-recipe-cost" class="text-primary">0.00 DA</strong></h4>
-        </div>
-        <div class="card-body">
-            <form method="POST" action="" novalidate>
-                {{ form.hidden_tag() }}
-
-                <div class="row">
-                    <div class="col-md-6 mb-3">{{ render_field(form.name, class="form-control") }}</div>
-                    <div class="col-md-6 mb-3">{{ render_field(form.finished_product, class="form-select") }}</div>
+    <form method="POST" action="" novalidate>
+        {{ form.hidden_tag() }}
+        <div class="card shadow-sm">
+            <!-- ================================================================== -->
+            <!-- EN-TETE AVEC ACTIONS ET RESUME DES COUTS (STYLE ODOO)            -->
+            <!-- ================================================================== -->
+            <div class="card-header bg-light p-3">
+                <div class="d-flex flex-wrap justify-content-between align-items-center">
+                    <h3 class="mb-2 me-3">{{ title }}</h3>
+                    <div class="d-flex flex-wrap align-items-center">
+                        
+                        <!-- WIDGET DE COUT TOTAL -->
+                        <div class="stat-item me-4 mb-2">
+                            <span class="text-muted d-block" style="font-size: 0.8rem;">Coût Total Recette</span>
+                            <h4 id="total-recipe-cost" class="mb-0 text-primary fw-bold">0.00 DA</h4>
+                        </div>
+                        
+                        <!-- WIDGET DE COUT PAR UNITE -->
+                        <div class="stat-item me-4 mb-2">
+                            <span class="text-muted d-block" style="font-size: 0.8rem;">Coût par Unité</span>
+                            <h4 id="cost-per-unit" class="mb-0 text-success fw-bold">0.00 DA</h4>
+                        </div>
+                        
+                        <!-- BOUTONS D'ACTION PRINCIPAUX -->
+                        <div class="d-flex justify-content-end mb-2">
+                            <a href="{{ url_for('recipes.list_recipes') }}" class="btn btn-outline-secondary me-2">Annuler</a>
+                            {{ form.submit(class="btn btn-primary px-4") }}
+                        </div>
+                    </div>
                 </div>
-                <div class="mb-3">{{ render_field(form.description, class="form-control", rows=4, placeholder="Listez les étapes...") }}</div>
+            </div>
+
+            <!-- ================================================================== -->
+            <!-- CORPS DU FORMULAIRE                                              -->
+            <!-- ================================================================== -->
+            <div class="card-body p-4">
                 
-                <hr class="my-4">
-                
-                <h4 class="mb-3">Ingrédients</h4>
-                
+                <!-- Section Informations Générales et Rendement -->
+                <div class="row">
+                    <div class="col-md-6">{{ render_field(form.name, placeholder="Ex: Msamen Traditionnel") }}</div>
+                    <div class="col-md-6">{{ render_field(form.finished_product, class="form-select") }}</div>
+                </div>
+                <div class="row align-items-end">
+                    <div class="col-md-4">{{ render_field(form.yield_quantity, type="number", attrs={'min': '1'}) }}</div>
+                    <div class="col-md-4">{{ render_field(form.yield_unit, placeholder="Ex: pièces, portions, gâteaux") }}</div>
+                </div>
+                <div class="mb-4">{{ render_field(form.description, rows=3, placeholder="Instructions, notes de préparation, astuces...") }}</div>
+
+                <hr>
+
+                <!-- Section Ingrédients -->
+                <h4 class="mb-3">Liste des Ingrédients</h4>
                 <div id="ingredient-list">
-                    <div class="row fw-bold d-none d-md-flex mb-2">
+                    <!-- En-têtes de la table d'ingrédients -->
+                    <div class="row fw-bold text-muted d-none d-md-flex mb-2 gx-2">
                         <div class="col-md-4">Ingrédient</div>
-                        <div class="col-md-2">Quantité</div>
-                        <div class="col-md-2">Unité (G, ML...)</div>
-                        <div class="col-md-2">Coût</div>
-                        <div class="col-md-1">Notes</div>
+                        <div class="col-md-2">Quantité Requise</div>
+                        <div class="col-md-2">Unité</div>
+                        <div class="col-md-3">Coût de la ligne</div>
                         <div class="col-md-1"></div>
                     </div>
-
+                    <!-- Lignes d'ingrédients générées par Jinja (pour l'édition) -->
                     {% for ingredient_form in form.ingredients %}
-                    <div class="row ingredient-form-row mb-2 align-items-center">
-                        <!-- ### CORRECTION FINALE : Utilisation correcte de la macro améliorée ### -->
+                    <div class="row ingredient-form-row mb-2 align-items-center gx-2">
                         <div class="col-md-4">{{ render_field(ingredient_form.product, label_visible=false, class="form-select ingredient-select") }}</div>
-                        <div class="col-md-2">{{ render_field(ingredient_form.quantity_needed, label_visible=false, class="form-control quantity-input", placeholder="Quantité", type="number", attrs={'step': 'any'}) }}</div>
+                        <div class="col-md-2">{{ render_field(ingredient_form.quantity_needed, label_visible=false, class="form-control quantity-input", placeholder="Qté", type="number", attrs={'step': 'any', 'min': '0'}) }}</div>
                         <div class="col-md-2">{{ render_field(ingredient_form.unit, label_visible=false, class="form-control unit-input", placeholder="Unité") }}</div>
-                        <div class="col-md-2"><span class="ingredient-cost fw-bold">0.00 €</span></div>
-                        <div class="col-md-1">{{ render_field(ingredient_form.notes, label_visible=false, class="form-control", placeholder="Notes") }}</div>
-                        <div class="col-md-1">
-                            <button type="button" class="btn btn-danger btn-sm remove-ingredient-btn" title="Supprimer l'ingrédient">X</button>
-                        </div>
+                        <div class="col-md-3"><span class="ingredient-cost fw-bold ps-2">0.00 DA</span></div>
+                        <div class="col-md-1 text-end"><button type="button" class="btn btn-sm btn-outline-danger remove-ingredient-btn" title="Supprimer">X</button></div>
                     </div>
                     {% endfor %}
                 </div>
-                
-                <button type="button" id="add-ingredient-btn" class="btn btn-success btn-sm mt-2">
-                    <i class="bi bi-plus-circle"></i> Ajouter un ingrédient
-                </button>
-                
-                <hr class="my-4">
-
-                <div class="d-flex justify-content-end">
-                    <a href="{{ url_for('recipes.list_recipes') }}" class="btn btn-outline-secondary me-2">Annuler</a>
-                    {{ form.submit(class="btn btn-primary") }}
-                </div>
-            </form>
+                <button type="button" id="add-ingredient-btn" class="btn btn-success btn-sm mt-2"><i class="bi bi-plus-circle"></i> Ajouter un ingrédient</button>
+            </div>
         </div>
-    </div>
+    </form>
 </div>
 
+<!-- ================================================================== -->
+<!-- TEMPLATE JAVASCRIPT POUR LES NOUVELLES LIGNES                    -->
+<!-- ================================================================== -->
 <template id="ingredient-form-template">
-    <!-- Le template JS n'utilise pas la macro, donc il est déjà correct -->
-    <div class="row ingredient-form-row mb-2 align-items-center">
+    <div class="row ingredient-form-row mb-2 align-items-center gx-2">
         <div class="col-md-4"><select name="ingredients-__INDEX__-product" class="form-select ingredient-select"></select></div>
-        <div class="col-md-2"><input type="number" step="any" name="ingredients-__INDEX__-quantity_needed" class="form-control quantity-input" placeholder="Quantité"></div>
+        <div class="col-md-2"><input type="number" step="any" min="0" name="ingredients-__INDEX__-quantity_needed" class="form-control quantity-input" placeholder="Qté"></div>
         <div class="col-md-2"><input type="text" name="ingredients-__INDEX__-unit" class="form-control unit-input" placeholder="Unité"></div>
-        <div class="col-md-2"><span class="ingredient-cost fw-bold">0.00 €</span></div>
-        <div class="col-md-1"><input type="text" name="ingredients-__INDEX__-notes" class="form-control" placeholder="Notes"></div>
-        <div class="col-md-1"><button type="button" class="btn btn-danger btn-sm remove-ingredient-btn" title="Supprimer">X</button></div>
+        <div class="col-md-3"><span class="ingredient-cost fw-bold ps-2">0.00 DA</span></div>
+        <div class="col-md-1 text-end"><button type="button" class="btn btn-sm btn-outline-danger remove-ingredient-btn" title="Supprimer">X</button></div>
     </div>
 </template>
 
+<!-- ================================================================== -->
+<!-- DONNEES SERVEUR POUR JAVASCRIPT                                  -->
+<!-- ================================================================== -->
 <div id="ingredients-data" data-ingredients='{{ ingredient_products_json|tojson|safe }}' style="display: none;"></div>
 {% endblock %}
 
 {% block scripts %}
-{# Le bloc scripts est identique à la proposition précédente, il est déjà correct #}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // --- Initialisation des éléments du DOM ---
     const dataElement = document.getElementById('ingredients-data');
     const ingredientsData = JSON.parse(dataElement.dataset.ingredients);
     const ingredientList = document.getElementById('ingredient-list');
     const addButton = document.getElementById('add-ingredient-btn');
     const template = document.getElementById('ingredient-form-template');
+    
+    // --- Éléments d'affichage des coûts ---
     const totalCostElement = document.getElementById('total-recipe-cost');
+    const costPerUnitElement = document.getElementById('cost-per-unit');
+    const yieldQuantityInput = document.getElementById('yield_quantity');
 
+    // --- Configuration ---
     const conversionFactors = { 'KG': 1000, 'L': 1000 };
+    const currency = 'DA';
 
+    // --- Fonctions de calcul ---
     function calculateAllCosts() {
         let totalRecipeCost = 0;
         ingredientList.querySelectorAll('.ingredient-form-row').forEach(row => {
@@ -103,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const productId = parseInt(productSelect.value, 10);
             const quantity = parseFloat(quantityInput.value);
             const unit = unitInput.value.toUpperCase();
-
+            
             let rowCost = 0;
             if (productId && !isNaN(quantity) && quantity > 0) {
                 const productData = ingredientsData.find(p => p.id === productId);
@@ -111,33 +141,38 @@ document.addEventListener('DOMContentLoaded', function () {
                     const baseUnit = productData.unit.toUpperCase();
                     const basePrice = productData.cost_price;
                     
-                    if (conversionFactors[baseUnit]) {
+                    if (conversionFactors[baseUnit]) { // Cas KG/L
                         const factor = conversionFactors[baseUnit];
                         if ((unit === 'G' && baseUnit === 'KG') || (unit === 'ML' && baseUnit === 'L')) {
                             rowCost = (quantity / factor) * basePrice;
-                        } else {
+                        } else { // Si l'unité est la même (ex: KG et KG)
                             rowCost = quantity * basePrice; 
                         }
-                    } else {
-                         if (unit === productData.unit.toUpperCase()) {
-                            rowCost = quantity * basePrice;
-                         }
+                    } else if (unit === baseUnit) { // Cas "pièces" ou autre
+                        rowCost = quantity * basePrice;
                     }
                 }
             }
-            costElement.textContent = rowCost.toFixed(3) + ' €';
+            costElement.textContent = rowCost.toFixed(2) + ' ' + currency;
             totalRecipeCost += rowCost;
         });
-        totalCostElement.textContent = totalRecipeCost.toFixed(2) + ' €';
+        
+        totalCostElement.textContent = totalRecipeCost.toFixed(2) + ' ' + currency;
+        
+        // Calcul du coût par pièce
+        const yieldQty = parseInt(yieldQuantityInput.value, 10) || 1;
+        const costPerUnit = (yieldQty > 0) ? (totalRecipeCost / yieldQty) : 0;
+        costPerUnitElement.textContent = costPerUnit.toFixed(2) + ' ' + currency;
     }
 
+    // --- Fonctions utilitaires pour le formulaire ---
     function populateSelectWithOptions(selectElement, options, selectedValue = null) {
         const previouslySelected = selectedValue || selectElement.value;
-        selectElement.innerHTML = '<option value="" selected>-- Choisir --</option>';
+        selectElement.innerHTML = '<option value="" selected>-- Choisir un ingrédient --</option>';
         options.forEach(p => {
             const option = document.createElement('option');
             option.value = p.id;
-            option.textContent = `${p.name} (${p.cost_price.toFixed(2)}€ / ${p.unit})`;
+            option.textContent = `${p.name} (${p.cost_price.toFixed(2)} ${currency} / ${p.unit})`;
             selectElement.appendChild(option);
         });
         if (previouslySelected) selectElement.value = previouslySelected;
@@ -148,6 +183,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const row = selectElement.closest('.ingredient-form-row');
         const unitInput = row.querySelector('.unit-input');
         const productData = ingredientsData.find(p => p.id === productId);
+        
         if (productData) {
             const baseUnit = productData.unit.toUpperCase();
             if (baseUnit === 'KG') unitInput.value = 'G';
@@ -184,6 +220,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // --- Ajout de ligne ---
     addButton.addEventListener('click', () => {
         let index = ingredientList.querySelectorAll('.ingredient-form-row').length;
         const newRowHtml = template.innerHTML.replace(/__INDEX__/g, index);
@@ -198,14 +235,18 @@ document.addEventListener('DOMContentLoaded', function () {
         updateIndices();
     });
     
-    // Initialisation
+    // --- Initialisation au chargement de la page ---
     ingredientList.querySelectorAll('.ingredient-form-row').forEach(row => {
         const select = row.querySelector('.ingredient-select');
         const currentValue = select.value;
         populateSelectWithOptions(select, ingredientsData, currentValue);
         addRowEventListeners(row);
     });
+    
+    // Listener sur le champ de rendement principal
+    yieldQuantityInput.addEventListener('input', calculateAllCosts);
 
+    // Calcul initial
     calculateAllCosts();
 });
 </script>
