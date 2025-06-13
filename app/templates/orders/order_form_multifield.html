@@ -1,91 +1,32 @@
 {% extends "base.html" %}
-
-{% block title %}{{ title }} - Fée Maison{% endblock %}
-
-{% block head %}
-{{ super() }}
-<style>
-    .order-items-container { background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0; }
-    .item-row { background: white; border: 1px solid #dee2e6; border-radius: 6px; padding: 15px; margin-bottom: 10px; position: relative; }
-    .item-row:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    .remove-item-btn { position: absolute; top: 10px; right: 10px; }
-    .add-item-btn { width: 100%; border: 2px dashed #28a745; background: transparent; color: #28a745; padding: 15px; border-radius: 6px; transition: all 0.3s ease; }
-    .add-item-btn:hover { background: #28a745; color: white; }
-    .order-summary { background: #e3f2fd; border-radius: 8px; padding: 20px; margin-top: 20px; }
-    .price-preview { font-size: 0.9rem; color: #6c757d; margin-top: 5px; }
-    .context-info { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 20px; }
-    .is-invalid + .input-group-text { border-color: #dc3545; }
-</style>
-{% endblock %}
-
 {% block content %}
 <div class="container-fluid">
     <div class="row justify-content-center">
         <div class="col-lg-10">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="h3 mb-0"><i class="bi bi-{% if edit_mode %}pencil-square{% else %}cart-plus{% endif %} me-2"></i>{{ title }}</h1>
+                <h1 class="h3 mb-0"><i class="bi bi-cart-plus me-2"></i>Nouvelle Commande</h1>
                 <a href="{{ url_for('orders.list_orders') }}" class="btn btn-outline-secondary"><i class="bi bi-list me-1"></i>Liste Demandes</a>
             </div>
 
-            {% if edit_mode and order %}
-            <div class="context-info">
-                <i class="bi bi-info-circle me-2"></i>
-                <strong>Modification :</strong> Demande #{{ order.id }} ({{ order.get_order_type_display() }}) créée le {{ order.order_date.strftime('%d/%m/%Y à %H:%M') }}. Statut: <strong>{{ order.get_status_display() }}</strong>.
-            </div>
-            {% elif not edit_mode %}
-            <div class="alert alert-info mb-4" role="alert"><i class="bi bi-info-circle me-2"></i><strong>Nouvelle demande :</strong> Saisissez les informations et ajoutez les produits.</div>
-            {% endif %}
-
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            {% for field, errors in form.errors.items() %}
+                {% for error in errors %}
+                    <div class="alert alert-danger" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ form[field].label.text if field in form else field }}: {{ error }}
                     </div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-
-            {% if form.errors %}
-                {% for field_name, field_errors in form.errors.items() %}
-                    {% if field_name == 'items' and field_errors %}
-                        {% for error in field_errors %}<div class="alert alert-danger" role="alert"><i class="bi bi-exclamation-triangle-fill me-2"></i> Articles: {{ error }}</div>{% endfor %}
-                    {% elif field_name not in ['csrf_token', 'items'] and not (form[field_name] is defined and form[field_name].label is defined) %}
-                        {% for error in field_errors %}<div class="alert alert-danger" role="alert"><i class="bi bi-exclamation-triangle-fill me-2"></i> {{ error }}</div>{% endfor %}
-                    {% endif %}
                 {% endfor %}
-            {% endif %}
+            {% endfor %}
 
             <form method="POST" id="order-form">
                 {{ form.hidden_tag() }}
-                
+
                 <div class="card mb-4">
                     <div class="card-header"><h5 class="card-title mb-0"><i class="bi bi-tag me-2"></i>Type de Demande</h5></div>
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-6">
-                                {{ form.order_type.label(class="form-label") }}
-                                {{ form.order_type(class="form-select" + (" is-invalid" if form.order_type.errors else ""), id="order_type") }}
-                                {% if form.order_type.errors %}<div class="invalid-feedback d-block">{% for error in form.order_type.errors %}{{ error }}{% endfor %}</div>{% endif %}
+                                {{ form.order_type.label(class="form-label", id="order_type_label") }}
+                                {{ form.order_type(class="form-select", id="order_type") }}
                             </div>
-                            {% if edit_mode and order %}
-                            <div class="col-md-6">
-                                <label class="form-label">Statut Actuel</label>
-                                <div class="form-control-plaintext">
-                                    {% set status_class = 'secondary' %}
-                                    {% if order.status == 'completed' %}{% set status_class = 'success' %}
-                                    {% elif order.status == 'pending' %}{% set status_class = 'warning text-dark' %}
-                                    {% elif order.status == 'ready_at_shop' %}{% set status_class = 'info text-dark' %}
-                                    {% elif order.status == 'out_for_delivery' %}{% set status_class = 'primary' %}
-                                    {% elif order.status == 'awaiting_payment' %}{% set status_class = 'orange' %} 
-                                    {% elif order.status == 'cancelled' %}{% set status_class = 'danger' %}
-                                    {% endif %}
-                                    <span class="badge bg-{{ status_class }}">{{ order.get_status_display() }}</span>
-                                    <small class="text-muted ms-2"><a href="{{ url_for('orders.edit_order_status', order_id=order.id) }}" class="text-decoration-none"><i class="bi bi-pencil me-1"></i>Modifier le statut</a></small>
-                                </div>
-                            </div>
-                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -96,18 +37,24 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 {{ form.customer_name.label(class="form-label") }}
-                                {{ form.customer_name(class="form-control" + (" is-invalid" if form.customer_name.errors else ""), id="customer_name_input") }}
-                                {% if form.customer_name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endif %}
+                                {{ form.customer_name(class="form-control" + (' is-invalid' if form.customer_name.errors else ""), id="customer_name_input") }}
+                                {% for error in form.customer_name.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
                             </div>
                             <div class="col-md-6 mb-3">
                                 {{ form.customer_phone.label(class="form-label") }}
-                                {{ form.customer_phone(class="form-control" + (" is-invalid" if form.customer_phone.errors else ""), placeholder="Ex: 0555123456", id="customer_phone_input") }}
-                                {% if form.customer_phone.errors %}<div class="invalid-feedback d-block">{% for error in form.customer_phone.errors %}{{ error }}{% endfor %}</div>{% endif %}
+                                {{ form.customer_phone(class="form-control" + (' is-invalid' if form.customer_phone.errors else ""), id="customer_phone_input") }}
+                                {% for error in form.customer_phone.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
                             </div>
                             <div class="col-12" id="customer_address_wrapper">
                                 {{ form.customer_address.label(class="form-label") }}
-                                {{ form.customer_address(class="form-control" + (" is-invalid" if form.customer_address.errors else ""), rows=2, placeholder="Adresse complète...", id="customer_address_input") }}
-                                {% if form.customer_address.errors %}<div class="invalid-feedback d-block">{% for error in form.customer_address.errors %}{{ error }}{% endfor %}</div>{% endif %}
+                                {{ form.customer_address(class="form-control" + (' is-invalid' if form.customer_address.errors else ""), id="customer_address_input", placeholder="Adresse complète...") }}
+                                {% for error in form.customer_address.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
                             </div>
                         </div>
                     </div>
@@ -119,86 +66,37 @@
                         <div class="row">
                             <div class="col-md-6 mb-3" id="delivery_option_wrapper_div">
                                 {{ form.delivery_option.label(class="form-label") }}
-                                {{ form.delivery_option(class="form-select" + (" is-invalid" if form.delivery_option.errors else ""), id="delivery_option") }}
-                                {% if form.delivery_option.errors %}<div class="invalid-feedback d-block">{% for error in form.delivery_option.errors %}{{ error }}{% endfor %}</div>{% endif %}
+                                {{ form.delivery_option(class="form-select", id="delivery_option") }}
                             </div>
-<div class="col-md-6 mb-3" id="due_date_wrapper_div"> 
-    {{ form.due_date.label(class="form-label") }}
-    {{ form.due_date(class="form-control" + (" is-invalid" if form.due_date.errors else ""), id="due_date", type="datetime-local") }}
-    {% if form.due_date.errors %}
-        <div class="invalid-feedback d-block">
-            {% for error in form.due_date.errors %}
-                {{ error }}
-            {% endfor %}
-        </div>
-    {% endif %}
-    <div class="form-text">Date et heure prévues.</div>
-</div>
+                            <div class="col-md-6 mb-3" id="due_date_wrapper_div">
+                                {{ form.due_date.label(class="form-label") }}
+                                {{ form.due_date(class="form-control" + (" is-invalid" if form.due_date.errors else ""), id="due_date", type="datetime-local") }}
+                                {% if form.due_date.errors %}
+                                    <div class="invalid-feedback d-block">{% for error in form.due_date.errors %}{{ error }}{% endfor %}</div>
+                                {% endif %}
+                                <div class="form-text">Date et heure prévues.</div>
+                            </div>
                             <div class="col-md-6 mb-3 price-related" id="delivery_cost_field_wrapper_div">
                                 {{ form.delivery_cost.label(class="form-label") }}
                                 <div class="input-group">
-                                    {{ form.delivery_cost(class="form-control" + (" is-invalid" if form.delivery_cost.errors else ""), step="0.01", placeholder="0.00", id="delivery_cost") }}
+                                    {{ form.delivery_cost(class="form-control" + (' is-invalid' if form.delivery_cost.errors else ""), id="delivery_cost", step="0.01") }}
                                     <span class="input-group-text">DA</span>
                                 </div>
-                                {% if form.delivery_cost.errors %}<div class="invalid-feedback d-block">{% for error in form.delivery_cost.errors %}{{ error }}{% endfor %}</div>{% endif %}
+                                {% for error in form.delivery_cost.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="card mb-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0"><i class="bi bi-list me-2"></i>Articles Demandés</h5>
-                        <span class="badge bg-primary" id="items-count">0 article(s)</span>
-                    </div>
-                    <div class="card-body">
-                        <div class="order-items-container">
-                            <div id="items-container">
-                                {% for item_form in form.items %}
-                                <div class="item-row" data-index="{{ loop.index0 }}">
-                                    <button type="button" class="btn btn-sm btn-outline-danger remove-item-btn" onclick="removeItem(this)" style="display: none;"><i class="bi bi-trash"></i></button>
-                                    <div class="row">
-                                        <div class="col-md-6 mb-3">
-                                            {{ item_form.product.label(class="form-label", for="items-" + loop.index0|string + "-product") }}
-                                            {# Le QuerySelectField est rendu ici par WTForms/Jinja #}
-                                            {{ item_form.product(class="form-select product-select initial-item-select" + (" is-invalid" if item_form.product.errors else ""), id="items-" + loop.index0|string + "-product", data_index=loop.index0) }}
-                                            {% if item_form.product.errors %}<div class="invalid-feedback d-block">{% for error in item_form.product.errors %}{{ error }}{% endfor %}</div>{% endif %}
-                                        </div>
-                                        <div class="col-md-3 mb-3">
-                                            {{ item_form.quantity.label(class="form-label", for="items-" + loop.index0|string + "-quantity") }}
-                                            <div class="input-group">
-                                                {{ item_form.quantity(class="form-control quantity-input" + (" is-invalid" if item_form.quantity.errors else ""), min="1", id="items-" + loop.index0|string + "-quantity", data_index=loop.index0) }}
-                                                <span class="input-group-text">unité(s)</span>
-                                            </div>
-                                            {% if item_form.quantity.errors %}<div class="invalid-feedback d-block">{% for error in item_form.quantity.errors %}{{ error }}{% endfor %}</div>{% endif %}
-                                        </div>
-                                        <div class="col-md-3 mb-3 price-related">
-                                            <label class="form-label">Sous-total Article</label>
-                                            <div class="form-control-plaintext fw-bold text-success item-subtotal" data-index="{{ loop.index0 }}">0.00 DA</div>
-                                            <div class="price-preview" data-index="{{ loop.index0 }}">Prix unit.: <span class="unit-price">0.00</span> DA</div>
-                                        </div>
-                                    </div>
-                                     {% if item_form.errors %}
-                                        {% for field_key, field_item_errors in item_form.errors.items() %}
-                                            {% if field_key not in ['product', 'quantity'] %}
-                                            <div class="row"><div class="col-12">{% for error in field_item_errors %}<div class="text-danger small mt-1">{{error}}</div>{% endfor %}</div></div>
-                                            {% endif %}
-                                        {% endfor %}
-                                    {% endif %}
-                                </div>
-                                {% endfor %}
-                            </div>
-                            <button type="button" class="add-item-btn mt-3" onclick="addItem()"><i class="bi bi-plus-circle me-2"></i>Ajouter un Produit</button>
-                        </div>
-                    </div>
-                </div>
+                {% include "orders/_order_items_fieldlist.html" %}
 
                 <div class="card mb-4">
                     <div class="card-header"><h5 class="card-title mb-0"><i class="bi bi-chat-text me-2"></i>Notes Spéciales</h5></div>
                     <div class="card-body">
                         {{ form.notes.label(class="form-label") }}
-                        {{ form.notes(class="form-control" + (" is-invalid" if form.notes.errors else ""), rows=3, placeholder="Instructions spéciales...", id="notes_input") }}
-                        {% if form.notes.errors %}<div class="invalid-feedback d-block">{% for error in form.notes.errors %}{{ error }}{% endfor %}</div>{% endif %}
+                        {{ form.notes(class="form-control", id="notes_input", placeholder="Instructions spéciales...") }}
                     </div>
                 </div>
 
@@ -211,21 +109,11 @@
                             <hr>
                             <div class="d-flex justify-content-between fs-5"><span><strong>Total Général:</strong></span><span class="fw-bold text-success" id="grand-total">0.00 DA</span></div>
                         </div>
-                        {% if edit_mode and order %}
-                        <div class="col-md-6">
-                            <div class="card bg-light">
-                                <div class="card-body">
-                                    <h6 class="card-title"><i class="bi bi-info-circle me-2"></i>Infos Actuelles (Avant Modif.)</h6>
-                                    <small class="text-muted"><strong>Total:</strong> {{ "%.2f"|format(order.total_amount) }} DA<br><strong>Articles:</strong> {{ order.get_items_count() }}<br><strong>Modif.:</strong> {{ order.updated_at.strftime('%d/%m/%Y %H:%M') }}</small>
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
                     </div>
                 </div>
 
                 <div class="d-flex gap-2 mt-4">
-                    {{ form.submit(class="btn btn-primary btn-lg") }}
+                    <input class="btn btn-primary btn-lg" id="submit" name="submit" type="submit" value="Enregistrer la commande">
                     <a href="{{ url_for('orders.list_orders') }}" class="btn btn-secondary btn-lg"><i class="bi bi-arrow-left me-1"></i>Annuler</a>
                 </div>
             </form>
@@ -233,255 +121,36 @@
     </div>
 </div>
 
-<script id="products-data" type="application/json">{{ products_serializable|tojson|safe }}</script>
-<script id="form-config" type="application/json">{{ {"initialItemsCount": form.items|length if form.items else 0, "editMode": edit_mode|tojson if edit_mode else 'false'}|tojson|safe }}</script>
-{% endblock %}
-
-{% block scripts %}
-{{ super() }}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    let productsData = [];
-    let initialItemsCount = 0;
-    let editMode = false;
-    
-    try {
-        productsData = JSON.parse(document.getElementById('products-data').textContent);
-        const config = JSON.parse(document.getElementById('form-config').textContent);
-        initialItemsCount = Math.max(config.initialItemsCount, 0);
-        editMode = config.editMode;
-    } catch (e) { console.error('Erreur chargement config JS:', e); }
-    
-    let itemIndexCounter = initialItemsCount;
-
-    const orderTypeSelect = document.getElementById('order_type');
-    const customerSectionCard = document.getElementById('customer_section_card');
-    const customerNameInput = document.getElementById('customer_name_input');
-    const customerAddressWrapper = document.getElementById('customer_address_wrapper');
-    
-    const deliveryOptionWrapperDiv = document.getElementById('delivery_option_wrapper_div');
-    const deliveryCostFieldWrapperDiv = document.getElementById('delivery_cost_field_wrapper_div');
-    
-    const deliveryOptionSelect = document.getElementById('delivery_option');
-    const deliveryCostInput = document.getElementById('delivery_cost');
-    const deliveryTotalSummaryLineDisplay = document.getElementById('delivery_total_summary_line_display');
-    const itemsContainer = document.getElementById('items-container');
-    const orderSummaryDiv = document.querySelector('.order-summary');
-
-    // Fonction pour initialiser les data-attributes des selects initiaux
-    function initializeInitialSelects() {
-        document.querySelectorAll('.initial-item-select').forEach(selectElement => {
-            // Pour chaque option dans ce select initial
-            Array.from(selectElement.options).forEach(option => {
-                if (option.value) { // Ignorer l'option vide
-                    const productId = parseInt(option.value, 10);
-                    const productInfo = productsData.find(p => p.id === productId);
-                    if (productInfo) {
-                        option.dataset.price = productInfo.price;
-                        // Mettre à jour le texte de l'option pour inclure le prix, comme le fait createProductOptionsHTML
-                        option.textContent = `${productInfo.name} (${parseFloat(productInfo.price).toFixed(2)} DA)`;
-                    }
-                }
-            });
-            // Après avoir mis à jour les data-attributes, on peut recalculer le sous-total de cette ligne
-            const itemRow = selectElement.closest('.item-row');
-            if(itemRow) updateItemSubtotal(itemRow);
-        });
+function updateAddressFieldVisibility() {
+    const orderType = document.getElementById('order_type').value;
+    const deliveryOption = document.getElementById('delivery_option').value;
+    const addressWrapper = document.getElementById('customer_address_wrapper');
+    if (orderType === 'customer_order' && deliveryOption === 'delivery') {
+        addressWrapper.style.display = 'block';
+    } else {
+        addressWrapper.style.display = 'none';
     }
-
-
-    function updateUIVisibility() {
-        if (!orderTypeSelect) return;
-        const orderType = orderTypeSelect.value;
-        const isCustomerOrder = orderType === 'customer_order';
-
-        if (customerSectionCard) customerSectionCard.style.display = isCustomerOrder ? 'block' : 'none';
-        if (deliveryOptionWrapperDiv) deliveryOptionWrapperDiv.style.display = isCustomerOrder ? 'block' : 'none';
-        
-        const priceRelatedElements = document.querySelectorAll('.price-related');
-        priceRelatedElements.forEach(el => {
-            el.style.display = isCustomerOrder ? '' : 'none'; 
-        });
-        if (orderSummaryDiv) orderSummaryDiv.style.display = isCustomerOrder ? 'block' : 'none';
-
-
-        if (!isCustomerOrder) { 
-            if (customerNameInput) customerNameInput.value = 'Production Comptoir';
-            if (customerAddressWrapper) customerAddressWrapper.style.display = 'none';
-            if (deliveryOptionSelect) deliveryOptionSelect.value = 'pickup';
-            if (deliveryCostInput) deliveryCostInput.value = '0.00';
-            if (deliveryCostFieldWrapperDiv) deliveryCostFieldWrapperDiv.style.display = 'none';
-            if (deliveryTotalSummaryLineDisplay) deliveryTotalSummaryLineDisplay.style.display = 'none';
-        } else { 
-            if (customerNameInput && customerNameInput.value === 'Production Comptoir') {
-                customerNameInput.value = '';
-            }
-            if (customerAddressWrapper) customerAddressWrapper.style.display = 'block';
-            if (deliveryTotalSummaryLineDisplay) deliveryTotalSummaryLineDisplay.style.display = 'flex';
-            updateDeliveryCostFieldVisibility();
-        }
-        updateTotals();
+}
+function updateCustomerSectionVisibility() {
+    const orderType = document.getElementById('order_type').value;
+    const customerSection = document.getElementById('customer_section_card');
+    if (orderType === 'customer_order') {
+        customerSection.style.display = 'block';
+    } else {
+        customerSection.style.display = 'none';
     }
-
-    function updateDeliveryCostFieldVisibility() {
-        if (!deliveryOptionSelect || !deliveryCostFieldWrapperDiv || !deliveryCostInput) return;
-        const showDeliveryCost = orderTypeSelect.value === 'customer_order' && deliveryOptionSelect.value === 'delivery';
-        
-        deliveryCostFieldWrapperDiv.style.display = showDeliveryCost ? 'block' : 'none';
-        if (!showDeliveryCost && deliveryCostInput.value !== '0.00') {
-            deliveryCostInput.value = '0.00';
-        }
-    }
-    
-    function createProductOptionsHTML() {
-        let optionsHtml = '<option value="">Sélectionnez un produit...</option>';
-        productsData.forEach(p => {
-            optionsHtml += `<option value="${p.id}" data-price="${p.price}">${p.name} (${parseFloat(p.price).toFixed(2)} DA)</option>`;
-        });
-        return optionsHtml;
-    }
-    
-    window.addItem = function() {
-        if (!itemsContainer) return;
-        const productOptionsHTML = createProductOptionsHTML();
-        const currentIndex = itemIndexCounter;
-        
-        const newItemHtml = 
-            `<div class="item-row" data-index="${currentIndex}">
-                <button type="button" class="btn btn-sm btn-outline-danger remove-item-btn" onclick="removeItem(this)"><i class="bi bi-trash"></i></button>
-                <div class="row">
-                    <div class="col-md-6 mb-3"><label for="items-${currentIndex}-product" class="form-label">Produit</label><select id="items-${currentIndex}-product" name="items-${currentIndex}-product" class="form-select product-select" data-index="${currentIndex}">${productOptionsHTML}</select></div>
-                    <div class="col-md-3 mb-3"><label for="items-${currentIndex}-quantity" class="form-label">Quantité</label><div class="input-group"><input type="number" id="items-${currentIndex}-quantity" name="items-${currentIndex}-quantity" class="form-control quantity-input" min="1" value="1" data-index="${currentIndex}"><span class="input-group-text">unité(s)</span></div></div>
-                    <div class="col-md-3 mb-3 price-related"><label class="form-label">Sous-total Article</label><div class="form-control-plaintext fw-bold text-success item-subtotal" data-index="${currentIndex}">0.00 DA</div><div class="price-preview" data-index="${currentIndex}">Prix unit.: <span class="unit-price">0.00</span> DA</div></div>
-                </div>
-            </div>`;
-        
-        itemsContainer.insertAdjacentHTML('beforeend', newItemHtml);
-        const newRow = itemsContainer.lastElementChild;
-        if(newRow) {
-            attachItemEvents(newRow);
-            const isCustomerOrder = orderTypeSelect.value === 'customer_order';
-            newRow.querySelectorAll('.price-related').forEach(el => el.style.display = isCustomerOrder ? '' : 'none');
-            // Le select est vide par défaut, donc le sous-total sera 0. Pas besoin de timeout ici.
-            updateItemSubtotal(newRow);
-        }
-        itemIndexCounter++;
-        updateItemsCountAndRemoveButtonVisibility();
-    };
-    
-    window.removeItem = function(button) {
-        if (!itemsContainer) return;
-        const itemRow = button.closest('.item-row');
-        if (itemsContainer.querySelectorAll('.item-row').length <= 1) {
-             alert('Au moins un article est requis.'); return;
-        }
-        if (itemRow) itemRow.remove();
-        updateItemsCountAndRemoveButtonVisibility();
-        updateTotals();
-    };
-
-    function updateItemsCountAndRemoveButtonVisibility() {
-        if (!itemsContainer) return;
-        const rows = itemsContainer.querySelectorAll('.item-row');
-        const count = rows.length;
-        const badge = document.getElementById('items-count');
-        if (badge) badge.textContent = `${count} article${count > 1 ? 's' : ''}`;
-        rows.forEach(row => {
-            const removeBtn = row.querySelector('.remove-item-btn');
-            if (removeBtn) removeBtn.style.display = count > 1 ? 'block' : 'none';
-        });
-    }
-    
-    function attachItemEvents(itemRow) {
-        const productSelect = itemRow.querySelector('.product-select');
-        const quantityInput = itemRow.querySelector('.quantity-input');
-        if (productSelect) productSelect.addEventListener('change', () => updateItemSubtotal(itemRow));
-        if (quantityInput) quantityInput.addEventListener('input', () => updateItemSubtotal(itemRow));
-    }
-    
-    function updateItemSubtotal(itemRow) {
-        const productSelect = itemRow.querySelector('.product-select');
-        const quantityInput = itemRow.querySelector('.quantity-input');
-        const subtotalEl = itemRow.querySelector('.item-subtotal');
-        const unitPriceEl = itemRow.querySelector('.unit-price');
-        if (!productSelect || !quantityInput || !subtotalEl || !unitPriceEl) return;
-        
-        const selectedOption = productSelect.options[productSelect.selectedIndex];
-        const quantity = parseInt(quantityInput.value) || 0;
-        let unitPrice = 0;
-        // Utiliser selectedOption.dataset.price qui devrait maintenant être présent
-        if (selectedOption && selectedOption.value && selectedOption.dataset.price) {
-             unitPrice = parseFloat(selectedOption.dataset.price) || 0;
-        }
-        
-        const subtotal = (quantity > 0) ? unitPrice * quantity : 0;
-        unitPriceEl.textContent = unitPrice.toFixed(2);
-        subtotalEl.textContent = subtotal.toFixed(2) + ' DA';
-        updateTotals();
-    }
-    
-    function updateTotals() {
-        let itemsAggregatedTotal = 0;
-        document.querySelectorAll('.item-row').forEach(row => {
-            const subtotalEl = row.querySelector('.item-subtotal');
-            // Vérifier si l'élément parent .price-related est visible
-            const priceRelatedParent = subtotalEl.closest('.price-related');
-            if (subtotalEl && (!priceRelatedParent || priceRelatedParent.style.display !== 'none')) {
-                const subtotalText = subtotalEl.textContent.replace(' DA', '');
-                itemsAggregatedTotal += parseFloat(subtotalText) || 0;
-            }
-        });
-
-        let currentDeliveryCost = 0;
-        if (orderTypeSelect && orderTypeSelect.value === 'customer_order' && deliveryOptionSelect && deliveryOptionSelect.value === 'delivery' && deliveryCostInput) {
-             currentDeliveryCost = parseFloat(deliveryCostInput.value) || 0;
-             if (isNaN(currentDeliveryCost) || currentDeliveryCost < 0) currentDeliveryCost = 0;
-        }
-        
-        const grandTotal = itemsAggregatedTotal + currentDeliveryCost;
-        
-        const itemsTotalEl = document.getElementById('items-total');
-        const deliveryTotalEl = document.getElementById('delivery-total');
-        const grandTotalEl = document.getElementById('grand-total');
-
-        if (itemsTotalEl) itemsTotalEl.textContent = itemsAggregatedTotal.toFixed(2) + ' DA';
-        if (deliveryTotalEl) deliveryTotalEl.textContent = currentDeliveryCost.toFixed(2) + ' DA';
-        if (grandTotalEl) grandTotalEl.textContent = grandTotal.toFixed(2) + ' DA';
-    }
-    
-    // Initialisation
-    initializeInitialSelects(); // AJOUT: Populer data-price et texte pour les selects initiaux
-
-    if (itemsContainer) {
-        itemsContainer.querySelectorAll('.item-row').forEach(row => {
-            attachItemEvents(row);
-            // updateItemSubtotal est déjà appelé par initializeInitialSelects pour les lignes initiales.
-            // Pour les lignes potentiellement vides ajoutées par le serveur si form.items était vide, 
-            // il faut s'assurer qu'elles sont traitées.
-            if (!row.querySelector('.product-select.initial-item-select') || editMode) { // Si ce n'est pas un select initial déjà traité ou si on est en edit mode
-                 updateItemSubtotal(row);
-            }
-        });
-    }
-    
-    if (!editMode && initialItemsCount === 0 && (!itemsContainer || itemsContainer.children.length === 0)) {
-        addItem(); 
-    } else if (itemsContainer && itemsContainer.children.length === 0 && editMode) {
-        addItem();
-    } else if (!editMode && itemsContainer && itemsContainer.children.length > 0) {
-        // S'il y a une ligne initiale pour une nouvelle commande, s'assurer que son sous-total est calculé.
-        updateItemSubtotal(itemsContainer.querySelector('.item-row'));
-    }
-
-
-    if (orderTypeSelect) orderTypeSelect.addEventListener('change', updateUIVisibility);
-    if (deliveryOptionSelect) deliveryOptionSelect.addEventListener('change', updateDeliveryCostFieldVisibility);
-    if (deliveryCostInput) deliveryCostInput.addEventListener('input', updateTotals);
-    
-    updateUIVisibility(); 
-    updateItemsCountAndRemoveButtonVisibility();
-    
-    console.log('Form JS loaded. Edit:', editMode, 'InitialItems:', initialItemsCount, 'Counter:', itemIndexCounter);
+}
+document.addEventListener('DOMContentLoaded', function () {
+    const orderType = document.getElementById('order_type');
+    const deliveryOption = document.getElementById('delivery_option');
+    orderType.addEventListener('change', function () {
+        updateAddressFieldVisibility();
+        updateCustomerSectionVisibility();
+    });
+    deliveryOption.addEventListener('change', updateAddressFieldVisibility);
+    updateAddressFieldVisibility();
+    updateCustomerSectionVisibility();
 });
 </script>
 {% endblock %}
