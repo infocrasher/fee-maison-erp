@@ -30,7 +30,6 @@ class OrderForm(FlaskForm):
         rv = super().validate(extra_validators)
         if not rv:
             return False
-
         # Validation conditionnelle
         if self.order_type.data == 'customer_order':
             if not self.customer_name.data:

@@ -104,7 +104,7 @@
                                         <div class="row">
                                             <div class="col-md-6 mb-3">
                                                 {{ subform.product.label(class="form-label") }}
-                                                {{ subform.product(class="form-select product-select initial-item-select", id="items-{{ loop.index0 }}-product", name="items-{{ loop.index0 }}-product", data_index=loop.index0) }}
+                                                {{ subform.product(class="form-select product-select initial-item-select", id="items-{{ loop.index0 }}-product", data_index=loop.index0) }}
                                                 {% for error in subform.product.errors %}
                                                     <div class="invalid-feedback d-block">{{ error }}</div>
                                                 {% endfor %}
@@ -112,7 +112,7 @@
                                             <div class="col-md-3 mb-3">
                                                 {{ subform.quantity.label(class="form-label") }}
                                                 <div class="input-group">
-                                                    {{ subform.quantity(class="form-control quantity-input", min="1", id="items-{{ loop.index0 }}-quantity", name="items-{{ loop.index0 }}-quantity", data_index=loop.index0) }}
+                                                    {{ subform.quantity(class="form-control quantity-input", min="1", id="items-{{ loop.index0 }}-quantity", data_index=loop.index0) }}
                                                     <span class="input-group-text">unité(s)</span>
                                                 </div>
                                                 {% for error in subform.quantity.errors %}
