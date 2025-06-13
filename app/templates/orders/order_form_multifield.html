@@ -221,13 +221,13 @@
                                             <div class="col-md-5 mb-3">
                                                 {{ subform.product.label(class="form-label fw-bold") }}
                                                 <span class="field-required">*</span>
-                                                {{ subform.product(class="form-select form-control product-select", id="items-{{ loop.index0 }}-product", name="items-{{ loop.index0 }}-product", data_index=loop.index0) }}
+                                                {{ subform.product(class="form-select form-control product-select", id="items-{{ loop.index0 }}-product", data_index=loop.index0) }}
                                             </div>
                                             <div class="col-md-2 mb-3">
                                                 {{ subform.quantity.label(class="form-label fw-bold") }}
                                                 <span class="field-required">*</span>
                                                 <div class="input-group">
-                                                    {{ subform.quantity(class="form-control quantity-input", min="1", id="items-{{ loop.index0 }}-quantity", name="items-{{ loop.index0 }}-quantity", data_index=loop.index0) }}
+                                                    {{ subform.quantity(class="form-control quantity-input", min="1", id="items-{{ loop.index0 }}-quantity", data_index=loop.index0) }}
                                                     <span class="input-group-text">unité(s)</span>
                                                 </div>
                                             </div>
@@ -238,7 +238,7 @@
                                             </div>
                                             <div class="col-md-2 mb-3 d-flex align-items-end">
                                                 {% if loop.index0 > 0 %}
-                                                <button type="button" class="btn btn-remove" onclick="removeItem('{{ loop.index0 }}')">
+                                                <button type="button" class="btn btn-remove" onclick="removeItem({{ loop.index0 }})">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
                                                 {% endif %}
@@ -357,14 +357,11 @@ function addItem() {
     const newItem = currentItems[currentItems.length - 1].cloneNode(true);
     newItem.setAttribute('data-index', newIndex);
 
-    // Mettre à jour les ids et noms des champs dans le clone
+    // Mettre à jour les ids des champs dans le clone (pas le name)
     newItem.querySelectorAll('select, input').forEach(function(input) {
         const id = input.id;
-        const name = input.name;
         const newId = id.replace(/items-\d+-/, 'items-' + newIndex + '-');
-        const newName = name.replace(/items-\d+-/, 'items-' + newIndex + '-');
         input.id = newId;
-        input.name = newName;
         input.setAttribute('data-index', newIndex);
         
         // Réinitialiser les valeurs
@@ -377,7 +374,7 @@ function addItem() {
     newItem.querySelector('.item-subtotal').textContent = '0.00 DA';
     newItem.querySelector('.unit-price').textContent = '0.00';
 
-    // LIGNE 241 CORRIGÉE - Ajouter bouton de suppression
+    // Ajouter bouton de suppression
     const removeCol = newItem.querySelector('.col-md-2.d-flex.align-items-end');
     if (removeCol) {
         removeCol.innerHTML = '<button type="button" class="btn btn-remove" onclick="removeItem(' + newIndex + ')"><i class="bi bi-trash"></i></button>';
