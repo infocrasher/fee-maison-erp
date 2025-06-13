@@ -44,7 +44,8 @@
                                 {% endif %}
                             </td>
                             <td>{{ "%.2f"|format(recipe.yield_quantity) }} {{ recipe.yield_unit }}</td>
-                            <td>{{ "%.2f DA"|format(recipe.current_cost_per_yield_unit) }}</td>
+                            <!-- ✅ CORRECTION : Ligne 47 -->
+                            <td>{{ "%.2f DA"|format(recipe.cost_per_unit) }}</td>
                             <td class="text-center">
                                 <div class="btn-group" role="group">
                                     <a href="{{ url_for('recipes.view_recipe', recipe_id=recipe.id) }}" class="btn btn-sm btn-outline-info" title="Voir">
