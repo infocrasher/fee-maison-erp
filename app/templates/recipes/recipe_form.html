@@ -24,7 +24,7 @@
                         <h4>Ingrédients</h4>
                         
                         <div id="ingredients-container">
-                            {{ form.ingredients.hidden_tag() }}
+                            <!-- ### CORRECTION ### La ligne "{{ form.ingredients.hidden_tag() }}" a été supprimée d'ici. -->
                             {% for subform in form.ingredients %}
                                 <div class="row ingredient-form-row mb-2 align-items-center">
                                     <div class="col-md-4">{{ render_field(subform.product, class="form-control ingredient-select", label=False) }}</div>
@@ -74,7 +74,6 @@
     </div>
 </template>
 
-<!-- ### CORRECTION ### Données passées via un attribut data-* -->
 <div id="ingredients-data" data-ingredients='{{ ingredient_products_json|tojson|safe }}' style="display: none;"></div>
 
 {% endblock %}
@@ -82,7 +81,6 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // ### CORRECTION ### Lire les données depuis l'attribut data-*
     const dataElement = document.getElementById('ingredients-data');
     const ingredientsData = JSON.parse(dataElement.dataset.ingredients);
 
@@ -92,7 +90,6 @@ document.addEventListener('DOMContentLoaded', function () {
     
     let index = container.querySelectorAll('.ingredient-form-row').length;
 
-    // Fonction pour populer un <select> avec la liste des ingrédients
     function populateSelectWithOptions(selectElement, options, selectedValue = null) {
         const previouslySelected = selectedValue || selectElement.value;
         selectElement.innerHTML = '<option value="" selected>--- Choisir un ingrédient ---</option>';
@@ -108,7 +105,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
     
-    // Fonction pour mettre à jour l'unité auto
     function updateUnit(selectElement) {
         const selectedId = parseInt(selectElement.value, 10);
         const selectedIngredient = ingredientsData.find(p => p.id === selectedId);
@@ -119,12 +115,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Gérer l'ajout d'un nouvel ingrédient
     addButton.addEventListener('click', () => {
         const clone = template.content.cloneNode(true);
         const newRow = clone.firstElementChild;
         
-        // Remplacer l'index placeholder
         newRow.innerHTML = newRow.innerHTML.replace(/__INDEX__/g, index);
         container.appendChild(newRow);
         
@@ -135,14 +129,12 @@ document.addEventListener('DOMContentLoaded', function () {
         index++;
     });
 
-    // Gérer la suppression d'un ingrédient
     container.addEventListener('click', function(e) {
         if (e.target && e.target.classList.contains('remove-ingredient-btn')) {
             e.target.closest('.ingredient-form-row').remove();
         }
     });
 
-    // Initialiser les <select> existants et attacher les listeners
     container.querySelectorAll('.ingredient-select').forEach(select => {
         const currentValue = select.value;
         populateSelectWithOptions(select, ingredientsData, currentValue);
