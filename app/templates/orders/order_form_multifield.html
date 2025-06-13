@@ -123,11 +123,17 @@
                                 {% if form.delivery_option.errors %}<div class="invalid-feedback d-block">{% for error in form.delivery_option.errors %}{{ error }}{% endfor %}</div>{% endif %}
                             </div>
                             <div class="col-md-6 mb-3" id="due_date_wrapper_div"> 
-                                {{ form.due_date.label(class="form-label") }}
-                                {{ form.due_date(class="form-control" + (" is-invalid" if form.due_date.errors else ""), id="due_date") }}
-                                {% if form.due_date.errors %}<div class="invalid-feedback d-block">{% for error in form.due_date.errors %}{{ error }}{% endfor %}</div>{% endif %}
-                                <div class="form-text">Date et heure prévues.</div>
-                            </div>
+    {{ form.due_date.label(class="form-label") }}
+    {{ form.due_date(class="form-control" + (" is-invalid" if form.due_date.errors else ""), id="due_date", type="datetime-local") }}
+    {% if form.due_date.errors %}
+        <div class="invalid-feedback d-block">
+            {% for error in form.due_date.errors %}
+                {{ error }}
+            {% endfor %}
+        </div>
+    {% endif %}
+    <div class="form-text">Date et heure prévues.</div>
+</div>
                             <div class="col-md-6 mb-3 price-related" id="delivery_cost_field_wrapper_div">
                                 {{ form.delivery_cost.label(class="form-label") }}
                                 <div class="input-group">
