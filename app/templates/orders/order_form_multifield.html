@@ -238,7 +238,7 @@
                                             </div>
                                             <div class="col-md-2 mb-3 d-flex align-items-end">
                                                 {% if loop.index0 > 0 %}
-                                                <button type="button" class="btn btn-remove" onclick="removeItem({{ loop.index0 }})">
+                                                <button type="button" class="btn btn-remove" data-item-index="{{ loop.index0 }}">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
                                                 {% endif %}
@@ -247,7 +247,7 @@
                                     </div>
                                 {% endfor %}
                             </div>
-                            <button type="button" class="btn btn-outline-primary" onclick="addItem()">
+                            <button type="button" class="btn btn-outline-primary" id="add-item-btn">
                                 <i class="bi bi-plus-circle me-2"></i>Ajouter un Article
                             </button>
                         </div>
@@ -305,10 +305,10 @@
 </div>
 
 <script>
-// Données des produits avec leurs prix (à remplir via AJAX ou template)
+// Données des produits avec leurs prix
 let productPrices = {};
 
-// Fonction pour récupérer le prix d'un produit (peut être remplacée par un appel AJAX)
+// Fonction pour récupérer le prix d'un produit
 function getProductPrice(productId) {
     return productPrices[productId] || 0;
 }
@@ -326,10 +326,8 @@ function updateSubtotals() {
         let quantity = parseInt(quantityInput.value) || 0;
         let unitPrice = 0;
         
-        // Récupérer le prix du produit sélectionné
         if (productSelect && productSelect.value) {
             unitPrice = getProductPrice(productSelect.value);
-            // Mettre à jour l'affichage du prix unitaire
             unitPriceElem.textContent = unitPrice.toFixed(2);
         }
         
@@ -340,7 +338,6 @@ function updateSubtotals() {
     
     document.getElementById('items-total').textContent = total.toFixed(2) + ' DA';
     
-    // Mettre à jour le total général en incluant les frais de livraison
     let deliveryCost = parseFloat(document.getElementById('delivery_cost').value) || 0;
     document.getElementById('delivery-total').textContent = deliveryCost.toFixed(2) + ' DA';
     let grandTotal = total + deliveryCost;
@@ -353,42 +350,32 @@ function addItem() {
     const currentItems = container.querySelectorAll('.item-row');
     const newIndex = currentItems.length;
 
-    // Cloner le dernier item-row
     const newItem = currentItems[currentItems.length - 1].cloneNode(true);
     newItem.setAttribute('data-index', newIndex);
 
-    // Mettre à jour les ids des champs dans le clone (pas le name)
     newItem.querySelectorAll('select, input').forEach(function(input) {
         const id = input.id;
         const newId = id.replace(/items-\d+-/, 'items-' + newIndex + '-');
         input.id = newId;
         input.setAttribute('data-index', newIndex);
         
-        // Réinitialiser les valeurs
         if(input.type === 'number' || input.tagName.toLowerCase() === 'select') {
             input.value = '';
         }
     });
 
-    // Réinitialiser les sous-totaux
     newItem.querySelector('.item-subtotal').textContent = '0.00 DA';
     newItem.querySelector('.unit-price').textContent = '0.00';
 
-    // Ajouter bouton de suppression
     const removeCol = newItem.querySelector('.col-md-2.d-flex.align-items-end');
     if (removeCol) {
-        removeCol.innerHTML = '<button type="button" class="btn btn-remove" onclick="removeItem(' + newIndex + ')"><i class="bi bi-trash"></i></button>';
+        removeCol.innerHTML = '<button type="button" class="btn btn-remove" data-item-index="' + newIndex + '"><i class="bi bi-trash"></i></button>';
     }
 
     container.appendChild(newItem);
-
-    // Mettre à jour le compteur d'articles
     document.getElementById('items-count').textContent = (newIndex + 1) + ' article(s)';
     
-    // Ajouter les event listeners pour le nouveau champ
     attachEventListeners(newItem);
-    
-    // Recalculer les totaux
     updateSubtotals();
 }
 
@@ -399,16 +386,16 @@ function removeItem(index) {
         item.remove();
         updateSubtotals();
         
-        // Mettre à jour le compteur
         const remainingItems = document.querySelectorAll('.item-row').length;
         document.getElementById('items-count').textContent = remainingItems + ' article(s)';
     }
 }
 
-// Fonction pour attacher les event listeners à un élément
+// Fonction pour attacher les event listeners
 function attachEventListeners(element) {
     const quantityInput = element.querySelector('.quantity-input');
     const productSelect = element.querySelector('.product-select');
+    const removeBtn = element.querySelector('.btn-remove');
     
     if (quantityInput) {
         quantityInput.addEventListener('input', updateSubtotals);
@@ -416,6 +403,13 @@ function attachEventListeners(element) {
     
     if (productSelect) {
         productSelect.addEventListener('change', updateSubtotals);
+    }
+    
+    if (removeBtn) {
+        removeBtn.addEventListener('click', function() {
+            const index = this.getAttribute('data-item-index');
+            removeItem(index);
+        });
     }
 }
 
@@ -431,20 +425,17 @@ function updateFormVisibility() {
     const deliveryTotalLine = document.getElementById('delivery_total_line');
     
     if (orderType === 'customer_order') {
-        // Commande client : tout afficher
         customerSection.style.display = 'block';
         deliveryOptionWrapper.style.display = 'block';
         deliveryCostWrapper.style.display = 'block';
         deliveryTotalLine.style.display = 'flex';
         
-        // Adresse uniquement si livraison
         if (deliveryOption === 'delivery') {
             addressWrapper.style.display = 'block';
         } else {
             addressWrapper.style.display = 'none';
         }
     } else {
-        // Production comptoir : cacher client et livraison
         customerSection.style.display = 'none';
         deliveryOptionWrapper.style.display = 'none';
         deliveryCostWrapper.style.display = 'none';
@@ -458,18 +449,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const orderType = document.getElementById('order_type');
     const deliveryOption = document.getElementById('delivery_option');
     const deliveryCost = document.getElementById('delivery_cost');
+    const addItemBtn = document.getElementById('add-item-btn');
     
-    // Event listeners pour les changements de type et options
     orderType.addEventListener('change', updateFormVisibility);
     deliveryOption.addEventListener('change', updateFormVisibility);
     deliveryCost.addEventListener('input', updateSubtotals);
+    addItemBtn.addEventListener('click', addItem);
     
-    // Attacher les event listeners aux champs existants
+    // Attacher les event listeners aux éléments existants
     document.querySelectorAll('.item-row').forEach(function(row) {
         attachEventListeners(row);
     });
     
-    // Initialiser l'affichage
     updateFormVisibility();
     updateSubtotals();
 });
