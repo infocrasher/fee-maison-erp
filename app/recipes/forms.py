@@ -1,7 +1,9 @@
 # Fichier: app/recipes/forms.py
 
 from flask_wtf import FlaskForm
+# ### CORRECTION : Import de la classe 'Form' de base de WTForms ###
 from wtforms import (
+    Form,  # On importe la classe de base pour les sous-formulaires
     StringField, 
     TextAreaField, 
     FieldList, 
@@ -31,9 +33,11 @@ def ingredient_product_query_factory():
 #  SUB-FORM FOR A SINGLE INGREDIENT
 # ==============================================================================
 
-class IngredientForm(FlaskForm):
+# ### CORRECTION : Le sous-formulaire doit hériter de 'Form', et non de 'FlaskForm' ###
+class IngredientForm(Form):
     """
     Sous-formulaire représentant une seule ligne d'ingrédient dans la recette.
+    Il ne gère pas le CSRF lui-même, il fait partie du formulaire principal.
     """
     id = IntegerField(widget=HiddenInput(), validators=[Optional()])
     product = SelectField('Ingrédient', coerce=int, validators=[DataRequired("Veuillez choisir un ingrédient.")])
@@ -46,22 +50,18 @@ class IngredientForm(FlaskForm):
         Constructeur pour populer dynamiquement la liste des choix d'ingrédients.
         """
         super(IngredientForm, self).__init__(*args, **kwargs)
-        
-        # ### CORRECTION ###
-        # On supprime la condition "if not self.is_submitted()".
-        # La liste de choix DOIT être disponible aussi pendant la validation (POST)
-        # pour que WTForms puisse vérifier que la valeur soumise est valide.
         self.product.choices = [(p.id, f"{p.name} ({p.unit})") for p in ingredient_product_query_factory().all()]
         self.product.choices.insert(0, (0, '-- Choisir un ingrédient --'))
 
 
 # ==============================================================================
-#  MAIN FORM FOR A RECIPE
+#  MAIN FORM FOR A RECIPE (Hérite bien de FlaskForm)
 # ==============================================================================
 
 class RecipeForm(FlaskForm):
     """
     Formulaire principal pour la création et l'édition d'une recette.
+    C'est LUI qui gère la sécurité CSRF pour l'ensemble.
     """
     name = StringField('Nom de la recette', validators=[DataRequired("Le nom est requis."), Length(max=100)])
     description = TextAreaField('Description / Instructions', validators=[Optional(), Length(max=5000)])
@@ -89,9 +89,6 @@ class RecipeForm(FlaskForm):
         """
         super(RecipeForm, self).__init__(*args, **kwargs)
         
-        # ### CORRECTION ###
-        # On supprime également la condition "if not self.is_submitted()" ici
-        # pour la même raison que dans IngredientForm.
         recipe_obj = kwargs.get('obj')
         
         query = Product.query.filter_by(product_type='finished')
