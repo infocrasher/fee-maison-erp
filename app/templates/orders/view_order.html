@@ -1,126 +1,215 @@
 {% extends "base.html" %}
-
 {% block title %}{{ title }} - Fée Maison{% endblock %}
-
 {% block content %}
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
-        <h1 class="h3 mb-0"><i class="bi bi-receipt"></i> {{ title }}</h1>
-        <div>
-            <a href="{{ url_for('orders.edit_order_status', order_id=order.id) }}" class="btn btn-info btn-sm me-2">
-                <i class="bi bi-tag-fill"></i> Modifier Statut
-            </a>
-            <a href="{{ url_for('orders.edit_order', order_id=order.id) }}" class="btn btn-primary btn-sm me-2">
-                <i class="bi bi-pencil-fill"></i> Modifier Commande
-            </a>
-            <a href="{{ url_for('orders.list_orders') }}" class="btn btn-outline-secondary btn-sm">
-                <i class="bi bi-list-ul"></i> Toutes les Commandes
-            </a>
-        </div>
-    </div>
 
-    <div class="row">
-        <div class="col-lg-4 mb-4">
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-light"><h5 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>Type et Client</h5></div>
-                <div class="card-body">
-                    <p><strong>Type :</strong> {{ order.get_order_type_display() }}</p>
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- En-tête -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">
+                    <i class="bi bi-receipt me-2 text-primary"></i>
                     {% if order.order_type == 'customer_order' %}
-                        <p><strong>Client :</strong> {{ order.customer_name or 'N/A' }}</p>
-                        {% if order.customer_phone %}<p><strong>Téléphone :</strong> <a href="tel:{{ order.customer_phone }}">{{ order.customer_phone }}</a></p>{% endif %}
-                        {% if order.delivery_option == 'delivery' and order.customer_address %}
-                            <p><strong>Adresse de livraison :</strong><br>{{ order.customer_address|nl2br|safe }}</p>
-                        {% endif %}
+                        Commande Client #{{ order.id }}
                     {% else %}
-                        <p><strong>Pour :</strong> Stock Comptoir</p>
+                        Ordre de Production #{{ order.id }}
                     {% endif %}
+                </h1>
+                <div>
+                    <a href="{{ url_for('orders.edit_order_status', order_id=order.id) }}" class="btn btn-outline-primary">
+                        <i class="bi bi-pencil me-1"></i>Modifier Statut
+                    </a>
+                    <a href="{{ url_for('orders.list_orders') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>Retour
+                    </a>
                 </div>
             </div>
 
-            <div class="card shadow-sm">
-                <div class="card-header bg-light"><h5 class="card-title mb-0"><i class="bi bi-file-earmark-text me-2"></i>Détails Commande</h5></div>
+            <!-- Informations générales -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-info-circle me-2"></i>Informations Générales
+                    </h5>
+                </div>
                 <div class="card-body">
-                    <p><strong>Numéro :</strong> #{{ order.id }}</p>
-                    <p><strong>Date Demande :</strong> {{ order.order_date.strftime('%d/%m/%Y à %H:%M') }}</p>
-                    {% if order.due_date %}
-                    <p><strong>Date Prévue :</strong> {{ order.due_date.strftime('%d/%m/%Y à %H:%M') }}</p>
-                    {% endif %}
-                    
-                    {% if order.order_type == 'customer_order' %}
-                        <p><strong>Option de Service :</strong> {{ order.get_delivery_option_display() }}</p>
-                        {% if order.delivery_option == 'delivery' and order.delivery_cost is not none and order.delivery_cost > 0 %}
-                        <p><strong>Frais de Livraison :</strong> {{ "%.2f"|format(order.delivery_cost|float) }} DA</p>
-                        {% endif %}
-                    {% endif %}
-
-                    <p><strong>Statut :</strong> 
-                        {% set status_class = 'secondary' %}
-                        {% if order.status == 'completed' %}{% set status_class = 'success' %}
-                        {% elif order.status == 'pending' %}{% set status_class = 'warning text-dark' %}
-                        {% elif order.status == 'ready_at_shop' %}{% set status_class = 'info text-dark' %}
-                        {% elif order.status == 'out_for_delivery' %}{% set status_class = 'primary' %}
-                        {% elif order.status == 'awaiting_payment' %}{% set status_class = 'orange' %}
-                        {% elif order.status == 'cancelled' %}{% set status_class = 'danger' %}
-                        {% endif %}
-                        <span class="badge bg-{{ status_class }}">{{ order.get_status_display() }}</span>
-                    </p>
-                    <p><strong>Montant Total :</strong> 
-                        {% if order.order_type == 'customer_order' %}
-                            <strong class="text-primary fs-5">{{ "%.2f"|format(order.total_amount|float) }} DA</strong>
-                        {% else %}
-                            <span class="text-muted fst-italic">N/A (Prod. Interne)</span>
-                        {% endif %}
-                    </p>
-                    {% if order.user %}<p><strong>Saisie par :</strong> {{ order.user.username }}</p>{% endif %}
-                    <p class="small text-muted mt-3">Créé le : {{ order.order_date.strftime('%d/%m/%Y à %H:%M') }}</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-8 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-light"><h5 class="card-title mb-0"><i class="bi bi-cart3 me-2"></i>Articles ({{ order.get_items_count() }})</h5></div>
-                <div class="card-body p-0">
-                    {% if order.items.all() %}
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover mb-0">
-                            <thead class="table-light"><tr><th>Produit</th><th class="text-end">Prix Unitaire</th><th class="text-center">Quantité</th><th class="text-end">Sous-total</th></tr></thead>
-                            <tbody>
-                                {% for item in order.items %}
-                                <tr>
-                                    <td>
-                                        <a href="{{ url_for('products.view_product', product_id=item.product_id) }}">{{ item.product.name }}</a>
-                                        {% if item.product.sku %}<br><small class="text-muted">SKU: {{ item.product.sku }}</small>{% endif %}
-                                    </td>
-                                    <td class="text-end">{{ "%.2f"|format(item.price_at_order|float) }} DA</td>
-                                    <td class="text-center">{{ item.quantity }}</td>
-                                    <td class="text-end fw-semibold">{{ "%.2f"|format(item.get_subtotal()|float) }} DA</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                            <tfoot>
-                                <tr class="table-light"><td colspan="3" class="text-end fw-bold">Sous-Total Articles :</td><td class="text-end fw-bold">{{ "%.2f"|format(order.get_items_total()|float) }} DA</td></tr>
-                                {% if order.order_type == 'customer_order' %}
-                                    {% if order.delivery_option == 'delivery' and order.delivery_cost is not none and order.delivery_cost > 0 %}
-                                    <tr class="table-light"><td colspan="3" class="text-end fw-bold">Frais de Livraison :</td><td class="text-end fw-bold">{{ "%.2f"|format(order.delivery_cost|float) }} DA</td></tr>
-                                    {% endif %}
-                                    <tr class="table-light border-top border-2 border-dark"><td colspan="3" class="text-end fw-bolder fs-5">Total Commande Client :</td><td class="text-end fw-bolder fs-5 text-primary">{{ "%.2f"|format(order.total_amount|float) }} DA</td></tr>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Type :</strong> {{ order.get_order_type_display() }}</p>
+                            
+                            {% if order.order_type == 'customer_order' %}
+                                {% if order.customer_name %}
+                                    <p><strong>Client :</strong> {{ order.customer_name }}</p>
                                 {% endif %}
-                            </tfoot>
-                        </table>
+                                {% if order.customer_phone %}
+                                    <p><strong>Téléphone :</strong> {{ order.customer_phone }}</p>
+                                {% endif %}
+                                {% if order.delivery_option == 'delivery' and order.customer_address %}
+                                    <p><strong>Adresse de livraison :</strong><br>
+                                    {{ order.customer_address|nl2br|safe }}</p>
+                                {% endif %}
+                            {% else %}
+                                <p><strong>Pour :</strong> Stock Comptoir</p>
+                            {% endif %}
+                            
+                            <p><strong>Numéro :</strong> #{{ order.id }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            {% if order.due_date %}
+                                {% if order.order_type == 'customer_order' %}
+                                    <p><strong>Date Prévue :</strong> {{ order.due_date.strftime('%d/%m/%Y à %H:%M') }}</p>
+                                {% else %}
+                                    <p><strong>Date Production :</strong> {{ order.due_date.strftime('%d/%m/%Y à %H:%M') }}</p>
+                                {% endif %}
+                            {% endif %}
+                            
+                            {% if order.order_type == 'customer_order' %}
+                                {% if order.delivery_option %}
+                                    <p><strong>Option de Service :</strong> {{ order.get_delivery_option_display() }}</p>
+                                {% endif %}
+                                {% if order.delivery_option == 'delivery' and order.delivery_cost is not none and order.delivery_cost > 0 %}
+                                    <p><strong>Frais de Livraison :</strong> {{ "%.2f"|format(order.delivery_cost|float) }} DA</p>
+                                {% endif %}
+                            {% endif %}
+                            
+                            <p><strong>Statut :</strong>
+                                {% set status_class = 'secondary' %}
+                                {% if order.status == 'completed' %}{% set status_class = 'success' %}
+                                {% elif order.status == 'delivered' %}{% set status_class = 'success' %}
+                                {% elif order.status == 'pending' %}{% set status_class = 'warning text-dark' %}
+                                {% elif order.status == 'in_production' %}{% set status_class = 'warning' %}
+                                {% elif order.status == 'ready_at_shop' %}{% set status_class = 'info' %}
+                                {% elif order.status == 'out_for_delivery' %}{% set status_class = 'primary' %}
+                                {% elif order.status == 'awaiting_payment' %}{% set status_class = 'orange' %}
+                                {% elif order.status == 'cancelled' %}{% set status_class = 'danger' %}
+                                {% endif %}
+                                <span class="badge bg-{{ status_class }}">{{ order.get_status_display() }}</span>
+                            </p>
+                            
+                            {% if order.order_type == 'customer_order' %}
+                                <p><strong>Montant Total :</strong> 
+                                    <span class="fs-5 fw-bold text-success">{{ "%.2f"|format(order.total_amount|float) }} DA</span>
+                                </p>
+                            {% else %}
+                                <p><strong>Coût :</strong> <span class="text-muted">N/A (Production Interne)</span></p>
+                            {% endif %}
+                        </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Articles commandés -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-list me-2"></i>Articles Commandés
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if order.items %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Produit</th>
+                                        <!-- ✅ CORRECTION : Prix seulement pour commandes client -->
+                                        {% if order.order_type == 'customer_order' %}
+                                            <th class="text-end">Prix Unitaire</th>
+                                        {% endif %}
+                                        <th class="text-end">Quantité</th>
+                                        <!-- ✅ CORRECTION : Sous-total seulement pour commandes client -->
+                                        {% if order.order_type == 'customer_order' %}
+                                            <th class="text-end">Sous-total</th>
+                                        {% endif %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in order.items %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ item.product.name }}</strong>
+                                            {% if item.product.sku %}
+                                                <br><small class="text-muted">SKU: {{ item.product.sku }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <!-- ✅ CORRECTION : Prix seulement pour commandes client -->
+                                        {% if order.order_type == 'customer_order' %}
+                                            <td class="text-end">{{ "%.2f"|format(item.price_at_order|float) }} DA</td>
+                                        {% endif %}
+                                        <td class="text-end">{{ item.quantity }} {{ item.product.unit }}</td>
+                                        <!-- ✅ CORRECTION : Sous-total seulement pour commandes client -->
+                                        {% if order.order_type == 'customer_order' %}
+                                            <td class="text-end fw-semibold">{{ "%.2f"|format(item.get_subtotal()|float) }} DA</td>
+                                        {% endif %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <!-- ✅ CORRECTION : Totaux seulement pour commandes client -->
+                                {% if order.order_type == 'customer_order' %}
+                                    <tfoot class="table-light">
+                                        <tr>
+                                            <td colspan="3" class="text-end fw-bold">Sous-Total Articles :</td>
+                                            <td class="text-end fw-bold">{{ "%.2f"|format(order.get_items_total()|float) }} DA</td>
+                                        </tr>
+                                        {% if order.delivery_cost and order.delivery_cost > 0 %}
+                                        <tr>
+                                            <td colspan="3" class="text-end fw-bold">Frais de Livraison :</td>
+                                            <td class="text-end fw-bold">{{ "%.2f"|format(order.delivery_cost|float) }} DA</td>
+                                        </tr>
+                                        {% endif %}
+                                        <tr class="table-success">
+                                            <td colspan="3" class="text-end fw-bold fs-5">Total Commande :</td>
+                                            <td class="text-end fw-bold fs-5">{{ "%.2f"|format(order.total_amount|float) }} DA</td>
+                                        </tr>
+                                    </tfoot>
+                                {% endif %}
+                            </table>
+                        </div>
                     {% else %}
-                    <p class="text-center p-3">Aucun article dans cette commande.</p>
+                        <div class="text-center py-4">
+                            <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-2">Aucun article dans cette commande.</p>
+                        </div>
                     {% endif %}
                 </div>
             </div>
+
+            <!-- Notes -->
             {% if order.notes %}
-            <div class="card shadow-sm mt-4">
-                <div class="card-header bg-light"><h5 class="card-title mb-0"><i class="bi bi-sticky me-2"></i>Notes</h5></div>
-                <div class="card-body"><p style="white-space: pre-wrap;">{{ order.notes|nl2br|safe }}</p></div>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-chat-text me-2"></i>Notes
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ order.notes|nl2br|safe }}</p>
+                </div>
             </div>
             {% endif %}
+
+            <!-- Informations système -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-gear me-2"></i>Informations Système
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            {% if order.user %}
+                                <p><strong>Saisie par :</strong> {{ order.user.username }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Créé le :</strong> {{ order.created_at.strftime('%d/%m/%Y à %H:%M') }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
 {% endblock %}
