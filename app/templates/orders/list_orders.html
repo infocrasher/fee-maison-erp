@@ -9,9 +9,20 @@
         <h1 class="h3 mb-0">
             <i class="bi bi-receipt-cutoff me-2"></i>{{ title }}
         </h1>
-        <a href="{{ url_for('orders.new_order') }}" class="btn btn-primary">
-            <i class="bi bi-plus-circle-fill me-1"></i>Nouvelle Commande
-        </a>
+        <!-- ✅ CORRECTION : Menu déroulant au lieu du bouton simple -->
+        <div class="dropdown">
+            <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <i class="bi bi-plus-circle-fill me-1"></i>Nouvelle Commande
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="{{ url_for('orders.new_customer_order') }}">
+                    <i class="bi bi-person-check me-2"></i>Commande Client
+                </a></li>
+                <li><a class="dropdown-item" href="{{ url_for('orders.new_production_order') }}">
+                    <i class="bi bi-gear me-2"></i>Ordre Production
+                </a></li>
+            </ul>
+        </div>
     </div>
 
     {% if orders_pagination and orders_pagination.items %}
@@ -113,7 +124,10 @@
         </div>
     {% else %}
         <div class="alert alert-info text-center" role="alert">
-            <i class="bi bi-info-circle-fill me-2"></i>Aucune commande enregistrée. <a href="{{ url_for('orders.new_order') }}" class="alert-link">Créer une nouvelle commande</a>.
+            <!-- ✅ CORRECTION : Liens séparés au lieu du lien unique -->
+            <i class="bi bi-info-circle-fill me-2"></i>Aucune commande enregistrée. 
+            <a href="{{ url_for('orders.new_customer_order') }}" class="alert-link">Créer une commande client</a> ou 
+            <a href="{{ url_for('orders.new_production_order') }}" class="alert-link">un ordre de production</a>.
         </div>
     {% endif %}
     <div class="mt-4 text-center"><a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left-circle-fill"></i> Retour</a></div>
