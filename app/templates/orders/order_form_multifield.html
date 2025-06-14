@@ -2,7 +2,7 @@
 {% block content %}
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <style>
-/* Style inspiré d'Odoo */
+/* Vos styles existants (identiques) */
 .form-container {
     background: #f8f9fa;
     min-height: 100vh;
@@ -234,13 +234,14 @@
                                             <div class="col-md-5 mb-3">
                                                 {{ subform.product.label(class="form-label fw-bold") }}
                                                 <span class="field-required">*</span>
-                                                {{ subform.product(class="form-select form-control product-select", id="items-{{ loop.index0 }}-product", data_index=loop.index0) }}
+                                                <!-- 🎯 CORRECTION CRITIQUE : IDs fixes -->
+                                                {{ subform.product(class="form-select form-control product-select", id="items-" + loop.index0|string + "-product", data_index=loop.index0) }}
                                             </div>
                                             <div class="col-md-2 mb-3">
                                                 {{ subform.quantity.label(class="form-label fw-bold") }}
                                                 <span class="field-required">*</span>
                                                 <div class="input-group">
-                                                    {{ subform.quantity(class="form-control quantity-input", min="0.01", step="0.01", id="items-{{ loop.index0 }}-quantity", data_index=loop.index0) }}
+                                                    {{ subform.quantity(class="form-control quantity-input", min="0.01", step="0.01", id="items-" + loop.index0|string + "-quantity", data_index=loop.index0) }}
                                                     <span class="input-group-text">unité(s)</span>
                                                 </div>
                                             </div>
@@ -325,48 +326,24 @@
 <script>
 $(document).ready(function() {
     
-    // 1. Initialiser Select2 avec la CORRECTION de processResults
+    // 🎯 SOLUTION SIMPLE : Utiliser Select2 SANS AJAX
     function initializeSelect2(element) {
         $(element).select2({
             width: '100%',
-            placeholder: "Tapez 2 lettres pour rechercher...",
-            allowClear: true,
-            minimumInputLength: 2,
-            ajax: {
-                url: '{{ url_for("orders.api_products") }}',
-                dataType: 'json',
-                delay: 250,
-                data: function(params) {
-                    return { q: params.term };
-                },
-                // 🎯 CORRECTION CRITIQUE de ChatGPT : Structure attendue par Select2
-                processResults: function(data) {
-                    console.log('API Response:', data); // Debug
-                    return {
-                        results: data.results  // SOLUTION : Retourner la structure correcte
-                    };
-                },
-                cache: true
-            }
+            placeholder: "-- Choisir un produit --",
+            allowClear: true
+            // PAS D'AJAX - utilise les options du HTML
         });
     }
 
-    // 2. Fonction CORRIGÉE pour récupérer le prix (select2('data') retourne un TABLEAU)
-    function getProductPrice(productSelect) {
-        const select2Data = $(productSelect).select2('data');
-        console.log('Select2 data:', select2Data); // Debug
-        
-        // 🎯 CORRECTION de ChatGPT : Accès au premier élément du tableau
-        if (select2Data && select2Data.length > 0 && select2Data[0].price !== undefined) {
-            return parseFloat(select2Data[0].price);
-        }
-        
-        // Fallback : récupérer depuis l'attribut data-price
-        const storedPrice = $(productSelect).attr('data-price');
-        return parseFloat(storedPrice || 0);
+    // 🎯 FONCTION POUR EXTRAIRE LE PRIX DEPUIS LE TEXTE DE L'OPTION
+    function extractPriceFromText(optionText) {
+        // Chercher le pattern "(XX.XX DA"
+        const match = optionText.match(/\((\d+\.?\d*)\s+DA/);
+        return match ? parseFloat(match[1]) : 0;
     }
 
-    // 3. Fonction de mise à jour des sous-totaux
+    // Fonction de mise à jour des sous-totaux
     function updateSubtotals() {
         let itemsTotal = 0;
         
@@ -381,8 +358,12 @@ $(document).ready(function() {
             let unitPrice = 0;
             
             if (productSelect && productSelect.value) {
-                unitPrice = getProductPrice(productSelect);
-                console.log(`Product ${index}: Price = ${unitPrice}, Quantity = ${quantity}`); // Debug
+                // 🎯 RÉCUPÉRER LE PRIX DEPUIS LE TEXTE DE L'OPTION SÉLECTIONNÉE
+                const selectedOption = productSelect.options[productSelect.selectedIndex];
+                if (selectedOption) {
+                    unitPrice = extractPriceFromText(selectedOption.text);
+                    console.log(`Product ${index}: Selected="${selectedOption.text}", Price=${unitPrice}, Quantity=${quantity}`);
+                }
                 
                 if (unitPriceElem) {
                     unitPriceElem.textContent = unitPrice.toFixed(2);
@@ -410,23 +391,16 @@ $(document).ready(function() {
         document.getElementById('grand-total').textContent = grandTotal.toFixed(2) + ' DA';
     }
 
-    // 4. Event listeners CORRIGÉS
+    // Event listeners
     function attachEventListeners(element) {
-        // Event listener pour Select2 avec CORRECTION
-        $(element).find('.product-select').on('select2:select', function(e) {
-            const data = e.params.data;
-            console.log('=== DEBUG SELECT2 ===');
-            console.log('e.params.data:', data);
-            console.log('Prix récupéré:', data.price);
-            console.log('Type prix:', typeof data.price);
-            console.log('=====================');
-            
-            // Stocker le prix dans l'attribut pour accès futur
-            $(this).attr('data-price', data.price || 0);
-            $(this).attr('data-unit', data.unit || '');
-            
-            updateSubtotals();
-        });
+        // 🎯 EVENT LISTENER SIMPLE POUR SELECT CHANGE
+        const productSelect = element.querySelector('.product-select');
+        if (productSelect) {
+            $(productSelect).on('change', function() {
+                console.log('Product changed:', this.value, this.options[this.selectedIndex].text);
+                updateSubtotals();
+            });
+        }
 
         // Event listeners pour quantité
         const quantityInput = element.querySelector('.quantity-input');
@@ -445,7 +419,7 @@ $(document).ready(function() {
         }
     }
 
-    // 5. Ajout dynamique d'articles
+    // Ajout dynamique d'articles
     function addItem() {
         const container = document.getElementById('items-container');
         let templateRow = container.querySelector('.item-row');
@@ -501,7 +475,7 @@ $(document).ready(function() {
         updateSubtotals();
     }
 
-    // 6. Suppression d'articles
+    // Suppression d'articles
     function removeItem(index) {
         const item = document.querySelector('.item-row[data-index="' + index + '"]');
         if (item) {
@@ -526,7 +500,7 @@ $(document).ready(function() {
         }
     }
 
-    // 7. Visibilité des champs selon le type de commande
+    // Visibilité des champs selon le type de commande
     function updateFormVisibility() {
         const orderType = document.getElementById('order_type').value;
         const deliveryOption = document.getElementById('delivery_option').value;
@@ -561,7 +535,7 @@ $(document).ready(function() {
         updateSubtotals();
     }
 
-    // 8. Initialisation des événements
+    // Initialisation des événements
     const orderTypeSelect = document.getElementById('order_type');
     const deliveryOptionSelect = document.getElementById('delivery_option');
     const deliveryCostInput = document.getElementById('delivery_cost');
@@ -572,7 +546,7 @@ $(document).ready(function() {
     
     $('#add-item-btn').on('click', addItem);
 
-    // 9. Initialisation des selects existants
+    // Initialisation des selects existants
     $('.product-select').each(function() {
         initializeSelect2(this);
     });
