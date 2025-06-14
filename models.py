@@ -199,7 +199,7 @@ class Order(db.Model):
         order_types = {
             'customer_order': 'Commande Client',
             'counter_production_request': 'Ordre de Production',
-            'in_store': 'Vente au Comptoir'
+            'in_store': 'Commande Magasin'
         }
         return order_types.get(self.order_type, self.order_type.title())
     

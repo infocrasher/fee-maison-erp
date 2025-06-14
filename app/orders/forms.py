@@ -68,7 +68,7 @@ class OrderForm(FlaskForm):
     order_type = SelectField(
         'Type de Commande',
         choices=[
-            ('in_store', 'Vente au Comptoir'),
+            ('in_store', 'Commande Magasin'),
             ('customer_order', 'Commande Client')
         ],
         validators=[DataRequired()]
