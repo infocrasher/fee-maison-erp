@@ -111,7 +111,7 @@
                                 <i class="bi bi-person me-2"></i>Mon Compte
                             </a></li>
                             {% if current_user.is_admin %}
-                            <li><a class="dropdown-item" href="{{ url_for('admin.admin_dashboard') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('admin.dashboard') }}">
                                 <i class="bi bi-shield-check me-2"></i>Admin Dashboard
                             </a></li>
                             {% endif %}
