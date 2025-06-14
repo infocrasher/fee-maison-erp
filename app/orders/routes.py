@@ -297,13 +297,17 @@ def edit_order_status(order_id):
 @login_required
 @admin_required
 def orders_calendar():
+    # ✅ CORRECTION : Filtrer selon should_appear_in_calendar()
     orders = Order.query.filter(Order.due_date.isnot(None)).all()
     events = []
     for order in orders:
-        events.append({
-            'id': order.id,
-            'title': f"#{order.id} - {order.customer_name}",
-            'start': order.due_date.isoformat(),
-            'url': url_for('orders.view_order', order_id=order.id)
-        })
+        # Seules les commandes qui doivent apparaître
+        if order.should_appear_in_calendar():
+            events.append({
+                'id': order.id,
+                'title': f"#{order.id} - {order.customer_name or 'Production'}",
+                'start': order.due_date.isoformat(),
+                'url': url_for('orders.view_order', order_id=order.id),
+                'backgroundColor': '#ffc107' if order.status == 'in_production' else '#6c757d'
+            })
     return render_template('orders/orders_calendar.html', events=events, title="Calendrier des Commandes")
