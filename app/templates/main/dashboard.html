@@ -1,142 +1,305 @@
 {% extends "base.html" %}
-
 {% block title %}{{ title }} - Fée Maison{% endblock %}
-
 {% block head %}
 {{ super() }}
 <style>
-    .stat-card {
-        transition: transform .2s ease-out, box-shadow .2s ease-out;
-    }
-    .stat-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
-    }
-    .stat-icon {
-        font-size: 2.5rem;
-        opacity: 0.7;
-    }
-    .stat-value {
-        font-size: 1.75rem;
-        font-weight: bold;
-    }
+.dashboard-card {
+    transition: transform 0.2s ease-in-out;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.dashboard-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.stat-icon {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.quick-action-card {
+    transition: all 0.3s ease;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+}
+
+.quick-action-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    color: inherit;
+    text-decoration: none;
+}
+
+.welcome-header {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800"><i class="bi bi-speedometer2 me-2"></i>{{ title }}</h1>
-        {% if current_user.is_authenticated %}
-        <span class="text-muted">Bienvenue, {{ current_user.username }} !</span>
-        {% endif %}
-    </div>
-
-    <!-- Cartes de statistiques -->
-    <div class="row">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2 stat-card">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Produits Actifs</div>
-                            <div class="stat-value text-gray-800">{{ data.active_products_count if data else '-' }}</div>
-                        </div>
-                        <div class="col-auto"><i class="bi bi-box-seam stat-icon text-gray-300"></i></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2 stat-card">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Articles en Stock (Total)</div>
-                            <div class="stat-value text-gray-800">{{ data.total_items_in_stock if data else '-' }}</div>
-                        </div>
-                        <div class="col-auto"><i class="bi bi-stack stat-icon text-gray-300"></i></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2 stat-card">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Ventes (Mois en cours)</div>
-                            <div class="stat-value text-gray-800">{{ data.sales_count_month if data else '-' }}</div>
-                        </div>
-                        <div class="col-auto"><i class="bi bi-cart-check stat-icon text-gray-300"></i></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2 stat-card">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Chiffre d'Affaires (Mois)</div>
-                            <div class="stat-value text-gray-800">{{ "%.2f DA"|format(data.total_revenue_month|float) if data and data.total_revenue_month is not none else '- DA' }}</div>
-                        </div>
-                        <div class="col-auto"><i class="bi bi-cash-coin stat-icon text-gray-300"></i></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Autres sections du tableau de bord -->
-    <div class="row">
-        <div class="col-lg-7 mb-4">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                    <h6 class="m-0 font-weight-bold text-primary"><i class="bi bi-graph-up me-2"></i>Aperçu des Ventes</h6>
-                </div>
-                <div class="card-body text-center" style="min-height: 300px;">
-                    <i class="bi bi-bar-chart-line display-1 text-light"></i>
-                    <p class="mt-3 text-muted">Les graphiques de ventes apparaîtront ici prochainement.</p>
-                    <!-- Espace pour le graphique Chart.js -->
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-5 mb-4">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary"><i class="bi bi-bell me-2"></i>Alertes & Notifications</h6>
-                </div>
-                <div class="card-body text-center" style="min-height: 150px;">
-                    <i class="bi bi-check-circle-fill display-4 text-success"></i>
-                    <p class="mt-2 text-muted">Tout est calme pour le moment.<br>Les alertes de stock ou autres notifications s'afficheront ici.</p>
-                </div>
-            </div>
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary"><i class="bi bi-lightning-charge me-2"></i>Actions Rapides</h6>
-                </div>
-                <div class="card-body">
+<div class="container-fluid py-4">
+    <!-- En-tête de bienvenue -->
+    <div class="welcome-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="display-6 mb-2">
+                    <i class="bi bi-house-heart me-3"></i>
+                    Bienvenue dans Fée Maison
+                </h1>
+                <p class="lead mb-0">
+                    Bonjour {{ current_user.username }} ! 
                     {% if current_user.is_admin %}
-                    <a href="{{ url_for('products.new_product') }}" class="btn btn-outline-primary d-block mb-2"><i class="bi bi-plus-circle me-1"></i> Nouveau Produit</a>
-                    <a href="{{ url_for('orders.new_order') }}" class="btn btn-outline-success d-block mb-2"><i class="bi bi-cart-plus me-1"></i> Nouvelle Commande/Production</a>
-                    <a href="{{ url_for('stock.quick_entry') }}" class="btn btn-outline-info d-block"><i class="bi bi-box-arrow-in-down me-1"></i> Réception Stock Rapide</a>
-                    {% else %}
-                    <p class="text-muted">Actions rapides non disponibles pour votre rôle.</p>
+                    Vous avez tous les droits administrateur.
                     {% endif %}
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <i class="bi bi-calendar3 me-2"></i>
+                <span id="current-date"></span>
+            </div>
+        </div>
+    </div>
+
+    {% if current_user.is_admin %}
+    <!-- Statistiques rapides -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4><i class="bi bi-graph-up me-2"></i>Aperçu Rapide</h4>
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card dashboard-card h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="stat-icon bg-primary text-white me-3">
+                        <i class="bi bi-cart-check"></i>
+                    </div>
+                    <div>
+                        <h6 class="card-title text-muted mb-1">Commandes Aujourd'hui</h6>
+                        <h3 class="mb-0">0</h3>
+                        <small class="text-success">
+                            <i class="bi bi-graph-up"></i> +0%
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card dashboard-card h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="stat-icon bg-success text-white me-3">
+                        <i class="bi bi-currency-exchange"></i>
+                    </div>
+                    <div>
+                        <h6 class="card-title text-muted mb-1">CA Aujourd'hui</h6>
+                        <h3 class="mb-0">0 DA</h3>
+                        <small class="text-muted">Chiffre d'affaires</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card dashboard-card h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="stat-icon bg-warning text-white me-3">
+                        <i class="bi bi-gear"></i>
+                    </div>
+                    <div>
+                        <h6 class="card-title text-muted mb-1">Production Planifiée</h6>
+                        <h3 class="mb-0">0</h3>
+                        <small class="text-info">Ordres en cours</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card dashboard-card h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="stat-icon bg-info text-white me-3">
+                        <i class="bi bi-boxes"></i>
+                    </div>
+                    <div>
+                        <h6 class="card-title text-muted mb-1">Produits en Stock</h6>
+                        <h3 class="mb-0">{{ products_count or 0 }}</h3>
+                        <small class="text-muted">Articles disponibles</small>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Actions rapides -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4><i class="bi bi-lightning me-2"></i>Actions Rapides</h4>
+        </div>
+    </div>
+    <div class="row mb-4">
+        <!-- Commande Client -->
+        <div class="col-md-6 col-lg-3 mb-3">
+            <a href="{{ url_for('orders.new_customer_order') }}" class="quick-action-card">
+                <div class="card bg-primary text-white h-100">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="bi bi-person-check fs-1"></i>
+                        </div>
+                        <div>
+                            <h5 class="card-title mb-1">Commande Client</h5>
+                            <p class="card-text small mb-2">Nouvelle commande avec facturation</p>
+                            <span class="btn btn-light btn-sm">
+                                <i class="bi bi-plus me-1"></i>Créer
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <!-- Ordre Production -->
+        <div class="col-md-6 col-lg-3 mb-3">
+            <a href="{{ url_for('orders.new_production_order') }}" class="quick-action-card">
+                <div class="card bg-success text-white h-100">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="bi bi-gear fs-1"></i>
+                        </div>
+                        <div>
+                            <h5 class="card-title mb-1">Ordre Production</h5>
+                            <p class="card-text small mb-2">Planning interne magasin</p>
+                            <span class="btn btn-light btn-sm">
+                                <i class="bi bi-plus me-1"></i>Créer
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <!-- Commandes Client -->
+        <div class="col-md-6 col-lg-3 mb-3">
+            <a href="{{ url_for('orders.list_customer_orders') }}" class="quick-action-card">
+                <div class="card bg-info text-white h-100">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="bi bi-list-check fs-1"></i>
+                        </div>
+                        <div>
+                            <h5 class="card-title mb-1">Commandes</h5>
+                            <p class="card-text small mb-2">Gérer les commandes client</p>
+                            <span class="btn btn-light btn-sm">
+                                <i class="bi bi-eye me-1"></i>Voir
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <!-- Gestion Produits -->
+        <div class="col-md-6 col-lg-3 mb-3">
+            <a href="{{ url_for('products.list_products') }}" class="quick-action-card">
+                <div class="card bg-warning text-white h-100">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="bi bi-box fs-1"></i>
+                        </div>
+                        <div>
+                            <h5 class="card-title mb-1">Produits</h5>
+                            <p class="card-text small mb-2">Gérer le catalogue</p>
+                            <span class="btn btn-light btn-sm">
+                                <i class="bi bi-gear me-1"></i>Gérer
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Graphiques et activités -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card dashboard-card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-graph-up me-2"></i>Activité Récente
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center py-5">
+                        <i class="bi bi-graph-up-arrow text-muted" style="font-size: 3rem;"></i>
+                        <p class="text-muted mt-3">Les graphiques de ventes apparaîtront ici prochainement.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card dashboard-card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-bell me-2"></i>Notifications
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center py-4">
+                        <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                        <p class="text-muted mt-2 mb-0">Tout est calme pour le moment.</p>
+                    </div>
+                    <hr>
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Les alertes de stock ou autres notifications s'afficheront ici.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% else %}
+    <!-- Vue utilisateur non-admin -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card dashboard-card">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-shield-x text-muted" style="font-size: 3rem;"></i>
+                    <h4 class="text-muted mt-3">Actions rapides non disponibles pour votre rôle.</h4>
+                    <p class="text-muted">Contactez l'administrateur pour obtenir des droits supplémentaires.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
 
 {% block scripts %}
 {{ super() }}
-<!-- Potentiellement Chart.js ici plus tard -->
+<script>
+// Afficher la date actuelle
+document.addEventListener('DOMContentLoaded', function() {
+    const dateElement = document.getElementById('current-date');
+    if (dateElement) {
+        const today = new Date();
+        const options = { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        };
+        dateElement.textContent = today.toLocaleDateString('fr-FR', options);
+    }
+});
+</script>
 {% endblock %}
