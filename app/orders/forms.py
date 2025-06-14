@@ -216,9 +216,10 @@ class CustomerOrderForm(FlaskForm):
         return True
 
 class ProductionOrderForm(FlaskForm):
-    production_date = DateField(
-        'Date de production souhaitée',
-        validators=[Optional()]
+    production_date = DateTimeField(
+    'Date et heure de production souhaitée',
+    format='%Y-%m-%dT%H:%M',
+    validators=[Optional()]
     )
     
     priority = SelectField(
