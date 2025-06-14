@@ -7,27 +7,51 @@ from wtforms import (
     SubmitField,
     SelectField,
     DecimalField,
-    DateTimeField
+    DateTimeField,
+    DateField
 )
 from wtforms.validators import DataRequired, Optional, Length
-from wtforms_sqlalchemy.fields import QuerySelectField
 from models import Product
 
-# Fonction pour récupérer les produits finis
 def get_sellable_products():
     return Product.query.filter_by(product_type='finished').order_by(Product.name).all()
 
-# Fonction pour afficher le label du produit (nom + prix + unité)
-def get_product_label(product):
-    price = product.price or 0.0
-    return f"{product.name} ({price:.2f} DA / {product.unit})"
-
 class OrderItemForm(FlaskForm):
-    """Sous-formulaire pour un article dans une commande."""
     class Meta:
         csrf = False
     
-    # CORRECTION : SelectField normal au lieu de QuerySelectField pour éviter les conflits avec Select2
+    product = SelectField(
+        'Produit',
+        choices=[('', '-- Choisir un produit --')],
+        validators=[DataRequired("Veuillez sélectionner un produit.")]
+    )
+    
+    quantity = DecimalField(
+        'Quantité',
+        validators=[DataRequired("La quantité est requise.")],
+        default=1
+    )
+
+class CustomerOrderItemForm(FlaskForm):
+    class Meta:
+        csrf = False
+    
+    product = SelectField(
+        'Produit',
+        choices=[('', '-- Choisir un produit --')],
+        validators=[DataRequired("Veuillez sélectionner un produit.")]
+    )
+    
+    quantity = DecimalField(
+        'Quantité',
+        validators=[DataRequired("La quantité est requise.")],
+        default=1
+    )
+
+class ProductionOrderItemForm(FlaskForm):
+    class Meta:
+        csrf = False
+    
     product = SelectField(
         'Produit',
         choices=[('', '-- Choisir un produit --')],
@@ -41,8 +65,6 @@ class OrderItemForm(FlaskForm):
     )
 
 class OrderForm(FlaskForm):
-    """Formulaire principal pour la création et l'édition de commandes."""
-    
     order_type = SelectField(
         'Type de Commande',
         choices=[
@@ -52,12 +74,10 @@ class OrderForm(FlaskForm):
         validators=[DataRequired()]
     )
 
-    # Champs client
     customer_name = StringField('Nom du client', validators=[Optional(), Length(max=100)])
     customer_phone = StringField('Téléphone', validators=[Optional(), Length(max=20)])
     customer_address = TextAreaField('Adresse de livraison', validators=[Optional(), Length(max=300)])
     
-    # Options de service
     delivery_option = SelectField(
         'Option de service',
         choices=[
@@ -89,7 +109,6 @@ class OrderForm(FlaskForm):
 
     def __init__(self, *args, **kwargs):
         super(OrderForm, self).__init__(*args, **kwargs)
-        # Populate product choices dynamically
         products = get_sellable_products()
         product_choices = [('', '-- Choisir un produit --')]
         for product in products:
@@ -97,17 +116,14 @@ class OrderForm(FlaskForm):
             label = f"{product.name} ({price:.2f} DA / {product.unit})"
             product_choices.append((str(product.id), label))
         
-        # Update choices for all item forms
         for item_form in self.items:
             item_form.product.choices = product_choices
 
-    # Logique de validation personnalisée
     def validate(self, extra_validators=None):
         initial_validation = super(OrderForm, self).validate(extra_validators)
         if not initial_validation:
             return False
 
-        # Si c'est une commande client, le nom et le téléphone sont requis
         if self.order_type.data == 'customer_order':
             if not self.customer_name.data:
                 self.customer_name.errors.append('Le nom du client est requis pour une commande client.')
@@ -119,7 +135,6 @@ class OrderForm(FlaskForm):
                 self.due_date.errors.append('La date de retrait/livraison est requise.')
                 return False
 
-        # Si la livraison est choisie, l'adresse est requise
         if self.order_type.data == 'customer_order' and self.delivery_option.data == 'delivery':
             if not self.customer_address.data:
                 self.customer_address.errors.append("L'adresse de livraison est requise pour une livraison.")
@@ -127,9 +142,124 @@ class OrderForm(FlaskForm):
 
         return True
 
-class OrderStatusForm(FlaskForm):
-    """Formulaire pour la mise à jour rapide du statut d'une commande."""
+class CustomerOrderForm(FlaskForm):
+    customer_name = StringField('Nom du client', validators=[DataRequired("Le nom du client est requis."), Length(max=100)])
+    customer_phone = StringField('Téléphone', validators=[DataRequired("Le téléphone est requis."), Length(max=20)])
+    customer_address = TextAreaField('Adresse de livraison', validators=[Optional(), Length(max=300)])
     
+    delivery_option = SelectField(
+        'Option de retrait',
+        choices=[
+            ('pickup', 'Retrait en magasin'),
+            ('delivery', 'Livraison à domicile')
+        ],
+        validators=[DataRequired()]
+    )
+
+    due_date = DateTimeField(
+        'Date/Heure de retrait/livraison',
+        format='%Y-%m-%dT%H:%M',
+        validators=[DataRequired("La date est requise.")]
+    )
+
+    delivery_cost = DecimalField(
+        'Coût de livraison (DA)',
+        validators=[Optional()],
+        default=0.0
+    )
+
+    payment_status = SelectField(
+        'Statut paiement',
+        choices=[
+            ('pending', 'En attente'),
+            ('partial', 'Acompte versé'),
+            ('paid', 'Payé intégralement')
+        ],
+        default='pending'
+    )
+
+    advance_payment = DecimalField(
+        'Acompte versé (DA)',
+        validators=[Optional()],
+        default=0.0
+    )
+
+    items = FieldList(
+        FormField(CustomerOrderItemForm),
+        min_entries=1
+    )
+
+    notes = TextAreaField('Notes spéciales', validators=[Optional(), Length(max=5000)])
+    submit = SubmitField('Enregistrer la commande')
+
+    def __init__(self, *args, **kwargs):
+        super(CustomerOrderForm, self).__init__(*args, **kwargs)
+        products = get_sellable_products()
+        product_choices = [('', '-- Choisir un produit --')]
+        for product in products:
+            price = product.price or 0.0
+            label = f"{product.name} ({price:.2f} DA / {product.unit})"
+            product_choices.append((str(product.id), label))
+        
+        for item_form in self.items:
+            item_form.product.choices = product_choices
+
+    def validate(self, extra_validators=None):
+        initial_validation = super(CustomerOrderForm, self).validate(extra_validators)
+        if not initial_validation:
+            return False
+
+        if self.delivery_option.data == 'delivery' and not self.customer_address.data:
+            self.customer_address.errors.append("L'adresse de livraison est requise pour une livraison.")
+            return False
+
+        return True
+
+class ProductionOrderForm(FlaskForm):
+    production_date = DateField(
+        'Date de production souhaitée',
+        validators=[Optional()]
+    )
+    
+    priority = SelectField(
+        'Priorité',
+        choices=[
+            ('normal', 'Normale'),
+            ('urgent', 'Urgente'),
+            ('low', 'Faible')
+        ],
+        default='normal'
+    )
+
+    production_location = SelectField(
+        'Lieu de production',
+        choices=[
+            ('main_kitchen', 'Cuisine principale'),
+            ('store_counter', 'Comptoir magasin')
+        ],
+        default='main_kitchen'
+    )
+
+    items = FieldList(
+        FormField(ProductionOrderItemForm),
+        min_entries=1
+    )
+
+    production_notes = TextAreaField('Instructions de production', validators=[Optional(), Length(max=5000)])
+    submit = SubmitField('Créer ordre de production')
+
+    def __init__(self, *args, **kwargs):
+        super(ProductionOrderForm, self).__init__(*args, **kwargs)
+        products = get_sellable_products()
+        product_choices = [('', '-- Choisir un produit --')]
+        for product in products:
+            label = f"{product.name} (Unité: {product.unit})"
+            product_choices.append((str(product.id), label))
+        
+        for item_form in self.items:
+            item_form.product.choices = product_choices
+
+class OrderStatusForm(FlaskForm):
     status = SelectField(
         'Statut de la commande',
         choices=[
