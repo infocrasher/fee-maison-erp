@@ -325,7 +325,7 @@
 <script>
 $(document).ready(function() {
     // 1. Données des produits depuis le backend
-    const productsData = {{ products_serializable|tojson|safe }};
+    const productsData = JSON.parse('{{ products_serializable|tojson|safe }}');
     let productPrices = {};
     let productNames = {};
     
