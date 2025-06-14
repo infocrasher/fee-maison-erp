@@ -354,7 +354,12 @@ class OrderItem(db.Model):
     unit_price = db.Column(db.Numeric(10, 2), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # ✅ CORRECTION : Ajouter la propriété price_at_order
+    # ✅ CORRECTION : Ajouter cette méthode manquante
+    def get_subtotal(self):
+        """Retourne le sous-total (méthode pour compatibilité template)"""
+        return float(Decimal(self.quantity) * Decimal(self.unit_price))
+    
+    # ✅ CORRECTION : Propriété price_at_order
     @property
     def price_at_order(self):
         """Alias pour unit_price - compatibilité avec templates existants"""
@@ -362,7 +367,7 @@ class OrderItem(db.Model):
     
     @property
     def subtotal(self):
-        """Calcule le sous-total de la ligne"""
+        """Calcule le sous-total de la ligne (propriété)"""
         return Decimal(self.quantity) * Decimal(self.unit_price)
     
     def get_formatted_subtotal(self):
