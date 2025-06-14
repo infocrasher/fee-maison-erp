@@ -1,0 +1,518 @@
+{% extends "base.html" %}
+{% block content %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+.form-container {
+    background: #f8f9fa;
+    min-height: 100vh;
+    padding: 20px 0;
+}
+
+.card {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.card-header {
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    padding: 15px 20px;
+    border-radius: 7px 7px 0 0;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+.form-control {
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 14px;
+}
+
+.form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+.btn-primary {
+    background: #017e84;
+    border-color: #017e84;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.btn-primary:hover {
+    background: #015a5f;
+    border-color: #015a5f;
+}
+
+.order-summary {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.field-required {
+    color: #dc3545;
+}
+
+.badge-info {
+    background: #017e84;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+.btn-remove {
+    color: #dc3545;
+    background: none;
+    border: none;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.btn-remove:hover {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.select2-container--default .select2-selection--single {
+    height: 38px;
+    line-height: 38px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    padding-left: 12px;
+}
+</style>
+
+<div class="form-container">
+    <div class="container-fluid">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <!-- En-tête -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1 class="h3 mb-0 text-dark">
+                        <i class="bi bi-person-check me-2 text-primary"></i>Nouvelle Commande Client
+                    </h1>
+                    <a href="{{ url_for('orders.list_customer_orders') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-list me-1"></i>Commandes Client
+                    </a>
+                </div>
+
+                <!-- Messages d'erreur -->
+                {% for field, errors in form.errors.items() %}
+                    {% for error in errors %}
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            {{ form[field].label.text if field in form else field }}: {{ error }}
+                        </div>
+                    {% endfor %}
+                {% endfor %}
+
+                <form method="POST" id="customer-order-form">
+                    {{ form.hidden_tag() }}
+
+                    <!-- Informations Client -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-person me-2 text-primary"></i>Informations Client
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    {{ form.customer_name.label(class="form-label fw-bold") }}
+                                    <span class="field-required">*</span>
+                                    {{ form.customer_name(class="form-control" + (' is-invalid' if form.customer_name.errors else "")) }}
+                                    {% for error in form.customer_name.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    {{ form.customer_phone.label(class="form-label fw-bold") }}
+                                    <span class="field-required">*</span>
+                                    {{ form.customer_phone(class="form-control" + (' is-invalid' if form.customer_phone.errors else "")) }}
+                                    {% for error in form.customer_phone.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Options de Service -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-truck me-2 text-primary"></i>Options de Service
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    {{ form.delivery_option.label(class="form-label fw-bold") }}
+                                    <span class="field-required">*</span>
+                                    {{ form.delivery_option(class="form-select form-control", id="delivery_option") }}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    {{ form.due_date.label(class="form-label fw-bold") }}
+                                    <span class="field-required">*</span>
+                                    {{ form.due_date(class="form-control" + (" is-invalid" if form.due_date.errors else ""), type="datetime-local") }}
+                                    {% if form.due_date.errors %}
+                                        <div class="invalid-feedback d-block">{% for error in form.due_date.errors %}{{ error }}{% endfor %}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-12 mb-3" id="customer_address_wrapper" style="display: none;">
+                                    {{ form.customer_address.label(class="form-label fw-bold") }}
+                                    <span class="field-required">*</span>
+                                    {{ form.customer_address(class="form-control" + (' is-invalid' if form.customer_address.errors else ""), placeholder="Adresse complète de livraison...") }}
+                                    {% for error in form.customer_address.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-md-6 mb-3" id="delivery_cost_wrapper">
+                                    {{ form.delivery_cost.label(class="form-label fw-bold") }}
+                                    <div class="input-group">
+                                        {{ form.delivery_cost(class="form-control" + (' is-invalid' if form.delivery_cost.errors else ""), id="delivery_cost", step="0.01") }}
+                                        <span class="input-group-text">DA</span>
+                                    </div>
+                                    {% for error in form.delivery_cost.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Articles -->
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-basket me-2 text-primary"></i>Articles Commandés
+                            </h5>
+                            <span class="badge badge-info" id="items-count">{{ form.items|length }} article(s)</span>
+                        </div>
+                        <div class="card-body">
+                            <div id="items-container">
+                                {% for subform in form.items %}
+                                    <div class="item-row border-bottom pb-3 mb-3" data-index="{{ loop.index0 }}">
+                                        <div class="row">
+                                            <div class="col-md-5 mb-3">
+                                                {{ subform.product.label(class="form-label fw-bold") }}
+                                                <span class="field-required">*</span>
+                                                {{ subform.product(class="form-select form-control product-select", id="items-" + loop.index0|string + "-product") }}
+                                            </div>
+                                            <div class="col-md-2 mb-3">
+                                                {{ subform.quantity.label(class="form-label fw-bold") }}
+                                                <span class="field-required">*</span>
+                                                <div class="input-group">
+                                                    {{ subform.quantity(class="form-control quantity-input", min="0.01", step="0.01", id="items-" + loop.index0|string + "-quantity") }}
+                                                    <span class="input-group-text">unité(s)</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label class="form-label fw-bold">Sous-total</label>
+                                                <div class="form-control-plaintext fw-bold text-success item-subtotal" data-index="{{ loop.index0 }}">0.00 DA</div>
+                                                <div class="text-muted small price-preview" data-index="{{ loop.index0 }}">Prix unit.: <span class="unit-price">0.00</span> DA</div>
+                                            </div>
+                                            <div class="col-md-2 mb-3 d-flex align-items-end">
+                                                {% if loop.index0 > 0 %}
+                                                <button type="button" class="btn btn-remove" data-item-index="{{ loop.index0 }}">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            <button type="button" class="btn btn-outline-primary" id="add-item-btn">
+                                <i class="bi bi-plus-circle me-2"></i>Ajouter un Article
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Paiement -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-credit-card me-2 text-primary"></i>Informations Paiement
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    {{ form.payment_status.label(class="form-label fw-bold") }}
+                                    {{ form.payment_status(class="form-select form-control") }}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    {{ form.advance_payment.label(class="form-label fw-bold") }}
+                                    <div class="input-group">
+                                        {{ form.advance_payment(class="form-control", step="0.01") }}
+                                        <span class="input-group-text">DA</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-chat-text me-2 text-primary"></i>Notes Spéciales
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {{ form.notes(class="form-control", placeholder="Instructions spéciales pour la commande...", rows="3") }}
+                        </div>
+                    </div>
+
+                    <!-- Résumé -->
+                    <div class="order-summary">
+                        <h5 class="mb-3">
+                            <i class="bi bi-calculator me-2 text-primary"></i>Résumé de la Commande
+                        </h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Sous-total articles:</span>
+                                    <span class="fw-bold" id="items-total">0.00 DA</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2" id="delivery_total_line">
+                                    <span>Frais de livraison:</span>
+                                    <span class="fw-bold" id="delivery-total">0.00 DA</span>
+                                </div>
+                                <hr>
+                                <div class="d-flex justify-content-between fs-5">
+                                    <span><strong>Total Général:</strong></span>
+                                    <span class="fw-bold text-success" id="grand-total">0.00 DA</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Boutons -->
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle me-2"></i>Enregistrer la Commande
+                        </button>
+                        <a href="{{ url_for('orders.list_customer_orders') }}" class="btn btn-secondary btn-lg">
+                            <i class="bi bi-arrow-left me-1"></i>Annuler
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+$(document).ready(function() {
+    
+    function initializeSelect2(element) {
+        $(element).select2({
+            width: '100%',
+            placeholder: "-- Choisir un produit --",
+            allowClear: true
+        });
+    }
+
+    function extractPriceFromText(optionText) {
+        const match = optionText.match(/\((\d+\.?\d*)\s+DA/);
+        return match ? parseFloat(match[1]) : 0;
+    }
+
+    function updateSubtotals() {
+        let itemsTotal = 0;
+        
+        document.querySelectorAll('.item-row').forEach(function(row) {
+            const index = row.getAttribute('data-index');
+            const productSelect = document.getElementById('items-' + index + '-product');
+            const quantityInput = document.getElementById('items-' + index + '-quantity');
+            const unitPriceElem = row.querySelector('.unit-price');
+            const subtotalElem = row.querySelector('.item-subtotal');
+
+            let quantity = parseFloat(quantityInput.value) || 0;
+            let unitPrice = 0;
+            
+            if (productSelect && productSelect.value) {
+                const selectedOption = productSelect.options[productSelect.selectedIndex];
+                if (selectedOption) {
+                    unitPrice = extractPriceFromText(selectedOption.text);
+                }
+                
+                if (unitPriceElem) {
+                    unitPriceElem.textContent = unitPrice.toFixed(2);
+                }
+            }
+            
+            let subtotal = quantity * unitPrice;
+            if (subtotalElem) {
+                subtotalElem.textContent = subtotal.toFixed(2) + ' DA';
+            }
+            itemsTotal += subtotal;
+        });
+
+        document.getElementById('items-total').textContent = itemsTotal.toFixed(2) + ' DA';
+        
+        let deliveryCost = parseFloat(document.getElementById('delivery_cost').value) || 0;
+        document.getElementById('delivery-total').textContent = deliveryCost.toFixed(2) + ' DA';
+        let grandTotal = itemsTotal + deliveryCost;
+        document.getElementById('grand-total').textContent = grandTotal.toFixed(2) + ' DA';
+    }
+
+    function attachEventListeners(element) {
+        const productSelect = element.querySelector('.product-select');
+        if (productSelect) {
+            $(productSelect).on('change', function() {
+                updateSubtotals();
+            });
+        }
+
+        const quantityInput = element.querySelector('.quantity-input');
+        if (quantityInput) {
+            quantityInput.addEventListener('input', updateSubtotals);
+        }
+
+        const removeBtn = element.querySelector('.btn-remove');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function() {
+                const index = this.getAttribute('data-item-index');
+                removeItem(index);
+            });
+        }
+    }
+
+    function addItem() {
+        const container = document.getElementById('items-container');
+        let templateRow = container.querySelector('.item-row');
+        if (!templateRow) return;
+        
+        const newIndex = container.querySelectorAll('.item-row').length;
+        const newItem = templateRow.cloneNode(true);
+
+        newItem.setAttribute('data-index', newIndex);
+        $(newItem).find('.product-select').select2('destroy');
+
+        newItem.querySelectorAll('select, input').forEach(function(input) {
+            if (input.name) {
+                input.name = input.name.replace(/items-\d+-/, 'items-' + newIndex + '-');
+            }
+            if (input.id) {
+                input.id = input.id.replace(/items-\d+-/, 'items-' + newIndex + '-');
+            }
+            if (input.tagName.toLowerCase() === 'select') {
+                input.selectedIndex = 0;
+                input.value = '';
+            } else {
+                input.value = '';
+            }
+        });
+
+        newItem.querySelector('.item-subtotal').textContent = '0.00 DA';
+        newItem.querySelector('.unit-price').textContent = '0.00';
+
+        let removeButton = newItem.querySelector('.btn-remove');
+        if (!removeButton) {
+            const removeCol = newItem.querySelector('.col-md-2.d-flex.align-items-end');
+            if(removeCol) {
+               removeCol.innerHTML = '<button type="button" class="btn btn-remove" data-item-index="' + newIndex + '"><i class="bi bi-trash"></i></button>';
+               removeButton = removeCol.querySelector('.btn-remove');
+            }
+        }
+        if(removeButton) {
+           removeButton.setAttribute('data-item-index', newIndex);
+        }
+
+        container.appendChild(newItem);
+        document.getElementById('items-count').textContent = (newIndex + 1) + ' article(s)';
+        
+        const newSelect = newItem.querySelector('.product-select');
+        initializeSelect2(newSelect);
+        
+        attachEventListeners(newItem);
+        updateSubtotals();
+    }
+
+    function removeItem(index) {
+        const item = document.querySelector('.item-row[data-index="' + index + '"]');
+        if (item) {
+            item.remove();
+            
+            document.querySelectorAll('.item-row').forEach((row, newIdx) => {
+                row.setAttribute('data-index', newIdx);
+                row.querySelectorAll('select, input, button').forEach(el => {
+                    const name = el.name;
+                    if(name) el.name = name.replace(/items-\d+-/, 'items-' + newIdx + '-');
+                    const id = el.id;
+                    if(id) el.id = id.replace(/items-\d+-/, 'items-' + newIdx + '-');
+                    const dataIdx = el.getAttribute('data-item-index');
+                    if(dataIdx) el.setAttribute('data-item-index', newIdx);
+                });
+            });
+
+            const remainingItems = document.querySelectorAll('.item-row').length;
+            document.getElementById('items-count').textContent = remainingItems + ' article(s)';
+            updateSubtotals();
+        }
+    }
+
+    function updateFormVisibility() {
+        const deliveryOption = document.getElementById('delivery_option').value;
+        const addressWrapper = document.getElementById('customer_address_wrapper');
+        const deliveryCostWrapper = document.getElementById('delivery_cost_wrapper');
+        const deliveryTotalLine = document.getElementById('delivery_total_line');
+
+        const isDelivery = (deliveryOption === 'delivery');
+        
+        addressWrapper.style.display = isDelivery ? 'block' : 'none';
+        deliveryCostWrapper.style.display = isDelivery ? 'block' : 'none';
+        deliveryTotalLine.style.display = isDelivery ? 'flex' : 'none';
+        
+        if (!isDelivery) {
+            document.getElementById('delivery_cost').value = '0.00';
+        }
+        updateSubtotals();
+    }
+
+    const deliveryOptionSelect = document.getElementById('delivery_option');
+    const deliveryCostInput = document.getElementById('delivery_cost');
+    
+    if (deliveryOptionSelect) deliveryOptionSelect.addEventListener('change', updateFormVisibility);
+    if (deliveryCostInput) deliveryCostInput.addEventListener('input', updateSubtotals);
+    
+    $('#add-item-btn').on('click', addItem);
+
+    $('.product-select').each(function() {
+        initializeSelect2(this);
+    });
+
+    document.querySelectorAll('.item-row').forEach(function(row) {
+        attachEventListeners(row);
+    });
+
+    updateFormVisibility();
+    updateSubtotals();
+});
+</script>
+{% endblock %}
