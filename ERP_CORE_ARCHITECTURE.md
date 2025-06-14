@@ -235,7 +235,6 @@ ERP complet et autonome pour Fée Maison avec toutes les fonctionnalités métie
 - message
 - out_of_stock_products
 - page_num
-- products_serializable
 - render_field
 - render_pagination
 - status_class
