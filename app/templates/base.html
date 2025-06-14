@@ -81,13 +81,13 @@
                             <i class="bi bi-boxes"></i> Stock
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url_for('stock.stock_overview') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('stock.overview') }}">
                                 <i class="bi bi-eye me-2"></i>Vue d'ensemble Stock
                             </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('stock.receive_stock') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('stock.quick_entry') }}">
                                 <i class="bi bi-arrow-down-circle me-2"></i>Réception Magasin
                             </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('stock.adjust_stock') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('stock.adjustment') }}">
                                 <i class="bi bi-pencil-square me-2"></i>Ajustement de Stock
                             </a></li>
                         </ul>
