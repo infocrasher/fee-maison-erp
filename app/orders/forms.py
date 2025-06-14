@@ -1,57 +1,54 @@
 from flask_wtf import FlaskForm
 from wtforms import (
-    StringField, 
-    TextAreaField, 
-    FieldList, 
-    FormField, 
-    SubmitField, 
-    SelectField, 
+    StringField,
+    TextAreaField,
+    FieldList,
+    FormField,
+    SubmitField,
+    SelectField,
     DecimalField,
     DateTimeField
 )
-from wtforms.validators import DataRequired, Optional, Length, Email
+from wtforms.validators import DataRequired, Optional, Length
 from wtforms_sqlalchemy.fields import QuerySelectField
 from models import Product
 
-# Cette fonction retourne les produits qui peuvent être vendus.
+# Fonction pour récupérer les produits finis
 def get_sellable_products():
     return Product.query.filter_by(product_type='finished').order_by(Product.name).all()
 
-# ✅ CORRECTION : Cette fonction définit comment afficher le nom du produit dans la liste déroulante.
-# Elle inclut maintenant le nom, le prix et l'unité, exactement comme dans le module des recettes.
+# Fonction pour afficher le label du produit (nom + prix + unité)
 def get_product_label(product):
     price = product.price or 0.0
     return f"{product.name} ({price:.2f} DA / {product.unit})"
 
 class OrderItemForm(FlaskForm):
-    """
-    Sous-formulaire pour un article dans une commande.
-    """
-    # ✅ CORRECTION : On utilise la fonction 'get_product_label' pour formater le texte de l'option.
-    product = QuerySelectField(
-        'Produit', 
-        query_factory=get_sellable_products, 
-        get_label=get_product_label, 
-        allow_blank=True, 
-        blank_text='-- Choisir un produit --',
+    """Sous-formulaire pour un article dans une commande."""
+    class Meta:
+        csrf = False
+    
+    # CORRECTION : SelectField normal au lieu de QuerySelectField pour éviter les conflits avec Select2
+    product = SelectField(
+        'Produit',
+        choices=[('', '-- Choisir un produit --')],
         validators=[DataRequired("Veuillez sélectionner un produit.")]
     )
+    
     quantity = DecimalField(
-        'Quantité', 
-        validators=[DataRequired("La quantité est requise.")], 
+        'Quantité',
+        validators=[DataRequired("La quantité est requise.")],
         default=1
     )
 
 class OrderForm(FlaskForm):
-    """
-    Formulaire principal pour la création et l'édition de commandes.
-    """
+    """Formulaire principal pour la création et l'édition de commandes."""
+    
     order_type = SelectField(
-        'Type de Commande', 
+        'Type de Commande',
         choices=[
-            ('in_store', 'Vente au Comptoir'), 
+            ('in_store', 'Vente au Comptoir'),
             ('customer_order', 'Commande Client')
-        ], 
+        ],
         validators=[DataRequired()]
     )
 
@@ -62,33 +59,47 @@ class OrderForm(FlaskForm):
     
     # Options de service
     delivery_option = SelectField(
-        'Option de service', 
+        'Option de service',
         choices=[
-            ('pickup', 'Retrait en magasin'), 
+            ('pickup', 'Retrait en magasin'),
             ('delivery', 'Livraison à domicile')
-        ], 
+        ],
         validators=[Optional()]
     )
-    
+
     due_date = DateTimeField(
-        'Date/Heure de retrait/livraison', 
-        format='%Y-%m-%dT%H:%M', 
+        'Date/Heure de retrait/livraison',
+        format='%Y-%m-%dT%H:%M',
         validators=[Optional()]
     )
 
     delivery_cost = DecimalField(
-        'Coût de livraison', 
-        validators=[Optional()], 
+        'Coût de livraison',
+        validators=[Optional()],
         default=0.0
     )
 
     items = FieldList(
-        FormField(OrderItemForm), 
+        FormField(OrderItemForm),
         min_entries=1
     )
-    
+
     notes = TextAreaField('Notes', validators=[Optional(), Length(max=5000)])
     submit = SubmitField('Enregistrer')
+
+    def __init__(self, *args, **kwargs):
+        super(OrderForm, self).__init__(*args, **kwargs)
+        # Populate product choices dynamically
+        products = get_sellable_products()
+        product_choices = [('', '-- Choisir un produit --')]
+        for product in products:
+            price = product.price or 0.0
+            label = f"{product.name} ({price:.2f} DA / {product.unit})"
+            product_choices.append((str(product.id), label))
+        
+        # Update choices for all item forms
+        for item_form in self.items:
+            item_form.product.choices = product_choices
 
     # Logique de validation personnalisée
     def validate(self, extra_validators=None):
@@ -107,19 +118,18 @@ class OrderForm(FlaskForm):
             if not self.due_date.data:
                 self.due_date.errors.append('La date de retrait/livraison est requise.')
                 return False
-        
+
         # Si la livraison est choisie, l'adresse est requise
         if self.order_type.data == 'customer_order' and self.delivery_option.data == 'delivery':
             if not self.customer_address.data:
                 self.customer_address.errors.append("L'adresse de livraison est requise pour une livraison.")
                 return False
-        
+
         return True
 
 class OrderStatusForm(FlaskForm):
-    """
-    Formulaire pour la mise à jour rapide du statut d'une commande.
-    """
+    """Formulaire pour la mise à jour rapide du statut d'une commande."""
+    
     status = SelectField(
         'Statut de la commande',
         choices=[
@@ -131,5 +141,6 @@ class OrderStatusForm(FlaskForm):
         ],
         validators=[DataRequired()]
     )
+
     notes = TextAreaField('Ajouter une note (optionnel)', validators=[Optional()])
     submit = SubmitField('Mettre à jour le statut')

@@ -1,7 +1,7 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, abort
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, abort, jsonify
 from flask_login import login_required, current_user
 from extensions import db
-from models import Order, OrderItem, Product 
+from models import Order, OrderItem, Product
 from .forms import OrderForm, OrderStatusForm
 from decorators import admin_required
 from decimal import Decimal
@@ -19,11 +19,36 @@ def list_orders():
     )
     return render_template('orders/list_orders.html', orders_pagination=pagination, title='Gestion des Commandes')
 
+# NOUVELLE ROUTE : API pour l'autocomplétion des produits
+@orders.route('/api/products')
+@login_required
+@admin_required
+def api_products():
+    query = request.args.get('q', '')
+    products = Product.query.filter(
+        Product.product_type == 'finished',
+        Product.name.ilike(f'%{query}%')
+    ).order_by(Product.name).limit(20).all()
+    
+    results = []
+    for product in products:
+        price = float(product.price or 0.0)
+        results.append({
+            'id': str(product.id),
+            'text': f"{product.name} ({price:.2f} DA / {product.unit})",
+            'name': product.name,
+            'price': price,
+            'unit': product.unit
+        })
+    
+    return jsonify({'results': results})
+
 @orders.route('/new', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def new_order():
     form = OrderForm()
+    
     if form.validate_on_submit():
         try:
             order = Order(
@@ -38,22 +63,25 @@ def new_order():
                 notes=form.notes.data,
                 status='pending'
             )
+
             db.session.add(order)
             db.session.flush()
 
             for item_data in form.items.data:
                 if item_data.get('product') and item_data.get('quantity', 0) > 0:
-                    product = item_data['product']
-                    order_item = OrderItem(
-                        order_id=order.id,
-                        product_id=product.id,
-                        quantity=item_data['quantity'],
-                        unit_price=product.price or Decimal('0.00')
-                    )
-                    db.session.add(order_item)
+                    product = Product.query.get(int(item_data['product']))
+                    if product:
+                        order_item = OrderItem(
+                            order_id=order.id,
+                            product_id=product.id,
+                            quantity=item_data['quantity'],
+                            unit_price=product.price or Decimal('0.00')
+                        )
+                        db.session.add(order_item)
 
             order.calculate_total_amount()
             db.session.commit()
+
             flash('Nouvelle commande créée avec succès.', 'success')
             return redirect(url_for('orders.view_order', order_id=order.id))
 
@@ -61,16 +89,22 @@ def new_order():
             db.session.rollback()
             flash(f"Une erreur est survenue lors de la création de la commande: {e}", "danger")
 
-    # Préparer la liste de produits pour le JS (Select2 et calcul)
+    # Préparer les données pour le JavaScript
     products_for_template = Product.query.filter_by(product_type='finished').order_by(Product.name).all()
-    products_serializable = [
-        {'id': str(p.id), 'name': p.name, 'price': float(p.price or 0.0)}
-        for p in products_for_template
-    ]
+    products_serializable = []
+    for p in products_for_template:
+        price = float(p.price or 0.0)
+        products_serializable.append({
+            'id': str(p.id), 
+            'name': p.name, 
+            'price': price,
+            'unit': p.unit,
+            'label': f"{p.name} ({price:.2f} DA / {p.unit})"
+        })
 
     return render_template(
-        'orders/order_form_multifield.html', 
-        form=form, 
+        'orders/order_form_multifield.html',
+        form=form,
         title='Nouvelle Commande',
         products_serializable=products_serializable
     )
@@ -88,6 +122,7 @@ def view_order(order_id):
 def edit_order(order_id):
     order = db.session.get(Order, order_id) or abort(404)
     form = OrderForm(obj=order)
+
     if form.validate_on_submit():
         try:
             # Supprimer les anciens items
@@ -98,19 +133,22 @@ def edit_order(order_id):
             form.populate_obj(order)
             for item_data in form.items.data:
                 if item_data.get('product') and item_data.get('quantity', 0) > 0:
-                    product = item_data['product']
-                    order_item = OrderItem(
-                        order_id=order.id,
-                        product_id=product.id,
-                        quantity=item_data['quantity'],
-                        unit_price=product.price or Decimal('0.00')
-                    )
-                    db.session.add(order_item)
+                    product = Product.query.get(int(item_data['product']))
+                    if product:
+                        order_item = OrderItem(
+                            order_id=order.id,
+                            product_id=product.id,
+                            quantity=item_data['quantity'],
+                            unit_price=product.price or Decimal('0.00')
+                        )
+                        db.session.add(order_item)
 
             order.calculate_total_amount()
             db.session.commit()
+
             flash('Commande mise à jour avec succès.', 'success')
             return redirect(url_for('orders.view_order', order_id=order.id))
+
         except Exception as e:
             db.session.rollback()
             flash(f"Une erreur est survenue lors de la mise à jour: {e}", "danger")
@@ -119,18 +157,27 @@ def edit_order(order_id):
     if request.method == 'GET':
         form.items.entries = []
         for item in order.items:
-            form.items.append_entry(item)
+            form.items.append_entry({
+                'product': str(item.product_id),
+                'quantity': item.quantity
+            })
 
     products_for_template = Product.query.filter_by(product_type='finished').order_by(Product.name).all()
-    products_serializable = [
-        {'id': str(p.id), 'name': p.name, 'price': float(p.price or 0.0)}
-        for p in products_for_template
-    ]
+    products_serializable = []
+    for p in products_for_template:
+        price = float(p.price or 0.0)
+        products_serializable.append({
+            'id': str(p.id), 
+            'name': p.name, 
+            'price': price,
+            'unit': p.unit,
+            'label': f"{p.name} ({price:.2f} DA / {p.unit})"
+        })
 
     return render_template(
-        'orders/order_form_multifield.html', 
-        form=form, 
-        title=f'Modifier Commande #{order.id}', 
+        'orders/order_form_multifield.html',
+        form=form,
+        title=f'Modifier Commande #{order.id}',
         edit_mode=True,
         products_serializable=products_serializable
     )
@@ -141,6 +188,7 @@ def edit_order(order_id):
 def edit_order_status(order_id):
     order = db.session.get(Order, order_id) or abort(404)
     form = OrderStatusForm(obj=order)
+
     if form.validate_on_submit():
         order.status = form.status.data
         if form.notes.data:
@@ -148,6 +196,7 @@ def edit_order_status(order_id):
         db.session.commit()
         flash('Le statut de la commande a été mis à jour.', 'success')
         return redirect(url_for('orders.view_order', order_id=order.id))
+
     return render_template('orders/order_status_form.html', form=form, order=order, title='Modifier le Statut')
 
 @orders.route('/calendar')

@@ -2,12 +2,13 @@
 {% block content %}
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <style>
-/* ... styles inchangés, tu peux les garder comme dans ta version actuelle ... */
+/* Style inspiré d'Odoo */
 .form-container {
     background: #f8f9fa;
     min-height: 100vh;
     padding: 20px 0;
 }
+
 .card {
     background: white;
     border: 1px solid #dee2e6;
@@ -15,25 +16,30 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     margin-bottom: 20px;
 }
+
 .card-header {
     background: #f8f9fa;
     border-bottom: 1px solid #dee2e6;
     padding: 15px 20px;
     border-radius: 7px 7px 0 0;
 }
+
 .card-body {
     padding: 20px;
 }
+
 .form-control {
     border: 1px solid #ced4da;
     border-radius: 4px;
     padding: 8px 12px;
     font-size: 14px;
 }
+
 .form-control:focus {
     border-color: #007bff;
     box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
 }
+
 .btn-primary {
     background: #017e84;
     border-color: #017e84;
@@ -42,10 +48,12 @@
     border-radius: 4px;
     font-weight: 500;
 }
+
 .btn-primary:hover {
     background: #015a5f;
     border-color: #015a5f;
 }
+
 .order-summary {
     background: #f8f9fa;
     border: 1px solid #dee2e6;
@@ -53,9 +61,11 @@
     padding: 20px;
     margin-top: 20px;
 }
+
 .field-required {
     color: #dc3545;
 }
+
 .badge-info {
     background: #017e84;
     color: white;
@@ -63,6 +73,7 @@
     border-radius: 12px;
     font-size: 12px;
 }
+
 .btn-remove {
     color: #dc3545;
     background: none;
@@ -70,9 +81,22 @@
     padding: 2px 6px;
     border-radius: 4px;
 }
+
 .btn-remove:hover {
     background: #f8d7da;
     color: #721c24;
+}
+
+/* Style pour Select2 */
+.select2-container--default .select2-selection--single {
+    height: 38px;
+    line-height: 38px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    padding-left: 12px;
 }
 </style>
 
@@ -216,7 +240,7 @@
                                                 {{ subform.quantity.label(class="form-label fw-bold") }}
                                                 <span class="field-required">*</span>
                                                 <div class="input-group">
-                                                    {{ subform.quantity(class="form-control quantity-input", min="1", id="items-{{ loop.index0 }}-quantity", data_index=loop.index0) }}
+                                                    {{ subform.quantity(class="form-control quantity-input", min="0.01", step="0.01", id="items-{{ loop.index0 }}-quantity", data_index=loop.index0) }}
                                                     <span class="input-group-text">unité(s)</span>
                                                 </div>
                                             </div>
@@ -300,38 +324,61 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 $(document).ready(function() {
-    // 1. Initialisation Select2 pour tous les selects produits
-    function attachSelect2() {
-        $('.product-select').not('.select2-hidden-accessible').select2({
+    // 1. Données des produits depuis le backend
+    const productsData = {{ products_serializable|tojson|safe }};
+    let productPrices = {};
+    let productNames = {};
+    
+    // Créer le mapping ID -> Prix et Nom
+    productsData.forEach(p => {
+        productPrices[p.id] = parseFloat(p.price);
+        productNames[p.id] = p.name;
+    });
+
+    // 2. Initialiser Select2 avec autocomplétion
+    function initializeSelect2(element) {
+        $(element).select2({
             width: '100%',
-            placeholder: "Choisir un produit...",
+            placeholder: "Tapez 2 lettres pour rechercher...",
             allowClear: true,
-            minimumInputLength: 2
+            minimumInputLength: 2,
+            ajax: {
+                url: '{{ url_for("orders.api_products") }}',
+                dataType: 'json',
+                delay: 250,
+                data: function(params) {
+                    return {
+                        q: params.term
+                    };
+                },
+                processResults: function(data) {
+                    return data;
+                },
+                cache: true
+            }
         });
     }
-    attachSelect2();
-    $('#add-item-btn').on('click', function() {
-        setTimeout(attachSelect2, 10);
+
+    // 3. Initialiser tous les selects existants
+    $('.product-select').each(function() {
+        initializeSelect2(this);
     });
 
-    // 2. Mapping ID produit => prix (fourni par le backend)
-    let productPrices = {};
-    const productsData = JSON.parse('{{ products_serializable|tojson|safe }}');
-    productsData.forEach(p => {
-        productPrices[p.id.toString()] = parseFloat(p.price);
-    });
-
+    // 4. Fonction pour récupérer le prix d'un produit
     function getProductPrice(productId) {
-        let id = productId;
-        if (typeof id === 'string' && id.startsWith('Product-')) {
-            id = id.replace('Product-', '');
+        if (!productId) return 0;
+        // Si c'est un objet Select2 avec data
+        if (typeof productId === 'object' && productId.price) {
+            return parseFloat(productId.price);
         }
-        return productPrices[id] || 0;
+        // Sinon chercher dans notre mapping
+        return productPrices[productId] || 0;
     }
 
-    // 3. Mise à jour des sous-totaux et totaux
+    // 5. Mise à jour des sous-totaux
     function updateSubtotals() {
         let itemsTotal = 0;
+        
         document.querySelectorAll('.item-row').forEach(function(row) {
             const index = row.getAttribute('data-index');
             const productSelect = document.getElementById('items-' + index + '-product');
@@ -341,36 +388,53 @@ $(document).ready(function() {
 
             let quantity = parseFloat(quantityInput.value) || 0;
             let unitPrice = 0;
+            
             if (productSelect && productSelect.value) {
-                unitPrice = getProductPrice(productSelect.value);
-                if (unitPriceElem) unitPriceElem.textContent = unitPrice.toFixed(2);
+                // Pour Select2, récupérer les données depuis l'élément
+                const select2Data = $(productSelect).select2('data')[0];
+                if (select2Data && select2Data.price) {
+                    unitPrice = parseFloat(select2Data.price);
+                } else {
+                    unitPrice = getProductPrice(productSelect.value);
+                }
+                
+                if (unitPriceElem) {
+                    unitPriceElem.textContent = unitPrice.toFixed(2);
+                }
             }
+            
             let subtotal = quantity * unitPrice;
-            if (subtotalElem) subtotalElem.textContent = subtotal.toFixed(2) + ' DA';
+            if (subtotalElem) {
+                subtotalElem.textContent = subtotal.toFixed(2) + ' DA';
+            }
             itemsTotal += subtotal;
         });
+
         document.getElementById('items-total').textContent = itemsTotal.toFixed(2) + ' DA';
+        
         let deliveryCostInput = document.getElementById('delivery_cost');
         let deliveryCost = 0;
         if (deliveryCostInput && deliveryCostInput.offsetParent !== null) {
             deliveryCost = parseFloat(deliveryCostInput.value) || 0;
         }
+        
         document.getElementById('delivery-total').textContent = deliveryCost.toFixed(2) + ' DA';
         let grandTotal = itemsTotal + deliveryCost;
         document.getElementById('grand-total').textContent = grandTotal.toFixed(2) + ' DA';
     }
 
-    // 4. Ajout/Suppression dynamique de lignes d'article
+    // 6. Ajout dynamique d'articles
     function addItem() {
         const container = document.getElementById('items-container');
         let templateRow = container.querySelector('.item-row');
         if (!templateRow) return;
+        
         const newIndex = container.querySelectorAll('.item-row').length;
         const newItem = templateRow.cloneNode(true);
 
         newItem.setAttribute('data-index', newIndex);
 
-        // Update select2 destroy before clone
+        // Détruire Select2 avant le clonage
         $(newItem).find('.product-select').select2('destroy');
 
         newItem.querySelectorAll('select, input').forEach(function(input) {
@@ -383,7 +447,7 @@ $(document).ready(function() {
             if (input.tagName.toLowerCase() === 'select') {
                 input.selectedIndex = 0;
             } else {
-                input.value = input.defaultValue || '';
+                input.value = '';
             }
         });
 
@@ -405,18 +469,25 @@ $(document).ready(function() {
 
         container.appendChild(newItem);
         document.getElementById('items-count').textContent = (newIndex + 1) + ' article(s)';
+        
+        // Réinitialiser Select2 pour le nouveau select
+        const newSelect = newItem.querySelector('.product-select');
+        initializeSelect2(newSelect);
+        
         attachEventListeners(newItem);
-        attachSelect2(); // réapplique Select2 pour les nouveaux selects
         updateSubtotals();
     }
 
+    // 7. Suppression d'articles
     function removeItem(index) {
         const item = document.querySelector('.item-row[data-index="' + index + '"]');
         if (item) {
             item.remove();
+            
+            // Réindexer les articles restants
             document.querySelectorAll('.item-row').forEach((row, newIdx) => {
                 row.setAttribute('data-index', newIdx);
-                 row.querySelectorAll('select, input, button').forEach(el => {
+                row.querySelectorAll('select, input, button').forEach(el => {
                     const name = el.name;
                     if(name) el.name = name.replace(/items-\d+-/, 'items-' + newIdx + '-');
                     const id = el.id;
@@ -432,12 +503,23 @@ $(document).ready(function() {
         }
     }
 
+    // 8. Attacher les event listeners
     function attachEventListeners(element) {
-        element.querySelectorAll('.quantity-input, .product-select').forEach(input => {
+        // Pour les changements de quantité
+        element.querySelectorAll('.quantity-input').forEach(input => {
             input.addEventListener('input', updateSubtotals);
             input.addEventListener('change', updateSubtotals);
         });
 
+        // Pour Select2 change event
+        $(element).find('.product-select').on('select2:select', function(e) {
+            const data = e.params.data;
+            // Stocker le prix dans un attribut data pour référence future
+            this.setAttribute('data-price', data.price || 0);
+            updateSubtotals();
+        });
+
+        // Pour le bouton de suppression
         const removeBtn = element.querySelector('.btn-remove');
         if (removeBtn) {
             removeBtn.addEventListener('click', function() {
@@ -447,7 +529,7 @@ $(document).ready(function() {
         }
     }
 
-    // 5. Visibilité dynamique des champs
+    // 9. Visibilité des champs selon le type de commande
     function updateFormVisibility() {
         const orderType = document.getElementById('order_type').value;
         const deliveryOption = document.getElementById('delivery_option').value;
@@ -464,8 +546,7 @@ $(document).ready(function() {
 
         customerSection.style.display = isCustomerOrder ? 'block' : 'none';
         serviceSection.style.display = isCustomerOrder ? 'block' : 'none';
-        deliveryTotalLine.style.display = isCustomerOrder ? 'flex' : 'none';
-
+        
         if (isCustomerOrder) {
             deliveryOptionWrapper.style.display = 'block';
             addressWrapper.style.display = isDelivery ? 'block' : 'none';
@@ -477,24 +558,29 @@ $(document).ready(function() {
         } else {
             addressWrapper.style.display = 'none';
             deliveryCostWrapper.style.display = 'none';
+            deliveryTotalLine.style.display = 'none';
             document.getElementById('delivery_cost').value = '0.00';
         }
         updateSubtotals();
     }
 
-    // 6. Initialisation des écouteurs
+    // 10. Initialisation des événements
     const orderTypeSelect = document.getElementById('order_type');
     const deliveryOptionSelect = document.getElementById('delivery_option');
     const deliveryCostInput = document.getElementById('delivery_cost');
+    
     if (orderTypeSelect) orderTypeSelect.addEventListener('change', updateFormVisibility);
     if (deliveryOptionSelect) deliveryOptionSelect.addEventListener('change', updateFormVisibility);
     if (deliveryCostInput) deliveryCostInput.addEventListener('input', updateSubtotals);
+    
     $('#add-item-btn').on('click', addItem);
 
+    // Attacher les listeners aux éléments existants
     document.querySelectorAll('.item-row').forEach(function(row) {
         attachEventListeners(row);
     });
 
+    // Initialisation
     updateFormVisibility();
     updateSubtotals();
 });
