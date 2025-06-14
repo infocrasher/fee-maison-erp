@@ -136,7 +136,21 @@ def edit_order(order_id):
         for item in order.items:
             form.items.append_entry(item)
 
-    return render_template('orders/order_form_multifield.html', form=form, title=f'Modifier Commande #{order.id}', edit_mode=True)
+    # CORRECTION : Il manquait la liste de prix des produits pour la page de modification
+    products_for_template = Product.query.filter_by(product_type='finished').order_by(Product.name).all()
+    products_serializable = [
+        {'id': p.id, 'name': p.name, 'price': float(p.price or 0.0)}
+        for p in products_for_template
+    ]
+
+    return render_template(
+        'orders/order_form_multifield.html', 
+        form=form, 
+        title=f'Modifier Commande #{order.id}', 
+        edit_mode=True,
+        products_serializable=products_serializable # CORRECTION : Ajout de la variable manquante
+    )
+
 
 @orders.route('/<int:order_id>/edit_status', methods=['GET', 'POST'])
 @login_required
