@@ -68,7 +68,7 @@ class OrderForm(FlaskForm):
     order_type = SelectField(
         'Type de Commande',
         choices=[
-            ('in_store', 'Commande Magasin'),
+            ('in_store', 'Vente au Comptoir'),
             ('customer_order', 'Commande Client')
         ],
         validators=[DataRequired()]
@@ -216,10 +216,11 @@ class CustomerOrderForm(FlaskForm):
         return True
 
 class ProductionOrderForm(FlaskForm):
+    # ✅ CORRECTION : DateTimeField au lieu de DateField pour avoir l'heure
     production_date = DateTimeField(
-    'Date et heure de production souhaitée',
-    format='%Y-%m-%dT%H:%M',
-    validators=[Optional()]
+        'Date et heure de production souhaitée',
+        format='%Y-%m-%dT%H:%M',
+        validators=[Optional()]
     )
     
     priority = SelectField(
@@ -235,8 +236,8 @@ class ProductionOrderForm(FlaskForm):
     production_location = SelectField(
         'Lieu de production',
         choices=[
-            ('main_kitchen', 'Cuisine Local'),
-            ('store_counter', 'Cuisine Magasin')
+            ('main_kitchen', 'Cuisine principale'),
+            ('store_counter', 'Comptoir magasin')
         ],
         default='main_kitchen'
     )
@@ -261,14 +262,18 @@ class ProductionOrderForm(FlaskForm):
             item_form.product.choices = product_choices
 
 class OrderStatusForm(FlaskForm):
+    # ✅ CORRECTION : Nouveaux statuts pour workflow de production
     status = SelectField(
-        'Statut de la commande',
+        'Nouveau Statut',
         choices=[
             ('pending', 'En attente'),
-            ('in_progress', 'En préparation'),
-            ('ready', 'Prête pour retrait/livraison'),
+            ('in_production', '🔥 En production'),          # Pour Rayan - Calendrier
+            ('ready_at_shop', '📦 Reçue au magasin'),       # Pour Yasmine - Stock++
+            ('out_for_delivery', '🚚 En livraison'),        # En cours de livraison
+            ('delivered', '✅ Livrée'),                     # Terminé - Stock--
             ('completed', 'Terminée'),
-            ('cancelled', 'Annulée')
+            ('cancelled', 'Annulée'),
+            ('awaiting_payment', 'En attente de paiement')
         ],
         validators=[DataRequired()]
     )

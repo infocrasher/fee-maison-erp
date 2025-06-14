@@ -123,20 +123,14 @@ class RecipeIngredient(db.Model):
         recipe_unit = self.unit.upper()
         base_cost = Decimal(self.product.cost_price)
         
-        # Si même unité, pas de conversion
         if product_unit == recipe_unit:
             return base_cost
         
-        # ✅ CORRECTION : Conversions courantes avec les résultats du test
         conversions = {
-            # De KG vers G : 1 KG coûte X, donc 1 G coûte X/1000
             ('KG', 'G'): base_cost / 1000,
-            # De L vers ML : 1 L coûte X, donc 1 ML coûte X/1000
             ('L', 'ML'): base_cost / 1000,
-            # Conversions inverses si nécessaire
             ('G', 'KG'): base_cost * 1000,
             ('ML', 'L'): base_cost * 1000,
-            # Autres conversions possibles
             ('KG', 'MG'): base_cost / 1000000,
             ('L', 'CL'): base_cost / 100,
         }
@@ -145,7 +139,6 @@ class RecipeIngredient(db.Model):
         if conversion_key in conversions:
             return conversions[conversion_key]
         
-        # Si pas de conversion trouvée, log une erreur et utilise le prix de base
         print(f"⚠️ Conversion non trouvée: {product_unit} → {recipe_unit} pour {self.product.name}")
         return base_cost
     
@@ -155,7 +148,6 @@ class RecipeIngredient(db.Model):
         if not self.product or not self.product.cost_price:
             return Decimal('0.0')
         
-        # ✅ CORRECTION : Utilise la conversion d'unités
         converted_cost_per_unit = self._convert_unit_cost()
         return Decimal(self.quantity_needed) * converted_cost_per_unit
     
@@ -182,7 +174,7 @@ class Order(db.Model):
     # Relations
     items = db.relationship('OrderItem', backref='order', lazy='dynamic', cascade='all, delete-orphan')
     
-    # ✅ CORRECTION : Propriété order_date
+    # ✅ CORRECTION : Propriété order_date (alias pour due_date)
     @property
     def order_date(self):
         """Alias pour due_date - compatibilité avec templates existants"""
@@ -199,20 +191,27 @@ class Order(db.Model):
         order_types = {
             'customer_order': 'Commande Client',
             'counter_production_request': 'Ordre de Production',
-            'in_store': 'Commande Magasin'
+            'in_store': 'Vente au Comptoir'
         }
         return order_types.get(self.order_type, self.order_type.title())
     
     def get_status_display(self):
-        """Retourne le libellé lisible du statut"""
+        """Retourne le libellé lisible du statut - VERSION ÉTENDUE"""
         status_types = {
+            # États généraux
             'pending': 'En attente',
+            'cancelled': 'Annulée',
+            'completed': 'Terminée',
+            
+            # ✅ NOUVEAUX ÉTATS - Workflow production
+            'in_production': 'En production',           # → Calendrier Rayan
+            'ready_at_shop': 'Reçue au magasin',       # → Yasmine peut livrer
+            'out_for_delivery': 'En livraison',        # → En cours de livraison
+            'delivered': 'Livrée',                     # → Stock décrementé
+            
+            # États existants (compatibilité)
             'in_progress': 'En préparation', 
             'ready': 'Prête',
-            'ready_at_shop': 'Prête en boutique',
-            'out_for_delivery': 'En livraison',
-            'completed': 'Terminée',
-            'cancelled': 'Annulée',
             'awaiting_payment': 'En attente de paiement'
         }
         return status_types.get(self.status, self.status.title())
@@ -227,6 +226,75 @@ class Order(db.Model):
             'delivery': 'Livraison à domicile'
         }
         return delivery_options.get(self.delivery_option, self.delivery_option.title())
+    
+    def get_status_color_class(self):
+        """Retourne la classe CSS selon le statut pour l'affichage"""
+        status_colors = {
+            'pending': 'secondary',
+            'in_production': 'warning',      # Orange pour Rayan
+            'ready_at_shop': 'info',         # Bleu pour Yasmine
+            'out_for_delivery': 'primary',   # Bleu foncé en livraison
+            'delivered': 'success',          # Vert livré
+            'completed': 'success',
+            'cancelled': 'danger',
+            'awaiting_payment': 'warning'
+        }
+        return status_colors.get(self.status, 'secondary')
+    
+    # ✅ WORKFLOW METHODS - Gestion des états
+    def should_appear_in_calendar(self):
+        """Détermine si la commande doit apparaître dans le calendrier"""
+        # Seules les commandes en production apparaissent pour Rayan
+        return self.status in ['pending', 'in_production']
+    
+    def can_be_received_at_shop(self):
+        """Vérifie si la commande peut être reçue au magasin"""
+        return self.status == 'in_production'
+    
+    def can_be_delivered(self):
+        """Vérifie si la commande peut être livrée/vendue"""
+        return self.status == 'ready_at_shop'
+    
+    def mark_as_in_production(self):
+        """Marque la commande comme en production"""
+        if self.status == 'pending':
+            self.status = 'in_production'
+            return True
+        return False
+    
+    def mark_as_received_at_shop(self):
+        """Marque la commande comme reçue au magasin + incrémente stock"""
+        if self.status == 'in_production':
+            self.status = 'ready_at_shop'
+            self._increment_shop_stock()
+            return True
+        return False
+    
+    def mark_as_delivered(self):
+        """Marque la commande comme livrée + décrémente stock"""
+        if self.status == 'ready_at_shop':
+            self.status = 'delivered'
+            self._decrement_shop_stock()
+            return True
+        return False
+    
+    def _increment_shop_stock(self):
+        """Incrémente le stock comptoir quand la commande arrive au magasin"""
+        for item in self.items:
+            if item.product:
+                # Ajouter au stock comptoir
+                item.product.quantity_in_stock += float(item.quantity)
+                # Log du mouvement
+                print(f"📦 Stock incrémenté: {item.product.name} +{item.quantity}")
+    
+    def _decrement_shop_stock(self):
+        """Décrémente le stock comptoir quand la commande est livrée"""
+        for item in self.items:
+            if item.product:
+                # Retirer du stock comptoir
+                item.product.quantity_in_stock = max(0, item.product.quantity_in_stock - float(item.quantity))
+                # Log du mouvement
+                print(f"📦 Stock décrémenté: {item.product.name} -{item.quantity}")
     
     # ✅ CORRECTION : Méthode calculate_total_amount manquante
     def calculate_total_amount(self):
@@ -261,7 +329,17 @@ class Order(db.Model):
         """Vérifie si la commande est en retard"""
         if not self.due_date:
             return False
-        return self.due_date < datetime.utcnow() and self.status not in ['completed', 'cancelled']
+        return self.due_date < datetime.utcnow() and self.status not in ['completed', 'cancelled', 'delivered']
+    
+    def get_priority_class(self):
+        """Retourne la classe CSS selon la priorité/urgence"""
+        if self.is_overdue():
+            return 'danger'
+        elif self.status == 'ready_at_shop':
+            return 'success'
+        elif self.status == 'in_production':
+            return 'warning'
+        return 'info'
     
     def __repr__(self):
         return f'<Order #{self.id} - {self.customer_name or "Production"} - {self.status}>'
@@ -272,10 +350,11 @@ class OrderItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
-    quantity = db.Column(db.Numeric(10, 3), nullable=False)  # ✅ CORRECTION : Décimal pour quantités précises
+    quantity = db.Column(db.Numeric(10, 3), nullable=False)
     unit_price = db.Column(db.Numeric(10, 2), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # ✅ CORRECTION : Ajouter la propriété price_at_order
     @property
     def price_at_order(self):
         """Alias pour unit_price - compatibilité avec templates existants"""
