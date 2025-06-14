@@ -277,6 +277,11 @@ class OrderItem(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     @property
+    def price_at_order(self):
+        """Alias pour unit_price - compatibilité avec templates existants"""
+        return self.unit_price
+    
+    @property
     def subtotal(self):
         """Calcule le sous-total de la ligne"""
         return Decimal(self.quantity) * Decimal(self.unit_price)
