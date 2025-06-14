@@ -255,8 +255,7 @@
 
                     <!-- Notes -->
                     <div class="card">
-                        <div class="card
-                        <div class="card-header">
+                                                <div class="card-header">
                             <h5 class="card-title mb-0">
                                 <i class="bi bi-chat-text me-2 text-primary"></i>Notes Spéciales
                             </h5>
@@ -305,163 +304,210 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
 <script>
-// Données des produits avec leurs prix
-let productPrices = {};
-
-// Fonction pour récupérer le prix d'un produit
-function getProductPrice(productId) {
-    return productPrices[productId] || 0;
-}
-
-// Fonction pour mettre à jour les sous-totaux
-function updateSubtotals() {
-    let total = 0;
-    document.querySelectorAll('.item-row').forEach(function(row) {
-        const index = row.getAttribute('data-index');
-        const productSelect = document.getElementById('items-' + index + '-product');
-        const quantityInput = document.getElementById('items-' + index + '-quantity');
-        const unitPriceElem = row.querySelector('.unit-price');
-        const subtotalElem = row.querySelector('.item-subtotal');
-        
-        let quantity = parseInt(quantityInput.value) || 0;
-        let unitPrice = 0;
-        
-        if (productSelect && productSelect.value) {
-            unitPrice = getProductPrice(productSelect.value);
-            unitPriceElem.textContent = unitPrice.toFixed(2);
-        }
-        
-        let subtotal = quantity * unitPrice;
-        subtotalElem.textContent = subtotal.toFixed(2) + ' DA';
-        total += subtotal;
-    });
-    
-    document.getElementById('items-total').textContent = total.toFixed(2) + ' DA';
-    
-    let deliveryCost = parseFloat(document.getElementById('delivery_cost').value) || 0;
-    document.getElementById('delivery-total').textContent = deliveryCost.toFixed(2) + ' DA';
-    let grandTotal = total + deliveryCost;
-    document.getElementById('grand-total').textContent = grandTotal.toFixed(2) + ' DA';
-}
-
-// Fonction pour ajouter un article
-function addItem() {
-    const container = document.getElementById('items-container');
-    const currentItems = container.querySelectorAll('.item-row');
-    const newIndex = currentItems.length;
-
-    const newItem = currentItems[currentItems.length - 1].cloneNode(true);
-    newItem.setAttribute('data-index', newIndex);
-
-    newItem.querySelectorAll('select, input').forEach(function(input) {
-        const id = input.id;
-        const newId = id.replace(/items-\d+-/, 'items-' + newIndex + '-');
-        input.id = newId;
-        input.setAttribute('data-index', newIndex);
-        
-        if(input.type === 'number' || input.tagName.toLowerCase() === 'select') {
-            input.value = '';
-        }
-    });
-
-    newItem.querySelector('.item-subtotal').textContent = '0.00 DA';
-    newItem.querySelector('.unit-price').textContent = '0.00';
-
-    const removeCol = newItem.querySelector('.col-md-2.d-flex.align-items-end');
-    if (removeCol) {
-        removeCol.innerHTML = '<button type="button" class="btn btn-remove" data-item-index="' + newIndex + '"><i class="bi bi-trash"></i></button>';
-    }
-
-    container.appendChild(newItem);
-    document.getElementById('items-count').textContent = (newIndex + 1) + ' article(s)';
-    
-    attachEventListeners(newItem);
-    updateSubtotals();
-}
-
-// Fonction pour supprimer un article
-function removeItem(index) {
-    const item = document.querySelector('.item-row[data-index="' + index + '"]');
-    if (item) {
-        item.remove();
-        updateSubtotals();
-        
-        const remainingItems = document.querySelectorAll('.item-row').length;
-        document.getElementById('items-count').textContent = remainingItems + ' article(s)';
-    }
-}
-
-// Fonction pour attacher les event listeners
-function attachEventListeners(element) {
-    const quantityInput = element.querySelector('.quantity-input');
-    const productSelect = element.querySelector('.product-select');
-    const removeBtn = element.querySelector('.btn-remove');
-    
-    if (quantityInput) {
-        quantityInput.addEventListener('input', updateSubtotals);
-    }
-    
-    if (productSelect) {
-        productSelect.addEventListener('change', updateSubtotals);
-    }
-    
-    if (removeBtn) {
-        removeBtn.addEventListener('click', function() {
-            const index = this.getAttribute('data-item-index');
-            removeItem(index);
-        });
-    }
-}
-
-// Fonction pour gérer la visibilité des sections
-function updateFormVisibility() {
-    const orderType = document.getElementById('order_type').value;
-    const deliveryOption = document.getElementById('delivery_option').value;
-    
-    const customerSection = document.getElementById('customer_section_card');
-    const deliveryOptionWrapper = document.getElementById('delivery_option_wrapper');
-    const deliveryCostWrapper = document.getElementById('delivery_cost_wrapper');
-    const addressWrapper = document.getElementById('customer_address_wrapper');
-    const deliveryTotalLine = document.getElementById('delivery_total_line');
-    
-    if (orderType === 'customer_order') {
-        customerSection.style.display = 'block';
-        deliveryOptionWrapper.style.display = 'block';
-        deliveryCostWrapper.style.display = 'block';
-        deliveryTotalLine.style.display = 'flex';
-        
-        if (deliveryOption === 'delivery') {
-            addressWrapper.style.display = 'block';
-        } else {
-            addressWrapper.style.display = 'none';
-        }
-    } else {
-        customerSection.style.display = 'none';
-        deliveryOptionWrapper.style.display = 'none';
-        deliveryCostWrapper.style.display = 'none';
-        addressWrapper.style.display = 'none';
-        deliveryTotalLine.style.display = 'none';
-    }
-}
-
-// Événements
 document.addEventListener('DOMContentLoaded', function() {
-    const orderType = document.getElementById('order_type');
-    const deliveryOption = document.getElementById('delivery_option');
-    const deliveryCost = document.getElementById('delivery_cost');
+    // CORRECTION #1: Charger les prix des produits depuis les données passées par le serveur
+    let productPrices = {};
+    const productsData = JSON.parse('{{ products_serializable|tojson|safe }}');
+    productsData.forEach(p => {
+        productPrices[p.id] = p.price;
+    });
+
+    // Fonction pour récupérer le prix d'un produit (maintenant fonctionnelle)
+    function getProductPrice(productId) {
+        return productPrices[productId] || 0;
+    }
+
+    // Fonction pour mettre à jour les totaux (calculs et affichage)
+    function updateSubtotals() {
+        let itemsTotal = 0;
+        document.querySelectorAll('.item-row').forEach(function(row) {
+            const index = row.getAttribute('data-index');
+            const productSelect = document.getElementById('items-' + index + '-product');
+            const quantityInput = document.getElementById('items-' + index + '-quantity');
+            const unitPriceElem = row.querySelector('.unit-price');
+            const subtotalElem = row.querySelector('.item-subtotal');
+            
+            let quantity = parseInt(quantityInput.value) || 0;
+            let unitPrice = 0;
+            
+            if (productSelect && productSelect.value) {
+                unitPrice = getProductPrice(productSelect.value);
+                if (unitPriceElem) unitPriceElem.textContent = unitPrice.toFixed(2);
+            }
+            
+            let subtotal = quantity * unitPrice;
+            if (subtotalElem) subtotalElem.textContent = subtotal.toFixed(2) + ' DA';
+            itemsTotal += subtotal;
+        });
+        
+        document.getElementById('items-total').textContent = itemsTotal.toFixed(2) + ' DA';
+        
+        let deliveryCostInput = document.getElementById('delivery_cost');
+        let deliveryCost = 0;
+        // Le coût de livraison n'est ajouté que si le champ est visible
+        if (deliveryCostInput && deliveryCostInput.offsetParent !== null) {
+            deliveryCost = parseFloat(deliveryCostInput.value) || 0;
+        }
+        
+        document.getElementById('delivery-total').textContent = deliveryCost.toFixed(2) + ' DA';
+        let grandTotal = itemsTotal + deliveryCost;
+        document.getElementById('grand-total').textContent = grandTotal.toFixed(2) + ' DA';
+    }
+
+    // Fonction pour ajouter une nouvelle ligne d'article
+    function addItem() {
+        const container = document.getElementById('items-container');
+        let templateRow = container.querySelector('.item-row');
+        if (!templateRow) return; // Ne rien faire si aucune ligne modèle n'existe
+
+        const newIndex = container.querySelectorAll('.item-row').length;
+        const newItem = templateRow.cloneNode(true);
+        
+        newItem.setAttribute('data-index', newIndex);
+        
+        // Mettre à jour les IDs et les noms des champs
+        newItem.querySelectorAll('select, input').forEach(function(input) {
+            const name = input.name;
+            const newName = name.replace(/items-\d+-/, 'items-' + newIndex + '-');
+            input.name = newName;
+            input.id = newName; // Utiliser le nom comme base pour l'ID
+            
+            // Réinitialiser les valeurs
+            if (input.tagName.toLowerCase() === 'select') {
+                input.selectedIndex = 0;
+            } else {
+                input.value = input.defaultValue || '';
+            }
+        });
+
+        newItem.querySelector('.item-subtotal').textContent = '0.00 DA';
+        newItem.querySelector('.unit-price').textContent = '0.00';
+
+        // Gérer le bouton de suppression
+        let removeButton = newItem.querySelector('.btn-remove');
+        if (!removeButton) {
+            const removeCol = newItem.querySelector('.col-md-2.d-flex.align-items-end');
+            if(removeCol) {
+               removeCol.innerHTML = '<button type="button" class="btn btn-remove" data-item-index="' + newIndex + '"><i class="bi bi-trash"></i></button>';
+               removeButton = removeCol.querySelector('.btn-remove');
+            }
+        }
+        if(removeButton) {
+           removeButton.setAttribute('data-item-index', newIndex);
+        }
+
+        container.appendChild(newItem);
+        document.getElementById('items-count').textContent = (newIndex + 1) + ' article(s)';
+        
+        attachEventListeners(newItem);
+        updateSubtotals();
+    }
+
+    // Fonction pour supprimer une ligne d'article
+    function removeItem(index) {
+        const item = document.querySelector('.item-row[data-index="' + index + '"]');
+        if (item) {
+            item.remove();
+            document.querySelectorAll('.item-row').forEach((row, newIdx) => {
+                row.setAttribute('data-index', newIdx);
+                 row.querySelectorAll('select, input, button').forEach(el => {
+                    const name = el.name;
+                    if(name) el.name = name.replace(/items-\d+-/, 'items-' + newIdx + '-');
+                    const id = el.id;
+                    if(id) el.id = id.replace(/items-\d+-/, 'items-' + newIdx + '-');
+                    const dataIdx = el.getAttribute('data-item-index');
+                    if(dataIdx) el.setAttribute('data-item-index', newIdx);
+                });
+            });
+
+            const remainingItems = document.querySelectorAll('.item-row').length;
+            document.getElementById('items-count').textContent = remainingItems + ' article(s)';
+            updateSubtotals();
+        }
+    }
+
+    // Attacher les écouteurs d'événements à une ligne spécifique
+    function attachEventListeners(element) {
+        element.querySelectorAll('.quantity-input, .product-select').forEach(input => {
+            input.addEventListener('input', updateSubtotals);
+            input.addEventListener('change', updateSubtotals);
+        });
+        
+        const removeBtn = element.querySelector('.btn-remove');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function() {
+                const index = this.getAttribute('data-item-index');
+                removeItem(index);
+            });
+        }
+    }
+
+    // CORRECTION #2: Logique de visibilité des champs refactorisée et corrigée
+    function updateFormVisibility() {
+        const orderType = document.getElementById('order_type').value;
+        const deliveryOption = document.getElementById('delivery_option').value;
+        
+        const customerSection = document.getElementById('customer_section_card');
+        const serviceSection = document.getElementById('service_section_card');
+        const deliveryOptionWrapper = document.getElementById('delivery_option_wrapper');
+        const deliveryCostWrapper = document.getElementById('delivery_cost_wrapper');
+        const addressWrapper = document.getElementById('customer_address_wrapper');
+        const deliveryTotalLine = document.getElementById('delivery_total_line');
+
+        const isCustomerOrder = (orderType === 'customer_order');
+        const isDelivery = (deliveryOption === 'delivery');
+
+        // Gérer la visibilité des sections principales
+        customerSection.style.display = isCustomerOrder ? 'block' : 'none';
+        serviceSection.style.display = isCustomerOrder ? 'block' : 'none';
+        deliveryTotalLine.style.display = isCustomerOrder ? 'flex' : 'none';
+        
+        if (isCustomerOrder) {
+            // Gérer les options de service DANS la section client
+            deliveryOptionWrapper.style.display = 'block';
+            
+            // La visibilité de l'adresse et du coût DÉPEND de l'option de livraison
+            addressWrapper.style.display = isDelivery ? 'block' : 'none';
+            deliveryCostWrapper.style.display = isDelivery ? 'block' : 'none';
+            deliveryTotalLine.style.display = isDelivery ? 'flex' : 'none';
+
+            // Si ce n'est pas une livraison, s'assurer que le coût est à zéro
+            if (!isDelivery) {
+                document.getElementById('delivery_cost').value = '0.00';
+            }
+        } else {
+            // Si ce n'est PAS une commande client, tout masquer et réinitialiser
+            addressWrapper.style.display = 'none';
+            deliveryCostWrapper.style.display = 'none';
+            document.getElementById('delivery_cost').value = '0.00';
+        }
+
+        // Toujours recalculer les totaux après un changement de visibilité
+        updateSubtotals();
+    }
+
+    // Initialisation et attachement des écouteurs globaux
+    const orderTypeSelect = document.getElementById('order_type');
+    const deliveryOptionSelect = document.getElementById('delivery_option');
+    const deliveryCostInput = document.getElementById('delivery_cost');
     const addItemBtn = document.getElementById('add-item-btn');
     
-    orderType.addEventListener('change', updateFormVisibility);
-    deliveryOption.addEventListener('change', updateFormVisibility);
-    deliveryCost.addEventListener('input', updateSubtotals);
-    addItemBtn.addEventListener('click', addItem);
+    if (orderTypeSelect) orderTypeSelect.addEventListener('change', updateFormVisibility);
+    if (deliveryOptionSelect) deliveryOptionSelect.addEventListener('change', updateFormVisibility);
+    if (deliveryCostInput) deliveryCostInput.addEventListener('input', updateSubtotals);
+    if (addItemBtn) addItemBtn.addEventListener('click', addItem);
     
-    // Attacher les event listeners aux éléments existants
+    // Attacher les écouteurs aux lignes déjà présentes au chargement
     document.querySelectorAll('.item-row').forEach(function(row) {
         attachEventListeners(row);
     });
     
+    // Premier appel pour définir l'état initial du formulaire
     updateFormVisibility();
     updateSubtotals();
 });
