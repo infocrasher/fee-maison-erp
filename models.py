@@ -172,7 +172,7 @@ class Order(db.Model):
     customer_phone = db.Column(db.String(20))
     customer_address = db.Column(db.Text)
     delivery_option = db.Column(db.String(20), default='pickup')
-    due_date = db.Column(db.DateTime, nullable=False)  # ✅ DÉJÀ DateTime pour calendrier avec heure
+    due_date = db.Column(db.DateTime, nullable=False)
     delivery_cost = db.Column(db.Numeric(10, 2), default=0.0)
     status = db.Column(db.String(50), default='pending', index=True)
     notes = db.Column(db.Text)
@@ -182,11 +182,16 @@ class Order(db.Model):
     # Relations
     items = db.relationship('OrderItem', backref='order', lazy='dynamic', cascade='all, delete-orphan')
     
-    # ✅ CORRECTION : Propriété order_date (alias pour due_date)
+    # ✅ CORRECTION : Propriété order_date
     @property
     def order_date(self):
         """Alias pour due_date - compatibilité avec templates existants"""
         return self.due_date
+    
+    # ✅ CORRECTION : Méthode get_items_count manquante
+    def get_items_count(self):
+        """Retourne le nombre d'items dans la commande"""
+        return self.items.count() if hasattr(self.items, 'count') else len(self.items)
     
     # ✅ CORRECTION : Méthodes d'affichage pour templates
     def get_order_type_display(self):
@@ -228,14 +233,10 @@ class Order(db.Model):
         """Calcule et met à jour le montant total de la commande"""
         items_total = Decimal('0.0')
         
-        # Calcul du sous-total des articles
         for item in self.items:
             items_total += item.subtotal
         
-        # Ajout des frais de livraison
         delivery_cost = Decimal(self.delivery_cost or 0)
-        
-        # Mise à jour du total
         self.total_amount = items_total + delivery_cost
         
         return self.total_amount
@@ -245,13 +246,13 @@ class Order(db.Model):
         return sum(item.subtotal for item in self.items)
     
     def get_formatted_due_date(self):
-        """Retourne la date formatée pour affichage"""
+        """Retourne la date et heure formatées pour affichage"""
         if self.due_date:
             return self.due_date.strftime('%d/%m/%Y à %H:%M')
         return "Non définie"
     
     def get_formatted_due_date_short(self):
-        """Retourne la date formatée courte"""
+        """Retourne la date et heure formatées courte"""
         if self.due_date:
             return self.due_date.strftime('%d/%m à %H:%M')
         return "Non définie"
@@ -261,16 +262,6 @@ class Order(db.Model):
         if not self.due_date:
             return False
         return self.due_date < datetime.utcnow() and self.status not in ['completed', 'cancelled']
-    
-    def get_priority_class(self):
-        """Retourne la classe CSS selon la priorité/urgence"""
-        if self.is_overdue():
-            return 'danger'
-        elif self.status == 'ready':
-            return 'success'
-        elif self.status == 'in_progress':
-            return 'warning'
-        return 'info'
     
     def __repr__(self):
         return f'<Order #{self.id} - {self.customer_name or "Production"} - {self.status}>'
