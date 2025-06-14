@@ -6,7 +6,7 @@ from .forms import OrderForm, OrderStatusForm
 from decorators import admin_required
 from decimal import Decimal
 from datetime import datetime, timezone
-# Création du Blueprint 'orders'
+
 orders = Blueprint('orders', __name__)
 
 @orders.route('/')
@@ -26,7 +26,6 @@ def new_order():
     form = OrderForm()
     if form.validate_on_submit():
         try:
-            # Crée la commande principale avec les données du formulaire
             order = Order(
                 user_id=current_user.id,
                 order_type=form.order_type.data,
@@ -37,15 +36,12 @@ def new_order():
                 due_date=form.due_date.data,
                 delivery_cost=form.delivery_cost.data,
                 notes=form.notes.data,
-                status='pending' # Statut par défaut
+                status='pending'
             )
             db.session.add(order)
-            # 'flush' permet d'obtenir un ID pour la commande avant le commit final
             db.session.flush()
 
-            # Boucle sur les articles soumis avec le formulaire
             for item_data in form.items.data:
-                # On ne traite que les lignes où un produit et une quantité valide ont été saisis
                 if item_data.get('product') and item_data.get('quantity', 0) > 0:
                     product = item_data['product']
                     order_item = OrderItem(
@@ -55,28 +51,20 @@ def new_order():
                         unit_price=product.price or Decimal('0.00')
                     )
                     db.session.add(order_item)
-            
-            # Une fois tous les articles ajoutés, on calcule le montant total
+
             order.calculate_total_amount()
-            
-            # On sauvegarde tout dans la base de données
             db.session.commit()
-            
             flash('Nouvelle commande créée avec succès.', 'success')
             return redirect(url_for('orders.view_order', order_id=order.id))
-            
+
         except Exception as e:
             db.session.rollback()
             flash(f"Une erreur est survenue lors de la création de la commande: {e}", "danger")
-    
-    # --- LOGIQUE POUR L'AFFICHAGE DU FORMULAIRE (GET) ---
-    
-    # Récupérer les produits pour les menus déroulants du formulaire
+
+    # Préparer la liste de produits pour le JS (Select2 et calcul)
     products_for_template = Product.query.filter_by(product_type='finished').order_by(Product.name).all()
-    
-    # Créer une liste de produits qui est "JSON-safe" pour le JavaScript
     products_serializable = [
-        {'id': p.id, 'name': p.name, 'price': float(p.price or 0.0)}
+        {'id': str(p.id), 'name': p.name, 'price': float(p.price or 0.0)}
         for p in products_for_template
     ]
 
@@ -84,8 +72,7 @@ def new_order():
         'orders/order_form_multifield.html', 
         form=form, 
         title='Nouvelle Commande',
-        # On passe la liste JSON-safe au template
-        products_serializable=products_serializable 
+        products_serializable=products_serializable
     )
 
 @orders.route('/<int:order_id>')
@@ -103,14 +90,12 @@ def edit_order(order_id):
     form = OrderForm(obj=order)
     if form.validate_on_submit():
         try:
-            # Vider les anciens items avant de peupler
+            # Supprimer les anciens items
             for item in order.items:
                 db.session.delete(item)
             db.session.flush()
 
             form.populate_obj(order)
-            
-            # Ajouter les nouveaux items
             for item_data in form.items.data:
                 if item_data.get('product') and item_data.get('quantity', 0) > 0:
                     product = item_data['product']
@@ -121,7 +106,7 @@ def edit_order(order_id):
                         unit_price=product.price or Decimal('0.00')
                     )
                     db.session.add(order_item)
-            
+
             order.calculate_total_amount()
             db.session.commit()
             flash('Commande mise à jour avec succès.', 'success')
@@ -129,17 +114,16 @@ def edit_order(order_id):
         except Exception as e:
             db.session.rollback()
             flash(f"Une erreur est survenue lors de la mise à jour: {e}", "danger")
-    
+
     # Pré-remplir le formulaire avec les items existants pour la méthode GET
     if request.method == 'GET':
         form.items.entries = []
         for item in order.items:
             form.items.append_entry(item)
 
-    # CORRECTION : Il manquait la liste de prix des produits pour la page de modification
     products_for_template = Product.query.filter_by(product_type='finished').order_by(Product.name).all()
     products_serializable = [
-        {'id': p.id, 'name': p.name, 'price': float(p.price or 0.0)}
+        {'id': str(p.id), 'name': p.name, 'price': float(p.price or 0.0)}
         for p in products_for_template
     ]
 
@@ -148,9 +132,8 @@ def edit_order(order_id):
         form=form, 
         title=f'Modifier Commande #{order.id}', 
         edit_mode=True,
-        products_serializable=products_serializable # CORRECTION : Ajout de la variable manquante
+        products_serializable=products_serializable
     )
-
 
 @orders.route('/<int:order_id>/edit_status', methods=['GET', 'POST'])
 @login_required
@@ -179,6 +162,5 @@ def orders_calendar():
             'title': f"#{order.id} - {order.customer_name}",
             'start': order.due_date.isoformat(),
             'url': url_for('orders.view_order', order_id=order.id)
-            # Vous pouvez ajouter des couleurs en fonction du statut ici
         })
     return render_template('orders/orders_calendar.html', events=events, title="Calendrier des Commandes")
