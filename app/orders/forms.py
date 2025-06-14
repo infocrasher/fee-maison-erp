@@ -234,8 +234,8 @@ class ProductionOrderForm(FlaskForm):
     production_location = SelectField(
         'Lieu de production',
         choices=[
-            ('main_kitchen', 'Cuisine principale'),
-            ('store_counter', 'Comptoir magasin')
+            ('main_kitchen', 'Cuisine Local'),
+            ('store_counter', 'Cuisine Magasin')
         ],
         default='main_kitchen'
     )
