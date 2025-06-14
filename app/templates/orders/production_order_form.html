@@ -1,0 +1,407 @@
+{% extends "base.html" %}
+{% block content %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+.form-container {
+    background: #f8f9fa;
+    min-height: 100vh;
+    padding: 20px 0;
+}
+
+.card {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.card-header {
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    padding: 15px 20px;
+    border-radius: 7px 7px 0 0;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+.form-control {
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 14px;
+}
+
+.form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+.btn-primary {
+    background: #28a745;
+    border-color: #28a745;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.btn-primary:hover {
+    background: #218838;
+    border-color: #1e7e34;
+}
+
+.field-required {
+    color: #dc3545;
+}
+
+.badge-info {
+    background: #28a745;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+.btn-remove {
+    color: #dc3545;
+    background: none;
+    border: none;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.btn-remove:hover {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.select2-container--default .select2-selection--single {
+    height: 38px;
+    line-height: 38px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    padding-left: 12px;
+}
+
+.production-summary {
+    background: #e8f5e8;
+    border: 1px solid #28a745;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+}
+</style>
+
+<div class="form-container">
+    <div class="container-fluid">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <!-- En-tête -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1 class="h3 mb-0 text-dark">
+                        <i class="bi bi-gear me-2 text-success"></i>Nouvel Ordre de Production
+                    </h1>
+                    <a href="{{ url_for('orders.list_production_orders') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-list me-1"></i>Ordres de Production
+                    </a>
+                </div>
+
+                <!-- Messages d'erreur -->
+                {% for field, errors in form.errors.items() %}
+                    {% for error in errors %}
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            {{ form[field].label.text if field in form else field }}: {{ error }}
+                        </div>
+                    {% endfor %}
+                {% endfor %}
+
+                <form method="POST" id="production-order-form">
+                    {{ form.hidden_tag() }}
+
+                    <!-- Paramètres Production -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-calendar3 me-2 text-success"></i>Paramètres de Production
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    {{ form.production_date.label(class="form-label fw-bold") }}
+                                    {{ form.production_date(class="form-control") }}
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    {{ form.priority.label(class="form-label fw-bold") }}
+                                    {{ form.priority(class="form-select form-control") }}
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    {{ form.production_location.label(class="form-label fw-bold") }}
+                                    {{ form.production_location(class="form-select form-control") }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Articles à Produire -->
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-basket3 me-2 text-success"></i>Articles à Produire
+                            </h5>
+                            <span class="badge badge-info" id="items-count">{{ form.items|length }} article(s)</span>
+                        </div>
+                        <div class="card-body">
+                            <div id="items-container">
+                                {% for subform in form.items %}
+                                    <div class="item-row border-bottom pb-3 mb-3" data-index="{{ loop.index0 }}">
+                                        <div class="row">
+                                            <div class="col-md-8 mb-3">
+                                                {{ subform.product.label(class="form-label fw-bold") }}
+                                                <span class="field-required">*</span>
+                                                {{ subform.product(class="form-select form-control product-select", id="items-" + loop.index0|string + "-product") }}
+                                            </div>
+                                            <div class="col-md-2 mb-3">
+                                                {{ subform.quantity.label(class="form-label fw-bold") }}
+                                                <span class="field-required">*</span>
+                                                <div class="input-group">
+                                                    {{ subform.quantity(class="form-control quantity-input", min="0.01", step="0.01", id="items-" + loop.index0|string + "-quantity") }}
+                                                    <span class="input-group-text">unité(s)</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2 mb-3 d-flex align-items-end">
+                                                {% if loop.index0 > 0 %}
+                                                <button type="button" class="btn btn-remove" data-item-index="{{ loop.index0 }}">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            <button type="button" class="btn btn-outline-success" id="add-item-btn">
+                                <i class="bi bi-plus-circle me-2"></i>Ajouter un Article
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Instructions -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-journal-text me-2 text-success"></i>Instructions de Production
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {{ form.production_notes(class="form-control", placeholder="Instructions spéciales pour l'équipe de production...", rows="4") }}
+                        </div>
+                    </div>
+
+                    <!-- Résumé Production -->
+                    <div class="production-summary">
+                        <h5 class="mb-3">
+                            <i class="bi bi-clipboard-data me-2 text-success"></i>Résumé de Production
+                        </h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span><strong>Nombre d'articles :</strong></span>
+                                    <span class="fw-bold" id="total-items">0</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span><strong>Quantité totale :</strong></span>
+                                    <span class="fw-bold" id="total-quantity">0.00 unités</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span><strong>Priorité :</strong></span>
+                                    <span class="fw-bold" id="priority-display">Normale</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="alert alert-info mb-0">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    <strong>Note :</strong> Cet ordre de production ne génère aucun montant financier. Il s'agit uniquement d'une planification pour l'équipe de production.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Boutons -->
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle me-2"></i>Créer l'Ordre de Production
+                        </button>
+                        <a href="{{ url_for('orders.list_production_orders') }}" class="btn btn-secondary btn-lg">
+                            <i class="bi bi-arrow-left me-1"></i>Annuler
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+$(document).ready(function() {
+    
+    function initializeSelect2(element) {
+        $(element).select2({
+            width: '100%',
+            placeholder: "-- Choisir un produit --",
+            allowClear: true
+        });
+    }
+
+    function updateProductionSummary() {
+        let totalItems = 0;
+        let totalQuantity = 0;
+        
+        document.querySelectorAll('.item-row').forEach(function(row) {
+            const index = row.getAttribute('data-index');
+            const productSelect = document.getElementById('items-' + index + '-product');
+            const quantityInput = document.getElementById('items-' + index + '-quantity');
+
+            if (productSelect && productSelect.value) {
+                totalItems++;
+                let quantity = parseFloat(quantityInput.value) || 0;
+                totalQuantity += quantity;
+            }
+        });
+
+        document.getElementById('total-items').textContent = totalItems;
+        document.getElementById('total-quantity').textContent = totalQuantity.toFixed(2) + ' unités';
+        
+        // Mettre à jour la priorité affichée
+        const prioritySelect = document.querySelector('select[name="priority"]');
+        if (prioritySelect) {
+            const priorityText = prioritySelect.options[prioritySelect.selectedIndex].text;
+            document.getElementById('priority-display').textContent = priorityText;
+        }
+    }
+
+    function attachEventListeners(element) {
+        const productSelect = element.querySelector('.product-select');
+        if (productSelect) {
+            $(productSelect).on('change', function() {
+                updateProductionSummary();
+            });
+        }
+
+        const quantityInput = element.querySelector('.quantity-input');
+        if (quantityInput) {
+            quantityInput.addEventListener('input', updateProductionSummary);
+        }
+
+        const removeBtn = element.querySelector('.btn-remove');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function() {
+                const index = this.getAttribute('data-item-index');
+                removeItem(index);
+            });
+        }
+    }
+
+    function addItem() {
+        const container = document.getElementById('items-container');
+        let templateRow = container.querySelector('.item-row');
+        if (!templateRow) return;
+        
+        const newIndex = container.querySelectorAll('.item-row').length;
+        const newItem = templateRow.cloneNode(true);
+
+        newItem.setAttribute('data-index', newIndex);
+        $(newItem).find('.product-select').select2('destroy');
+
+        newItem.querySelectorAll('select, input').forEach(function(input) {
+            if (input.name) {
+                input.name = input.name.replace(/items-\d+-/, 'items-' + newIndex + '-');
+            }
+            if (input.id) {
+                input.id = input.id.replace(/items-\d+-/, 'items-' + newIndex + '-');
+            }
+            if (input.tagName.toLowerCase() === 'select') {
+                input.selectedIndex = 0;
+                input.value = '';
+            } else {
+                input.value = '';
+            }
+        });
+
+        let removeButton = newItem.querySelector('.btn-remove');
+        if (!removeButton) {
+            const removeCol = newItem.querySelector('.col-md-2.d-flex.align-items-end');
+            if(removeCol) {
+               removeCol.innerHTML = '<button type="button" class="btn btn-remove" data-item-index="' + newIndex + '"><i class="bi bi-trash"></i></button>';
+               removeButton = removeCol.querySelector('.btn-remove');
+            }
+        }
+        if(removeButton) {
+           removeButton.setAttribute('data-item-index', newIndex);
+        }
+
+        container.appendChild(newItem);
+        document.getElementById('items-count').textContent = (newIndex + 1) + ' article(s)';
+        
+        const newSelect = newItem.querySelector('.product-select');
+        initializeSelect2(newSelect);
+        
+        attachEventListeners(newItem);
+        updateProductionSummary();
+    }
+
+    function removeItem(index) {
+        const item = document.querySelector('.item-row[data-index="' + index + '"]');
+        if (item) {
+            item.remove();
+            
+            document.querySelectorAll('.item-row').forEach((row, newIdx) => {
+                row.setAttribute('data-index', newIdx);
+                row.querySelectorAll('select, input, button').forEach(el => {
+                    const name = el.name;
+                    if(name) el.name = name.replace(/items-\d+-/, 'items-' + newIdx + '-');
+                    const id = el.id;
+                    if(id) el.id = id.replace(/items-\d+-/, 'items-' + newIdx + '-');
+                    const dataIdx = el.getAttribute('data-item-index');
+                    if(dataIdx) el.setAttribute('data-item-index', newIdx);
+                });
+            });
+
+            const remainingItems = document.querySelectorAll('.item-row').length;
+            document.getElementById('items-count').textContent = remainingItems + ' article(s)';
+            updateProductionSummary();
+        }
+    }
+
+    // Event listeners pour la priorité
+    const prioritySelect = document.querySelector('select[name="priority"]');
+    if (prioritySelect) {
+        prioritySelect.addEventListener('change', updateProductionSummary);
+    }
+
+    $('#add-item-btn').on('click', addItem);
+
+    $('.product-select').each(function() {
+        initializeSelect2(this);
+    });
+
+    document.querySelectorAll('.item-row').forEach(function(row) {
+        attachEventListeners(row);
+    });
+
+    updateProductionSummary();
+});
+</script>
+{% endblock %}
