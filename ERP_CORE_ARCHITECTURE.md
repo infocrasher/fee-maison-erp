@@ -165,6 +165,8 @@ ERP complet et autonome pour Fée Maison avec toutes les fonctionnalités métie
   - status_routes.py
   - routes.py
   - __pycache__/
+    - dashboard_routes.cpython-313.pyc
+    - status_routes.cpython-313.pyc
     - routes.cpython-313.pyc
     - forms.cpython-313.pyc
     - __init__.cpython-313.pyc
@@ -187,6 +189,11 @@ ERP complet et autonome pour Fée Maison avec toutes les fonctionnalités métie
   - __init__.py
   - forms.py
   - routes.py
+  - __pycache__/
+    - models.cpython-313.pyc
+    - routes.cpython-313.pyc
+    - forms.cpython-313.pyc
+    - __init__.cpython-313.pyc
 ```
 
 ---
@@ -195,6 +202,7 @@ ERP complet et autonome pour Fée Maison avec toutes les fonctionnalités métie
 - `GET` /home (endpoint: `main.hello_world`, blueprint: `main`)
 - `GET` / (endpoint: `main.hello_world`, blueprint: `main`)
 - `GET` /dashboard (endpoint: `main.dashboard`, blueprint: `main`)
+    - Dashboard principal avec statistiques
 - `GET,POST` /auth/login (endpoint: `auth.login`, blueprint: `auth`)
 - `GET` /auth/logout (endpoint: `auth.logout`, blueprint: `auth`)
 - `GET,POST` /auth/account (endpoint: `auth.account`, blueprint: `auth`)
@@ -227,6 +235,43 @@ ERP complet et autonome pour Fée Maison avec toutes les fonctionnalités métie
 - `GET,POST` /admin/stock/quick_entry (endpoint: `stock.quick_entry`, blueprint: `stock`)
 - `GET,POST` /admin/stock/adjustment (endpoint: `stock.adjustment`, blueprint: `stock`)
 - `GET` /admin/dashboard (endpoint: `admin.dashboard`, blueprint: `admin`)
+- `GET` /dashboard/production (endpoint: `dashboard.production_dashboard`, blueprint: `dashboard`)
+    - Dashboard production pour Rayan - Affiche les commandes en production
+- `GET` /dashboard/shop (endpoint: `dashboard.shop_dashboard`, blueprint: `dashboard`)
+    - Dashboard magasin pour Yasmine - Gestion des commandes reçues
+- `GET` /dashboard/ingredients-alerts (endpoint: `dashboard.ingredients_alerts`, blueprint: `dashboard`)
+    - Vue des ingrédients manquants pour Amel
+- `GET` /dashboard/api/orders-stats (endpoint: `dashboard.orders_stats_api`, blueprint: `dashboard`)
+    - API pour récupérer les stats en temps réel
+- `POST` /orders/<int:order_id>/change-status-to-ready (endpoint: `status.change_status_to_ready`, blueprint: `status`)
+    - Change le statut de 'in_production' à 'ready_at_shop' avec sélection employé
+- `POST` /orders/<int:order_id>/change-status-to-delivered (endpoint: `status.change_status_to_delivered`, blueprint: `status`)
+    - Change le statut de 'ready_at_shop' à 'delivered' pour commandes client
+- `GET` /orders/<int:order_id>/select-employees/<string:new_status> (endpoint: `status.select_employees_for_status_change`, blueprint: `status`)
+    - Formulaire de sélection des employés pour changement de statut
+- `GET,POST` /orders/<int:order_id>/manual-status-change (endpoint: `status.manual_status_change`, blueprint: `status`)
+    - Changement de statut manuel pour cas spéciaux
+- `GET` /orders/api/active-employees (endpoint: `status.get_active_employees`, blueprint: `status`)
+    - API pour récupérer la liste des employés actifs
+- `GET` /orders/<int:order_id>/test-employees/<string:new_status> (endpoint: `status.test_employees_no_decorators`, blueprint: `status`)
+    - Test sans décorateurs pour isoler le problème
+- `GET` /orders/<int:order_id>/test-login/<string:new_status> (endpoint: `status.test_login_only`, blueprint: `status`)
+- `GET` /orders/<int:order_id>/test-admin/<string:new_status> (endpoint: `status.test_admin_only`, blueprint: `status`)
+- `GET` /orders/<int:order_id>/test-both/<string:new_status> (endpoint: `status.test_both_decorators`, blueprint: `status`)
+- `GET` /employees/ (endpoint: `employees.list_employees`, blueprint: `employees`)
+    - Liste des employés avec recherche et filtres
+- `GET,POST` /employees/new (endpoint: `employees.new_employee`, blueprint: `employees`)
+    - Créer un nouvel employé
+- `GET` /employees/<int:employee_id> (endpoint: `employees.view_employee`, blueprint: `employees`)
+    - Voir les détails d'un employé
+- `GET,POST` /employees/<int:employee_id>/edit (endpoint: `employees.edit_employee`, blueprint: `employees`)
+    - Modifier un employé
+- `POST` /employees/<int:employee_id>/toggle-status (endpoint: `employees.toggle_employee_status`, blueprint: `employees`)
+    - Activer/désactiver un employé
+- `GET` /employees/api/production-staff (endpoint: `employees.get_production_staff`, blueprint: `employees`)
+    - API pour récupérer les employés de production actifs
+- `GET` /employees/api/stats (endpoint: `employees.get_employees_stats`, blueprint: `employees`)
+    - API pour les statistiques employés
 
 ---
 
@@ -251,8 +296,12 @@ ERP complet et autonome pour Fée Maison avec toutes les fonctionnalités métie
 
 ## 8. Variables et macros Jinja2 utilisées
 **Variables** :
+- action
+- active_employees
 - categories
 - div_class
+- employees
+- employees_count
 - error
 - events
 - field
@@ -261,14 +310,27 @@ ERP complet et autonome pour Fée Maison avec toutes les fonctionnalités métie
 - low_stock_products
 - manual_csrf_token
 - message
+- missing_ingredients
+- moment
+- orders_count
+- orders_in_production
+- orders_on_time
+- orders_overdue
+- orders_ready
+- orders_soon
+- orders_today
 - out_of_stock_products
 - page_num
+- production_staff
 - products_count
+- recipes_count
 - render_field
 - render_pagination
 - status_class
 - super
 - title
+- total_employees
+- total_orders
 - total_orders_on_calendar
 - total_products_count
 - url_for
