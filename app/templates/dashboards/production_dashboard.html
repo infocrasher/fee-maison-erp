@@ -1,0 +1,388 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Production - Fée Maison{% endblock %}
+
+{% block head %}
+{{ super() }}
+<link href="{{ url_for('static', filename='css/dashboards/production.css') }}" rel="stylesheet">
+<style>
+    body {
+        background-color: #f8f9fa;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    .production-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+        border-radius: 0 0 20px 20px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    
+    .order-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 6px 25px rgba(0,0,0,0.1);
+        border-left: 5px solid;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .order-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+    }
+    
+    /* Code couleur temporel */
+    .status-green {
+        border-left-color: #28a745;
+        background: linear-gradient(135deg, #d4edda 0%, #f8fff9 100%);
+    }
+    
+    .status-orange {
+        border-left-color: #fd7e14;
+        background: linear-gradient(135deg, #fff3cd 0%, #fffef7 100%);
+        animation: pulse-warning 2s infinite;
+    }
+    
+    .status-red {
+        border-left-color: #dc3545;
+        background: linear-gradient(135deg, #f8d7da 0%, #fff5f5 100%);
+        animation: pulse-danger 1.5s infinite;
+    }
+    
+    @keyframes pulse-warning {
+        0%, 100% { box-shadow: 0 6px 25px rgba(253, 126, 20, 0.1); }
+        50% { box-shadow: 0 10px 35px rgba(253, 126, 20, 0.3); }
+    }
+    
+    @keyframes pulse-danger {
+        0%, 100% { box-shadow: 0 6px 25px rgba(220, 53, 69, 0.2); }
+        50% { box-shadow: 0 10px 35px rgba(220, 53, 69, 0.4); }
+    }
+    
+    .time-remaining {
+        font-size: 2.5rem;
+        font-weight: bold;
+        text-align: center;
+        margin: 1rem 0;
+    }
+    
+    .time-green { color: #28a745; }
+    .time-orange { color: #fd7e14; }
+    .time-red { color: #dc3545; }
+    
+    .product-info {
+        background: rgba(0,0,0,0.05);
+        border-radius: 10px;
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+    
+    .order-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(0,0,0,0.1);
+    }
+    
+    .priority-badge {
+        font-size: 0.8rem;
+        padding: 0.3rem 0.8rem;
+        border-radius: 15px;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+    
+    .stats-container {
+        display: flex;
+        justify-content: space-around;
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .stat-item {
+        text-align: center;
+    }
+    
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        display: block;
+    }
+    
+    .stat-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        margin-top: 0.5rem;
+    }
+    
+    /* Responsive tactile */
+    @media (max-width: 768px) {
+        .order-card {
+            margin-bottom: 1rem;
+            padding: 1rem;
+        }
+        
+        .time-remaining {
+            font-size: 2rem;
+        }
+        
+        .stats-container {
+            flex-direction: column;
+            gap: 1rem;
+        }
+    }
+    
+    .no-orders {
+        text-align: center;
+        padding: 3rem;
+        color: #6c757d;
+    }
+    
+    .no-orders i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="production-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="bi bi-gear-fill me-3"></i>Dashboard Production
+                </h1>
+                <p class="mb-0 mt-2 opacity-75">Vue en temps réel des commandes à produire</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="text-white">
+                    <div class="h4 mb-0" id="current-time"></div>
+                    <small id="current-date"></small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <!-- Statistiques en haut -->
+    <div class="stats-container">
+        <div class="stat-item">
+            <span class="stat-number text-success" id="orders-on-time">{{ orders_on_time|default(0) }}</span>
+            <div class="stat-label">À Temps</div>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number text-warning" id="orders-soon">{{ orders_soon|default(0) }}</span>
+            <div class="stat-label">Bientôt Dûes</div>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number text-danger" id="orders-overdue">{{ orders_overdue|default(0) }}</span>
+            <div class="stat-label">En Retard</div>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number text-primary" id="total-orders">{{ total_orders|default(0) }}</span>
+            <div class="stat-label">Total Aujourd'hui</div>
+        </div>
+    </div>
+    
+    <!-- Zone des commandes -->
+    <div class="row">
+        <div class="col-12">
+            {% if orders %}
+                <div id="orders-container">
+                    {% for order in orders %}
+                    <div class="order-card" 
+                         data-order-id="{{ order.id }}"
+                         data-due-time="{{ order.due_date.isoformat() }}"
+                         onclick="viewOrderDetails('{{ order.id }}')">
+                        
+                        <!-- Temps restant (gros et visible) -->
+                        <div class="time-remaining" id="countdown-{{ order.id }}">
+                            Calcul en cours...
+                        </div>
+                        
+                        <!-- Informations produits -->
+                        <div class="product-info">
+                            <h4 class="mb-2">
+                                <i class="bi bi-box-seam me-2"></i>
+                                {% if order.order_type == 'customer_order' %}
+                                    Commande #{{ order.id }} - {{ order.customer_name }}
+                                {% else %}
+                                    Ordre Production #{{ order.id }}
+                                {% endif %}
+                            </h4>
+                            
+                            <div class="row">
+                                {% for item in order.items %}
+                                <div class="col-md-6 mb-2">
+                                    <strong>{{ item.product.name }}</strong>
+                                    <span class="badge bg-info ms-2">{{ item.quantity }} {{ item.product.unit }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <!-- Métadonnées -->
+                        <div class="order-meta">
+                            <div>
+                                <small class="text-muted">
+                                    <i class="bi bi-clock me-1"></i>
+                                    Prévue à {{ order.due_date.strftime('%H:%M') }}
+                                </small>
+                                {% if order.notes %}
+                                    <br><small class="text-info">
+                                        <i class="bi bi-chat-text me-1"></i>
+                                        {{ order.notes[:50] }}{% if order.notes|length > 50 %}...{% endif %}
+                                    </small>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="text-end">
+                                <span class="priority-badge" id="priority-{{ order.id }}">
+                                    Normal
+                                </span>
+                                {% if order.order_type == 'customer_order' %}
+                                    <br><small class="text-success">
+                                        <i class="bi bi-person me-1"></i>Client
+                                    </small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="no-orders">
+                    <i class="bi bi-check-circle-fill text-success"></i>
+                    <h3>Excellent travail !</h3>
+                    <p>Aucune commande en production pour le moment.</p>
+                    <small class="text-muted">Les nouvelles commandes apparaîtront automatiquement ici.</small>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Audio pour notification -->
+<audio id="notification-sound" preload="auto">
+    <source src="{{ url_for('static', filename='sounds/new_order.mp3') }}" type="audio/mpeg">
+    <!-- Fallback pour navigateurs qui ne supportent pas MP3 -->
+    <source src="{{ url_for('static', filename='sounds/new_order.wav') }}" type="audio/wav">
+</audio>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/dashboards/production.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboards/notifications.js') }}"></script>
+
+<script>
+// JavaScript intégré pour le dashboard
+document.addEventListener('DOMContentLoaded', function() {
+    // Mise à jour de l'horloge
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('current-time').textContent = now.toLocaleTimeString('fr-FR');
+        document.getElementById('current-date').textContent = now.toLocaleDateString('fr-FR', {
+            weekday: 'long',
+            day: 'numeric', 
+            month: 'long'
+        });
+    }
+    
+    // Calcul des temps restants et application des couleurs
+    function updateCountdowns() {
+        const now = new Date();
+        const cards = document.querySelectorAll('.order-card');
+        
+        cards.forEach(card => {
+            const orderId = card.dataset.orderId;
+            const dueTime = new Date(card.dataset.dueTime);
+            const diffMs = dueTime - now;
+            const diffHours = diffMs / (1000 * 60 * 60);
+            
+            const countdownEl = document.getElementById(`countdown-${orderId}`);
+            const priorityEl = document.getElementById(`priority-${orderId}`);
+            
+            // Calculer et afficher le temps restant
+            if (diffMs > 0) {
+                const hours = Math.floor(diffHours);
+                const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                
+                if (hours > 0) {
+                    countdownEl.textContent = `${hours}h ${minutes}min`;
+                } else {
+                    countdownEl.textContent = `${minutes} minutes`;
+                }
+            } else {
+                const overdue = Math.abs(Math.floor(diffHours));
+                countdownEl.textContent = `RETARD ${overdue}h`;
+            }
+            
+            // Appliquer les couleurs selon les règles
+            card.classList.remove('status-green', 'status-orange', 'status-red');
+            countdownEl.classList.remove('time-green', 'time-orange', 'time-red');
+            
+            if (diffMs < 0) {
+                // Rouge : En retard
+                card.classList.add('status-red');
+                countdownEl.classList.add('time-red');
+                priorityEl.textContent = 'URGENT';
+                priorityEl.className = 'priority-badge bg-danger text-white';
+            } else if (diffHours < 0.5) {
+                // Rouge : Moins de 30min
+                card.classList.add('status-red');
+                countdownEl.classList.add('time-red');
+                priorityEl.textContent = 'URGENT';
+                priorityEl.className = 'priority-badge bg-danger text-white';
+            } else if (diffHours < 2) {
+                // Orange : 30min à 2h
+                card.classList.add('status-orange');
+                countdownEl.classList.add('time-orange');
+                priorityEl.textContent = 'PROCHE';
+                priorityEl.className = 'priority-badge bg-warning text-dark';
+            } else {
+                // Vert : Plus de 2h
+                card.classList.add('status-green');
+                countdownEl.classList.add('time-green');
+                priorityEl.textContent = 'NORMAL';
+                priorityEl.className = 'priority-badge bg-success text-white';
+            }
+        });
+    }
+    
+    // Fonction pour voir les détails d'une commande
+    window.viewOrderDetails = function(orderId) {
+        window.location.href = `/admin/orders/${orderId}`;
+    };
+    
+    // Initialisation
+    updateClock();
+    updateCountdowns();
+    
+    // Mise à jour toutes les 30 secondes
+    setInterval(updateClock, 1000);
+    setInterval(updateCountdowns, 30000);
+    
+    // Rafraîchissement automatique de la page toutes les 5 minutes
+    setTimeout(function() {
+        window.location.reload();
+    }, 5 * 60 * 1000);
+});
+</script>
+{% endblock %}

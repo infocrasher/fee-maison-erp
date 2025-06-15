@@ -1,0 +1,598 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Fée Maison{% endblock %}
+
+{% block head %}
+{{ super() }}
+<style>
+    body {
+        background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+        min-height: 100vh;
+    }
+    
+    .alerts-container {
+        background: rgba(255,255,255,0.95);
+        border-radius: 20px;
+        margin: 2rem auto;
+        max-width: 1200px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        backdrop-filter: blur(10px);
+        overflow: hidden;
+    }
+    
+    .alerts-header {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        color: white;
+        padding: 3rem 2rem;
+        text-align: center;
+        position: relative;
+    }
+    
+    .alerts-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="white" opacity="0.1"><polygon points="0,0 1000,0 1000,100 0,80"/></svg>');
+        background-repeat: no-repeat;
+        background-size: cover;
+    }
+    
+    .header-icon {
+        width: 80px;
+        height: 80px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        font-size: 2.5rem;
+        animation: pulse-warning 2s infinite;
+    }
+    
+    @keyframes pulse-warning {
+        0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,255,255,0.4); }
+        50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(255,255,255,0); }
+    }
+    
+    .stats-overview {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        padding: 2rem;
+        background: #f8f9fa;
+    }
+    
+    .stat-box {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+        border: 1px solid rgba(0,0,0,0.05);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stat-box::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #ff6b6b, #ee5a24);
+    }
+    
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+    }
+    
+    .alerts-content {
+        padding: 2rem;
+    }
+    
+    .section-title {
+        display: flex;
+        align-items: center;
+        margin-bottom: 2rem;
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    
+    .section-title i {
+        background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+        color: white;
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+    }
+    
+    .ingredient-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+        border-left: 5px solid;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .ingredient-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+    }
+    
+    .critical-shortage {
+        border-left-color: #dc3545;
+        background: linear-gradient(135deg, #f8d7da 0%, #fff5f5 100%);
+        animation: pulse-critical 3s infinite;
+    }
+    
+    .low-stock {
+        border-left-color: #fd7e14;
+        background: linear-gradient(135deg, #fff3cd 0%, #fffef7 100%);
+    }
+    
+    .medium-stock {
+        border-left-color: #ffc107;
+        background: linear-gradient(135deg, #fff3cd 0%, #fffff0 100%);
+    }
+    
+    @keyframes pulse-critical {
+        0%, 100% { box-shadow: 0 6px 20px rgba(220, 53, 69, 0.1); }
+        50% { box-shadow: 0 10px 30px rgba(220, 53, 69, 0.3); }
+    }
+    
+    .ingredient-header {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .ingredient-info {
+        flex: 1;
+    }
+    
+    .ingredient-name {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
+    }
+    
+    .ingredient-category {
+        background: rgba(102, 126, 234, 0.1);
+        color: #667eea;
+        padding: 0.3rem 0.8rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        display: inline-block;
+    }
+    
+    .stock-info {
+        text-align: right;
+    }
+    
+    .current-stock {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #dc3545;
+    }
+    
+    .stock-unit {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-left: 0.5rem;
+    }
+    
+    .required-stock {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-top: 0.3rem;
+    }
+    
+    .ingredient-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(0,0,0,0.1);
+    }
+    
+    .detail-item {
+        text-align: center;
+    }
+    
+    .detail-value {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2c3e50;
+        display: block;
+    }
+    
+    .detail-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        margin-top: 0.3rem;
+    }
+    
+    .urgency-badge {
+        padding: 0.4rem 1rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        text-transform: uppercase;
+        margin-left: 1rem;
+    }
+    
+    .urgency-critical {
+        background: #dc3545;
+        color: white;
+        animation: blink 1.5s infinite;
+    }
+    
+    .urgency-high {
+        background: #fd7e14;
+        color: white;
+    }
+    
+    .urgency-medium {
+        background: #ffc107;
+        color: #212529;
+    }
+    
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #6c757d;
+    }
+    
+    .empty-state i {
+        font-size: 5rem;
+        margin-bottom: 2rem;
+        background: linear-gradient(135deg, #28a745, #20c997);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .action-suggestions {
+        background: #e7f3ff;
+        border: 1px solid #b8daff;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-top: 2rem;
+    }
+    
+    .suggestion-title {
+        display: flex;
+        align-items: center;
+        font-weight: 600;
+        color: #0056b3;
+        margin-bottom: 1rem;
+    }
+    
+    .suggestion-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .suggestion-list li {
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(0, 86, 179, 0.1);
+    }
+    
+    .suggestion-list li:last-child {
+        border-bottom: none;
+    }
+    
+    .refresh-notice {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 2rem;
+        text-align: center;
+        color: #856404;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .ingredient-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+        
+        .stock-info {
+            text-align: left;
+            width: 100%;
+        }
+        
+        .ingredient-details {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="alerts-container">
+        <!-- En-tête avec animation -->
+        <div class="alerts-header">
+            <div class="header-icon">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+            </div>
+            <h1 class="mb-2">Alertes Ingrédients</h1>
+            <p class="mb-0 opacity-90">Suivi des stocks pour optimiser les achats</p>
+        </div>
+        
+        <!-- Vue d'ensemble des statistiques -->
+        <div class="stats-overview">
+            <div class="stat-box">
+                <span class="stat-number">{{ missing_ingredients|length or 0 }}</span>
+                <div class="stat-label">Ingrédients Manquants</div>
+            </div>
+            <div class="stat-box">
+                <span class="stat-number">0</span>
+                <div class="stat-label">Stock Critique</div>
+            </div>
+            <div class="stat-box">
+                <span class="stat-number">0</span>
+                <div class="stat-label">À Commander</div>
+            </div>
+            <div class="stat-box">
+                <span class="stat-number">0</span>
+                <div class="stat-label">Coût Estimé (DA)</div>
+            </div>
+        </div>
+        
+        <!-- Contenu principal -->
+        <div class="alerts-content">
+            
+            <!-- Notice de développement -->
+            <div class="refresh-notice">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Module en développement :</strong> Le calcul automatique des ingrédients manquants sera disponible avec le module stock complet.
+            </div>
+            
+            {% if missing_ingredients %}
+                <!-- Section ingrédients manquants -->
+                <div class="section-title">
+                    <i class="bi bi-exclamation-circle"></i>
+                    Ingrédients Manquants ({{ missing_ingredients|length }})
+                </div>
+                
+                {% for ingredient in missing_ingredients %}
+                <div class="ingredient-card {{ ingredient.urgency_class }}">
+                    <div class="ingredient-header">
+                        <div class="ingredient-info">
+                            <div class="ingredient-name">{{ ingredient.name }}</div>
+                            <span class="ingredient-category">{{ ingredient.category }}</span>
+                        </div>
+                        
+                        <div class="stock-info">
+                            <div class="current-stock">
+                                {{ ingredient.current_stock }}
+                                <span class="stock-unit">{{ ingredient.unit }}</span>
+                            </div>
+                            <div class="required-stock">
+                                Besoin: {{ ingredient.required_stock }} {{ ingredient.unit }}
+                            </div>
+                        </div>
+                        
+                        <span class="urgency-badge urgency-{{ ingredient.urgency }}">
+                            {{ ingredient.urgency_label }}
+                        </span>
+                    </div>
+                    
+                    <div class="ingredient-details">
+                        <div class="detail-item">
+                            <span class="detail-value">{{ ingredient.deficit }}</span>
+                            <div class="detail-label">Manque</div>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-value">{{ ingredient.orders_affected }}</span>
+                            <div class="detail-label">Commandes Affectées</div>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-value">{{ ingredient.estimated_cost }} DA</span>
+                            <div class="detail-label">Coût Estimé</div>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-value">{{ ingredient.supplier or 'N/A' }}</span>
+                            <div class="detail-label">Fournisseur</div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                
+            {% else %}
+                <!-- État vide avec design positif -->
+                <div class="empty-state">
+                    <i class="bi bi-check-circle-fill"></i>
+                    <h3>Excellent ! Tous les stocks sont suffisants</h3>
+                    <p>Aucun ingrédient manquant détecté pour les commandes en cours.</p>
+                    <small class="text-muted">Les alertes apparaîtront automatiquement ici quand nécessaire.</small>
+                </div>
+                
+                <!-- Simulation pour démonstration -->
+                <div class="mt-4">
+                    <h5 class="text-center mb-4">Aperçu de l'interface (Données de simulation)</h5>
+                    
+                    <!-- Exemple d'ingrédient manquant critique -->
+                    <div class="ingredient-card critical-shortage">
+                        <div class="ingredient-header">
+                            <div class="ingredient-info">
+                                <div class="ingredient-name">Farine T55</div>
+                                <span class="ingredient-category">Farine</span>
+                            </div>
+                            
+                            <div class="stock-info">
+                                <div class="current-stock">
+                                    0.5 <span class="stock-unit">kg</span>
+                                </div>
+                                <div class="required-stock">
+                                    Besoin: 15 kg
+                                </div>
+                            </div>
+                            
+                            <span class="urgency-badge urgency-critical">
+                                Critique
+                            </span>
+                        </div>
+                        
+                        <div class="ingredient-details">
+                            <div class="detail-item">
+                                <span class="detail-value text-danger">14.5 kg</span>
+                                <div class="detail-label">Manque</div>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-value">5</span>
+                                <div class="detail-label">Commandes Affectées</div>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-value">2,500 DA</span>
+                                <div class="detail-label">Coût Estimé</div>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-value">Meunerie Atlas</span>
+                                <div class="detail-label">Fournisseur</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Exemple d'ingrédient stock faible -->
+                    <div class="ingredient-card low-stock">
+                        <div class="ingredient-header">
+                            <div class="ingredient-info">
+                                <div class="ingredient-name">Œufs frais</div>
+                                <span class="ingredient-category">Produits frais</span>
+                            </div>
+                            
+                            <div class="stock-info">
+                                <div class="current-stock">
+                                    8 <span class="stock-unit">pièces</span>
+                                </div>
+                                <div class="required-stock">
+                                    Besoin: 24 pièces
+                                </div>
+                            </div>
+                            
+                            <span class="urgency-badge urgency-high">
+                                Urgent
+                            </span>
+                        </div>
+                        
+                        <div class="ingredient-details">
+                            <div class="detail-item">
+                                <span class="detail-value text-warning">16 pièces</span>
+                                <div class="detail-label">Manque</div>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-value">3</span>
+                                <div class="detail-label">Commandes Affectées</div>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-value">480 DA</span>
+                                <div class="detail-label">Coût Estimé</div>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-value">Avicole Locale</span>
+                                <div class="detail-label">Fournisseur</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            
+            <!-- Suggestions d'actions -->
+            <div class="action-suggestions">
+                <div class="suggestion-title">
+                    <i class="bi bi-lightbulb me-2"></i>
+                    Suggestions d'Optimisation
+                </div>
+                <ul class="suggestion-list">
+                    <li><i class="bi bi-arrow-right me-2"></i>Planifier les achats selon les commandes prévues</li>
+                    <li><i class="bi bi-arrow-right me-2"></i>Négocier des prix préférentiels pour les gros volumes</li>
+                    <li><i class="bi bi-arrow-right me-2"></i>Identifier les fournisseurs alternatifs pour les produits critiques</li>
+                    <li><i class="bi bi-arrow-right me-2"></i>Optimiser les recettes pour réduire le gaspillage</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animation d'apparition des cartes
+    const cards = document.querySelectorAll('.ingredient-card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateX(-30px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.6s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateX(0)';
+        }, index * 200);
+    });
+    
+    // Animation des stats
+    const statNumbers = document.querySelectorAll('.stat-number');
+    statNumbers.forEach((stat, index) => {
+        setTimeout(() => {
+            stat.style.transform = 'scale(1.2)';
+            setTimeout(() => {
+                stat.style.transition = 'transform 0.3s ease';
+                stat.style.transform = 'scale(1)';
+            }, 150);
+        }, index * 100);
+    });
+    
+    // Rafraîchissement automatique toutes les 5 minutes
+    setTimeout(function() {
+        window.location.reload();
+    }, 5 * 60 * 1000);
+});
+</script>
+{% endblock %}

@@ -101,8 +101,15 @@ ERP complet et autonome pour Fée Maison avec toutes les fonctionnalités métie
 - static/
   - css/
     - style.css
+    - dashboards/
+      - shop.css
+      - production.css
   - js/
     - main.js
+    - dashboards/
+      - production.js
+      - shop.js
+      - notifications.js
   - img/
 - templates/
   - _form_macros.html
@@ -118,6 +125,10 @@ ERP complet et autonome pour Fée Maison avec toutes les fonctionnalités métie
     - account.html
   - admin/
     - admin_dashboard.html
+  - dashboards/
+    - ingredients_alerts.html
+    - production_dashboard.html
+    - shop_dashboard.html
   - recipes/
     - recipe_form.html
     - list_recipes.html
@@ -127,7 +138,10 @@ ERP complet et autonome pour Fée Maison avec toutes les fonctionnalités métie
     - view_order.html
     - order_form_multifield.html
     - order_status_form.html
+    - production_order_form.html
+    - customer_order_form.html
     - orders_calendar.html
+    - change_status_form.html
     - list_orders.html
   - errors/
     - 403.html
@@ -140,9 +154,15 @@ ERP complet et autonome pour Fée Maison avec toutes les fonctionnalités métie
   - main/
     - home.html
     - dashboard.html
+  - employees/
+    - employee_form.html
+    - list_employees.html
+    - view_employee.html
 - orders/
+  - dashboard_routes.py
   - __init__.py
   - forms.py
+  - status_routes.py
   - routes.py
   - __pycache__/
     - routes.cpython-313.pyc
@@ -162,6 +182,11 @@ ERP complet et autonome pour Fée Maison avec toutes les fonctionnalités métie
   - __pycache__/
     - routes.cpython-313.pyc
     - __init__.cpython-313.pyc
+- employees/
+  - models.py
+  - __init__.py
+  - forms.py
+  - routes.py
 ```
 
 ---
@@ -183,6 +208,11 @@ ERP complet et autonome pour Fée Maison avec toutes les fonctionnalités métie
 - `GET,POST` /admin/products/<int:product_id>/edit (endpoint: `products.edit_product`, blueprint: `products`)
 - `POST` /admin/products/<int:product_id>/delete (endpoint: `products.delete_product`, blueprint: `products`)
 - `GET` /admin/orders/ (endpoint: `orders.list_orders`, blueprint: `orders`)
+- `GET` /admin/orders/customer (endpoint: `orders.list_customer_orders`, blueprint: `orders`)
+- `GET` /admin/orders/production (endpoint: `orders.list_production_orders`, blueprint: `orders`)
+- `GET` /admin/orders/api/products (endpoint: `orders.api_products`, blueprint: `orders`)
+- `GET,POST` /admin/orders/customer/new (endpoint: `orders.new_customer_order`, blueprint: `orders`)
+- `GET,POST` /admin/orders/production/new (endpoint: `orders.new_production_order`, blueprint: `orders`)
 - `GET,POST` /admin/orders/new (endpoint: `orders.new_order`, blueprint: `orders`)
 - `GET` /admin/orders/<int:order_id> (endpoint: `orders.view_order`, blueprint: `orders`)
 - `GET,POST` /admin/orders/<int:order_id>/edit (endpoint: `orders.edit_order`, blueprint: `orders`)
@@ -222,8 +252,6 @@ ERP complet et autonome pour Fée Maison avec toutes les fonctionnalités métie
 ## 8. Variables et macros Jinja2 utilisées
 **Variables** :
 - categories
-- category
-- current_year
 - div_class
 - error
 - events
@@ -235,6 +263,7 @@ ERP complet et autonome pour Fée Maison avec toutes les fonctionnalités métie
 - message
 - out_of_stock_products
 - page_num
+- products_count
 - render_field
 - render_pagination
 - status_class

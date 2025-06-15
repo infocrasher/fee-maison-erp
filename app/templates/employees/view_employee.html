@@ -1,0 +1,526 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Fée Maison{% endblock %}
+
+{% block head %}
+{{ super() }}
+<style>
+    body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+    }
+    
+    .employee-profile {
+        background: rgba(255,255,255,0.95);
+        border-radius: 20px;
+        margin: 2rem auto;
+        max-width: 1000px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        backdrop-filter: blur(10px);
+        overflow: hidden;
+    }
+    
+    .profile-header {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 3rem 2rem;
+        text-align: center;
+        position: relative;
+    }
+    
+    .profile-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="white" opacity="0.1"><polygon points="0,0 1000,0 1000,100 0,80"/></svg>');
+        background-repeat: no-repeat;
+        background-size: cover;
+    }
+    
+    .employee-avatar-large {
+        width: 120px;
+        height: 120px;
+        background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.9) 100%);
+        color: #667eea;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        font-weight: bold;
+        margin: 0 auto 1.5rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        position: relative;
+        z-index: 1;
+    }
+    
+    .status-indicator {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        border: 4px solid white;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    
+    .status-active { background: #28a745; }
+    .status-inactive { background: #dc3545; }
+    
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+        padding: 2rem;
+    }
+    
+    .info-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+        border: 1px solid rgba(0,0,0,0.05);
+        transition: transform 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .info-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+    }
+    
+    .info-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .card-title {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    
+    .card-title i {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+    }
+    
+    .info-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.8rem 0;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+    
+    .info-item:last-child {
+        border-bottom: none;
+    }
+    
+    .info-label {
+        color: #6c757d;
+        font-weight: 500;
+    }
+    
+    .info-value {
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    
+    .salary-highlight {
+        background: linear-gradient(135deg, #28a745, #20c997);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: bold;
+    }
+    
+    .performance-score {
+        text-align: center;
+        padding: 2rem;
+    }
+    
+    .score-circle {
+        width: 120px;
+        height: 120px;
+        margin: 0 auto 1rem;
+        position: relative;
+        border-radius: 50%;
+        background: conic-gradient(from 0deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .score-inner {
+        width: 90px;
+        height: 90px;
+        background: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #667eea;
+    }
+    
+    .orders-list {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    .order-item {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+        border-left: 3px solid #667eea;
+    }
+    
+    .action-buttons {
+        padding: 2rem;
+        text-align: center;
+        background: #f8f9fa;
+        border-top: 1px solid rgba(0,0,0,0.05);
+    }
+    
+    .btn-action {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 0.8rem 2rem;
+        border-radius: 25px;
+        font-weight: 600;
+        text-decoration: none;
+        margin: 0 0.5rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-action:hover {
+        color: white;
+        text-decoration: none;
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-edit {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
+    }
+    
+    .btn-edit:hover {
+        box-shadow: 0 10px 30px rgba(40, 167, 69, 0.4);
+    }
+    
+    .btn-toggle {
+        background: linear-gradient(135deg, #fd7e14 0%, #ffc107 100%);
+        box-shadow: 0 6px 20px rgba(253, 126, 20, 0.3);
+    }
+    
+    .btn-toggle:hover {
+        box-shadow: 0 10px 30px rgba(253, 126, 20, 0.4);
+    }
+    
+    .stats-mini {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .stat-mini {
+        text-align: center;
+        padding: 1rem;
+        background: rgba(102, 126, 234, 0.1);
+        border-radius: 10px;
+    }
+    
+    .stat-mini-number {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #667eea;
+        display: block;
+    }
+    
+    .stat-mini-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        margin-top: 0.5rem;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .info-grid {
+            grid-template-columns: 1fr;
+            padding: 1rem;
+        }
+        
+        .profile-header {
+            padding: 2rem 1rem;
+        }
+        
+        .action-buttons {
+            padding: 1rem;
+        }
+        
+        .btn-action {
+            display: block;
+            margin: 0.5rem 0;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="employee-profile">
+        <!-- En-tête profil -->
+        <div class="profile-header">
+            <div class="employee-avatar-large">
+                {{ employee.name[:2].upper() }}
+                <div class="status-indicator {% if employee.is_active %}status-active{% else %}status-inactive{% endif %}"></div>
+            </div>
+            <h1 class="mb-2">{{ employee.name }}</h1>
+            <h4 class="opacity-90 mb-3">{{ employee.role.replace('_', ' ').title() }}</h4>
+            <span class="badge bg-light text-dark px-3 py-2 rounded-pill">
+                <i class="bi bi-circle-fill me-2 {% if employee.is_active %}text-success{% else %}text-danger{% endif %}"></i>
+                {{ 'Employé Actif' if employee.is_active else 'Employé Inactif' }}
+            </span>
+        </div>
+        
+        <!-- Grille d'informations -->
+        <div class="info-grid">
+            <!-- Informations personnelles -->
+            <div class="info-card">
+                <div class="card-title">
+                    <i class="bi bi-person-vcard"></i>
+                    Informations Personnelles
+                </div>
+                
+                <div class="info-item">
+                    <span class="info-label">Nom complet</span>
+                    <span class="info-value">{{ employee.name }}</span>
+                </div>
+                
+                <div class="info-item">
+                    <span class="info-label">Rôle</span>
+                    <span class="info-value">{{ employee.role.replace('_', ' ').title() }}</span>
+                </div>
+                
+                <div class="info-item">
+                    <span class="info-label">Statut</span>
+                    <span class="info-value">
+                        <span class="badge {% if employee.is_active %}bg-success{% else %}bg-danger{% endif %}">
+                            {{ 'Actif' if employee.is_active else 'Inactif' }}
+                        </span>
+                    </span>
+                </div>
+                
+                <div class="info-item">
+                    <span class="info-label">Embauché le</span>
+                    <span class="info-value">{{ employee.created_at.strftime('%d/%m/%Y') }}</span>
+                </div>
+                
+                {% if employee.notes %}
+                <div class="info-item">
+                    <span class="info-label">Notes</span>
+                    <span class="info-value">{{ employee.notes }}</span>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Informations salariales -->
+            <div class="info-card">
+                <div class="card-title">
+                    <i class="bi bi-cash-coin"></i>
+                    Rémunération
+                </div>
+                
+                {% if employee.salaire_fixe %}
+                <div class="info-item">
+                    <span class="info-label">Salaire fixe</span>
+                    <span class="info-value">{{ "%.0f"|format(employee.salaire_fixe|float) }} DA/mois</span>
+                </div>
+                {% endif %}
+                
+                {% if employee.prime and employee.prime > 0 %}
+                <div class="info-item">
+                    <span class="info-label">Prime</span>
+                    <span class="info-value text-success">{{ "%.0f"|format(employee.prime|float) }} DA</span>
+                </div>
+                {% endif %}
+                
+                {% if employee.salaire_fixe or employee.prime %}
+                <div class="info-item">
+                    <span class="info-label">Total mensuel</span>
+                    <span class="info-value salary-highlight">
+                        {{ employee.get_formatted_salary() }}
+                    </span>
+                </div>
+                {% endif %}
+                
+                {% if not employee.salaire_fixe and not employee.prime %}
+                <div class="text-center text-muted py-3">
+                    <i class="bi bi-info-circle mb-2" style="font-size: 2rem;"></i>
+                    <p>Aucune information salariale renseignée</p>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Performance du mois -->
+            <div class="info-card">
+                <div class="card-title">
+                    <i class="bi bi-graph-up"></i>
+                    Performance - {{ moment().strftime('%B %Y') if moment else 'Ce mois' }}
+                </div>
+                
+                <div class="performance-score">
+                    <div class="score-circle">
+                        <div class="score-inner">
+                            {{ "%.1f"|format(productivity_score) if productivity_score else "N/A" }}
+                        </div>
+                    </div>
+                    <h6>Score de Productivité</h6>
+                    <small class="text-muted">CA généré / Salaire total</small>
+                </div>
+                
+                <div class="stats-mini">
+                    <div class="stat-mini">
+                        <span class="stat-mini-number">{{ orders_count or 0 }}</span>
+                        <div class="stat-mini-label">Commandes</div>
+                    </div>
+                    <div class="stat-mini">
+                        <span class="stat-mini-number">{{ "%.0f"|format(monthly_revenue|float) if monthly_revenue else "0" }}</span>
+                        <div class="stat-mini-label">CA (DA)</div>
+                    </div>
+                    <div class="stat-mini">
+                        <span class="stat-mini-number">
+                            {{ "%.0f"|format((monthly_revenue|float / orders_count) if orders_count and orders_count > 0 else 0) }}
+                        </span>
+                        <div class="stat-mini-label">CA/Cmd</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Commandes récentes -->
+            <div class="info-card">
+                <div class="card-title">
+                    <i class="bi bi-list-check"></i>
+                    Commandes Récentes
+                </div>
+                
+                <div class="orders-list">
+                    {% if employee.orders_produced %}
+                        {% for order in employee.orders_produced[:5] %}
+                        <div class="order-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>Commande #{{ order.id }}</strong>
+                                    {% if order.customer_name %}
+                                        <br><small class="text-muted">{{ order.customer_name }}</small>
+                                    {% endif %}
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-{{ order.get_status_color_class() }}">
+                                        {{ order.get_status_display() }}
+                                    </span>
+                                    <br><small class="text-muted">{{ order.due_date.strftime('%d/%m') if order.due_date else 'N/A' }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        
+                        {% if employee.orders_produced|length > 5 %}
+                        <div class="text-center mt-2">
+                            <small class="text-muted">
+                                ... et {{ employee.orders_produced|length - 5 }} autres commandes
+                            </small>
+                        </div>
+                        {% endif %}
+                        
+                    {% else %}
+                        <div class="text-center text-muted py-3">
+                            <i class="bi bi-inbox mb-2" style="font-size: 2rem;"></i>
+                            <p>Aucune commande produite</p>
+                            <small>Les commandes assignées apparaîtront ici</small>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Boutons d'action -->
+        <div class="action-buttons">
+            <a href="{{ url_for('employees.edit_employee', employee_id=employee.id) }}" class="btn-action btn-edit">
+                <i class="bi bi-pencil me-2"></i>
+                Modifier
+            </a>
+            
+            <form method="POST" action="{{ url_for('employees.toggle_employee_status', employee_id=employee.id) }}" style="display: inline;">
+                <button type="submit" class="btn-action btn-toggle" onclick="return confirm('Changer le statut de {{ employee.name }} ?')">
+                    <i class="bi bi-toggle-on me-2"></i>
+                    {{ 'Désactiver' if employee.is_active else 'Activer' }}
+                </button>
+            </form>
+            
+            <a href="{{ url_for('employees.list_employees') }}" class="btn-action">
+                <i class="bi bi-arrow-left me-2"></i>
+                Retour à la Liste
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animation d'apparition des cartes
+    const cards = document.querySelectorAll('.info-card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(30px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.6s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 150);
+    });
+    
+    // Animation du score de productivité
+    const scoreCircle = document.querySelector('.score-circle');
+    if (scoreCircle) {
+        setTimeout(() => {
+            scoreCircle.style.transform = 'scale(1.1)';
+            setTimeout(() => {
+                scoreCircle.style.transition = 'transform 0.3s ease';
+                scoreCircle.style.transform = 'scale(1)';
+            }, 200);
+        }, 800);
+    }
+});
+</script>
+{% endblock %}

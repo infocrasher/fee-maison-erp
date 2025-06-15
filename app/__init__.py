@@ -133,6 +133,15 @@ def create_app(config_name=None):
     from app.admin.routes import admin as admin_blueprint
     app.register_blueprint(admin_blueprint, url_prefix='/admin')
 
+    from app.orders.dashboard_routes import dashboard_bp
+    app.register_blueprint(dashboard_bp, url_prefix='/dashboard')
+
+    from app.orders.status_routes import status_bp
+    app.register_blueprint(status_bp, url_prefix='/orders')
+
+    from app.employees.routes import employees_bp
+    app.register_blueprint(employees_bp, url_prefix='/employees')
+
     # Gestionnaire d'erreurs personnalisés
     @app.errorhandler(404)
     def not_found_error(error):

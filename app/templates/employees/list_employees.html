@@ -1,0 +1,508 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Fée Maison{% endblock %}
+
+{% block head %}
+{{ super() }}
+<style>
+    body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+    }
+    
+    .content-wrapper {
+        background: rgba(255,255,255,0.95);
+        border-radius: 20px;
+        margin: 2rem 0;
+        box-shadow: 0 15px 50px rgba(0,0,0,0.1);
+        backdrop-filter: blur(10px);
+    }
+    
+    .page-header {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 20px 20px 0 0;
+        margin-bottom: 0;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin: 2rem;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        border: 1px solid rgba(0,0,0,0.05);
+        transition: transform 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+    }
+    
+    .search-section {
+        background: white;
+        padding: 2rem;
+        margin: 0 2rem 2rem;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+    
+    .employee-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+        border: 1px solid rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .employee-card::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: linear-gradient(135deg, #28a745, #20c997);
+    }
+    
+    .employee-card.inactive::before {
+        background: linear-gradient(135deg, #dc3545, #fd7e14);
+    }
+    
+    .employee-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+    }
+    
+    .employee-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+    }
+    
+    .employee-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    
+    .employee-avatar {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 1.3rem;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    .employee-avatar.inactive {
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
+    }
+    
+    .employee-details h5 {
+        margin: 0;
+        color: #2c3e50;
+        font-weight: 600;
+    }
+    
+    .employee-meta {
+        display: flex;
+        gap: 1rem;
+        margin: 0.5rem 0;
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+    
+    .role-badge {
+        background: linear-gradient(135deg, #17a2b8, #138496);
+        color: white;
+        padding: 0.3rem 0.8rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        text-transform: capitalize;
+    }
+    
+    .status-badge {
+        padding: 0.3rem 0.8rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+    
+    .status-active {
+        background: rgba(40, 167, 69, 0.1);
+        color: #28a745;
+        border: 1px solid rgba(40, 167, 69, 0.2);
+    }
+    
+    .status-inactive {
+        background: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+        border: 1px solid rgba(220, 53, 69, 0.2);
+    }
+    
+    .salary-info {
+        background: rgba(102, 126, 234, 0.1);
+        padding: 0.8rem;
+        border-radius: 10px;
+        margin-top: 1rem;
+        border-left: 3px solid #667eea;
+    }
+    
+    .actions-dropdown {
+        position: relative;
+    }
+    
+    .btn-actions {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-actions:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-new-employee {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        border: none;
+        color: white;
+        padding: 0.8rem 2rem;
+        border-radius: 25px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
+    }
+    
+    .btn-new-employee:hover {
+        color: white;
+        text-decoration: none;
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(40, 167, 69, 0.4);
+    }
+    
+    .search-form {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr auto;
+        gap: 1rem;
+        align-items: end;
+    }
+    
+    .form-control {
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        padding: 0.7rem 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #6c757d;
+    }
+    
+    .empty-state i {
+        font-size: 5rem;
+        margin-bottom: 2rem;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .search-form {
+            grid-template-columns: 1fr;
+            gap: 0.5rem;
+        }
+        
+        .employee-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+        
+        .employee-meta {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="content-wrapper">
+        <!-- En-tête avec dégradé -->
+        <div class="page-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-2">
+                        <i class="bi bi-people-fill me-3"></i>
+                        Gestion des Employés
+                    </h1>
+                    <p class="mb-0 opacity-90">Équipe de production et gestion RH</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('employees.new_employee') }}" class="btn-new-employee">
+                        <i class="bi bi-person-plus me-2"></i>
+                        Nouvel Employé
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Statistiques avec effet glassmorphism -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-number">{{ total_employees }}</span>
+                <div class="stat-label">Total Employés</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">{{ active_employees }}</span>
+                <div class="stat-label">Employés Actifs</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">{{ production_staff }}</span>
+                <div class="stat-label">Équipe Production</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">{{ ((active_employees / total_employees * 100) if total_employees > 0 else 0)|round(1) }}%</span>
+                <div class="stat-label">Taux d'Activité</div>
+            </div>
+        </div>
+        
+        <!-- Section de recherche -->
+        <div class="search-section">
+            <form method="GET" action="{{ url_for('employees.list_employees') }}">
+                <div class="search-form">
+                    <div>
+                        {{ form.search(class="form-control", placeholder="Rechercher par nom...") }}
+                    </div>
+                    <div>
+                        {{ form.role_filter(class="form-control") }}
+                    </div>
+                    <div>
+                        {{ form.status_filter(class="form-control") }}
+                    </div>
+                    <div>
+                        <button type="submit" class="btn btn-actions">
+                            <i class="bi bi-search me-1"></i>Filtrer
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Liste des employés -->
+        <div style="padding: 0 2rem 2rem;">
+            {% if employees_pagination.items %}
+                {% for employee in employees_pagination.items %}
+                <div class="employee-card {% if not employee.is_active %}inactive{% endif %}">
+                    <div class="employee-header">
+                        <div class="employee-info">
+                            <div class="employee-avatar {% if not employee.is_active %}inactive{% endif %}">
+                                {{ employee.name[:2].upper() }}
+                            </div>
+                            <div class="employee-details">
+                                <h5>{{ employee.name }}</h5>
+                                <div class="employee-meta">
+                                    <span class="role-badge">
+                                        <i class="bi bi-briefcase me-1"></i>
+                                        {{ employee.role.replace('_', ' ').title() }}
+                                    </span>
+                                    <span class="status-badge {% if employee.is_active %}status-active{% else %}status-inactive{% endif %}">
+                                        <i class="bi bi-circle-fill me-1"></i>
+                                        {{ 'Actif' if employee.is_active else 'Inactif' }}
+                                    </span>
+                                    <span class="text-muted">
+                                        <i class="bi bi-calendar me-1"></i>
+                                        Depuis {{ employee.created_at.strftime('%m/%Y') }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="actions-dropdown">
+                            <div class="dropdown">
+                                <button class="btn-actions dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <a class="dropdown-item" href="{{ url_for('employees.view_employee', employee_id=employee.id) }}">
+                                            <i class="bi bi-eye me-2"></i>Voir Détails
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ url_for('employees.edit_employee', employee_id=employee.id) }}">
+                                            <i class="bi bi-pencil me-2"></i>Modifier
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <form method="POST" action="{{ url_for('employees.toggle_employee_status', employee_id=employee.id) }}" style="display: inline;">
+                                            <button type="submit" class="dropdown-item" onclick="return confirm('Changer le statut de cet employé ?')">
+                                                <i class="bi bi-toggle-on me-2"></i>
+                                                {{ 'Désactiver' if employee.is_active else 'Activer' }}
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if employee.salaire_fixe or employee.prime %}
+                    <div class="salary-info">
+                        <div class="row">
+                            {% if employee.salaire_fixe %}
+                            <div class="col-md-6">
+                                <small class="text-muted">Salaire fixe</small>
+                                <div class="fw-bold">{{ "%.0f"|format(employee.salaire_fixe|float) }} DA/mois</div>
+                            </div>
+                            {% endif %}
+                            {% if employee.prime and employee.prime > 0 %}
+                            <div class="col-md-6">
+                                <small class="text-muted">Prime</small>
+                                <div class="fw-bold text-success">{{ "%.0f"|format(employee.prime|float) }} DA</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% if employee.salaire_fixe and employee.prime %}
+                        <div class="mt-2 pt-2 border-top">
+                            <small class="text-muted">Total</small>
+                            <div class="fw-bold h6 mb-0">{{ "%.0f"|format((employee.salaire_fixe|float) + (employee.prime|float)) }} DA/mois</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                
+                <!-- Pagination -->
+                {% if employees_pagination.pages > 1 %}
+                <nav aria-label="Pagination employés" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if employees_pagination.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('employees.list_employees', page=employees_pagination.prev_num) }}">Précédent</a>
+                            </li>
+                        {% endif %}
+                        
+                        {% for page_num in employees_pagination.iter_pages() %}
+                            {% if page_num %}
+                                <li class="page-item {% if page_num == employees_pagination.page %}active{% endif %}">
+                                    <a class="page-link" href="{{ url_for('employees.list_employees', page=page_num) }}">{{ page_num }}</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled"><span class="page-link">…</span></li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if employees_pagination.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('employees.list_employees', page=employees_pagination.next_num) }}">Suivant</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                
+            {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-people"></i>
+                    <h3>Aucun employé trouvé</h3>
+                    <p>Commencez par ajouter votre première équipe de production.</p>
+                    <a href="{{ url_for('employees.new_employee') }}" class="btn-new-employee mt-3">
+                        <i class="bi bi-person-plus me-2"></i>
+                        Créer le Premier Employé
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animation d'apparition des cartes
+    const cards = document.querySelectorAll('.employee-card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.5s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
+</script>
+{% endblock %}

@@ -5,6 +5,9 @@ from sqlalchemy import func
 from flask_login import UserMixin
 from extensions import db
 
+# Import de la table de liaison depuis employees
+from app.employees.models import order_employees
+
 CONVERSION_FACTORS = {
     'kg_g': 1000, 'g_kg': 0.001,
     'l_ml': 1000, 'ml_l': 0.001,
@@ -174,6 +177,9 @@ class Order(db.Model):
     # Relations
     items = db.relationship('OrderItem', backref='order', lazy='dynamic', cascade='all, delete-orphan')
     
+    # ✅ NOUVELLE RELATION : Tracking employés de production
+    produced_by = db.relationship('Employee', secondary=order_employees, back_populates='orders_produced')
+    
     # ✅ CORRECTION : Propriété order_date (alias pour due_date)
     @property
     def order_date(self):
@@ -184,6 +190,30 @@ class Order(db.Model):
     def get_items_count(self):
         """Retourne le nombre d'items dans la commande"""
         return self.items.count() if hasattr(self.items, 'count') else len(self.items)
+    
+    # ✅ CORRECTION : Méthode get_items_total manquante
+    def get_items_total(self):
+        """Retourne le total des articles (méthode pour compatibilité template)"""
+        return float(sum(item.subtotal for item in self.items))
+    
+    # ✅ NOUVELLE MÉTHODE : Gestion employés de production
+    def get_producers_names(self):
+        """Retourne les noms des employés qui ont produit cette commande"""
+        return [emp.name for emp in self.produced_by]
+    
+    def get_main_producer(self):
+        """Retourne le premier employé assigné (producteur principal)"""
+        return self.produced_by[0] if self.produced_by else None
+    
+    def assign_producer(self, employee):
+        """Assigne un employé à la production de cette commande"""
+        if employee not in self.produced_by:
+            self.produced_by.append(employee)
+    
+    def remove_producer(self, employee):
+        """Retire un employé de la production de cette commande"""
+        if employee in self.produced_by:
+            self.produced_by.remove(employee)
     
     # ✅ CORRECTION : Méthodes d'affichage pour templates
     def get_order_type_display(self):

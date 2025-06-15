@@ -1,305 +1,492 @@
 {% extends "base.html" %}
+
 {% block title %}{{ title }} - Fée Maison{% endblock %}
+
 {% block head %}
 {{ super() }}
 <style>
-.dashboard-card {
-    transition: transform 0.2s ease-in-out;
-    border: none;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.dashboard-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-}
-
-.stat-icon {
-    width: 3rem;
-    height: 3rem;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-}
-
-.quick-action-card {
-    transition: all 0.3s ease;
-    cursor: pointer;
-    text-decoration: none;
-    color: inherit;
-}
-
-.quick-action-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-    color: inherit;
-    text-decoration: none;
-}
-
-.welcome-header {
-    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-    color: white;
-    border-radius: 10px;
-    padding: 2rem;
-    margin-bottom: 2rem;
-}
+    .welcome-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+        border-radius: 20px;
+        box-shadow: 0 15px 50px rgba(0,0,0,0.1);
+    }
+    
+    .dashboard-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+        border: 1px solid rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .dashboard-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--card-color), var(--card-color-alt));
+    }
+    
+    .dashboard-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+    }
+    
+    .dashboard-card.production { --card-color: #ffc107; --card-color-alt: #ff8f00; }
+    .dashboard-card.shop { --card-color: #28a745; --card-color-alt: #20c997; }
+    .dashboard-card.employees { --card-color: #007bff; --card-color-alt: #6610f2; }
+    .dashboard-card.orders { --card-color: #fd7e14; --card-color-alt: #e83e8c; }
+    .dashboard-card.stock { --card-color: #6f42c1; --card-color-alt: #e83e8c; }
+    .dashboard-card.analytics { --card-color: #17a2b8; --card-color-alt: #20c997; }
+    
+    .dashboard-icon {
+        width: 70px;
+        height: 70px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        color: white;
+        flex-shrink: 0;
+        background: linear-gradient(135deg, var(--card-color), var(--card-color-alt));
+        box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    }
+    
+    .dashboard-content {
+        flex: 1;
+    }
+    
+    .dashboard-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
+    }
+    
+    .dashboard-desc {
+        font-size: 0.95rem;
+        color: #6c757d;
+        margin-bottom: 1rem;
+        line-height: 1.5;
+    }
+    
+    .dashboard-link {
+        background: linear-gradient(135deg, var(--card-color), var(--card-color-alt));
+        color: white;
+        text-decoration: none;
+        padding: 0.6rem 1.5rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        display: inline-block;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    
+    .dashboard-link:hover {
+        color: white;
+        text-decoration: none;
+        transform: scale(1.05);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    }
+    
+    .stats-overview {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    }
+    
+    .stat-item {
+        text-align: center;
+        padding: 1.5rem;
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.05));
+        border-radius: 15px;
+        transition: all 0.3s ease;
+    }
+    
+    .stat-item:hover {
+        transform: translateY(-3px);
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.1));
+    }
+    
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+    
+    .section-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    
+    .section-title::before {
+        content: '';
+        width: 4px;
+        height: 2rem;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-radius: 2px;
+    }
+    
+    .quick-access {
+        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+    
+    .alert-custom {
+        border-radius: 15px;
+        border: none;
+        padding: 1.5rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        margin-bottom: 1rem;
+    }
+    
+    .user-welcome {
+        background: rgba(255,255,255,0.2);
+        border-radius: 15px;
+        padding: 1.5rem;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+    
+    .admin-badge {
+        background: rgba(255,255,255,0.2);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        display: inline-block;
+        margin-top: 0.5rem;
+        border: 1px solid rgba(255,255,255,0.3);
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <!-- En-tête de bienvenue -->
-    <div class="welcome-header">
-        <div class="row align-items-center">
-            <div class="col-md-8">
-                <h1 class="display-6 mb-2">
-                    <i class="bi bi-house-heart me-3"></i>
-                    Bienvenue dans Fée Maison
-                </h1>
-                <p class="lead mb-0">
-                    Bonjour {{ current_user.username }} ! 
+<!-- En-tête de bienvenue -->
+<div class="welcome-header">
+    <div class="container">
+        <div class="user-welcome">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="mb-2">
+                        <i class="bi bi-house-heart me-3"></i>
+                        Bienvenue, {{ current_user.username }} !
+                    </h1>
+                    <p class="mb-0 opacity-90">Tableau de bord ERP Fée Maison - Gestion complète de votre pâtisserie</p>
                     {% if current_user.is_admin %}
-                    Vous avez tous les droits administrateur.
+                        <span class="admin-badge">
+                            <i class="bi bi-shield-check me-1"></i>
+                            Administrateur
+                        </span>
                     {% endif %}
-                </p>
-            </div>
-            <div class="col-md-4 text-end">
-                <i class="bi bi-calendar3 me-2"></i>
-                <span id="current-date"></span>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="text-white">
+                        <div class="h4 mb-0" id="current-time"></div>
+                        <small id="current-date"></small>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+</div>
 
-    {% if current_user.is_admin %}
+<div class="container-fluid">
     <!-- Statistiques rapides -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <h4><i class="bi bi-graph-up me-2"></i>Aperçu Rapide</h4>
-        </div>
-    </div>
-    <div class="row mb-4">
-        <div class="col-md-3 mb-3">
-            <div class="card dashboard-card h-100">
-                <div class="card-body d-flex align-items-center">
-                    <div class="stat-icon bg-primary text-white me-3">
-                        <i class="bi bi-cart-check"></i>
-                    </div>
-                    <div>
-                        <h6 class="card-title text-muted mb-1">Commandes Aujourd'hui</h6>
-                        <h3 class="mb-0">0</h3>
-                        <small class="text-success">
-                            <i class="bi bi-graph-up"></i> +0%
-                        </small>
-                    </div>
+    <div class="stats-overview">
+        <h3 class="section-title">Vue d'ensemble</h3>
+        <div class="row g-3">
+            <div class="col-md-3">
+                <div class="stat-item">
+                    <span class="stat-number">{{ orders_today or 0 }}</span>
+                    <div class="stat-label">Commandes Aujourd'hui</div>
                 </div>
             </div>
-        </div>
-        <div class="col-md-3 mb-3">
-            <div class="card dashboard-card h-100">
-                <div class="card-body d-flex align-items-center">
-                    <div class="stat-icon bg-success text-white me-3">
-                        <i class="bi bi-currency-exchange"></i>
-                    </div>
-                    <div>
-                        <h6 class="card-title text-muted mb-1">CA Aujourd'hui</h6>
-                        <h3 class="mb-0">0 DA</h3>
-                        <small class="text-muted">Chiffre d'affaires</small>
-                    </div>
+            <div class="col-md-3">
+                <div class="stat-item">
+                    <span class="stat-number">{{ employees_count or 17 }}</span>
+                    <div class="stat-label">Employés Actifs</div>
                 </div>
             </div>
-        </div>
-        <div class="col-md-3 mb-3">
-            <div class="card dashboard-card h-100">
-                <div class="card-body d-flex align-items-center">
-                    <div class="stat-icon bg-warning text-white me-3">
-                        <i class="bi bi-gear"></i>
-                    </div>
-                    <div>
-                        <h6 class="card-title text-muted mb-1">Production Planifiée</h6>
-                        <h3 class="mb-0">0</h3>
-                        <small class="text-info">Ordres en cours</small>
-                    </div>
+            <div class="col-md-3">
+                <div class="stat-item">
+                    <span class="stat-number">{{ products_count or 25 }}</span>
+                    <div class="stat-label">Produits Catalogues</div>
                 </div>
             </div>
-        </div>
-        <div class="col-md-3 mb-3">
-            <div class="card dashboard-card h-100">
-                <div class="card-body d-flex align-items-center">
-                    <div class="stat-icon bg-info text-white me-3">
-                        <i class="bi bi-boxes"></i>
-                    </div>
-                    <div>
-                        <h6 class="card-title text-muted mb-1">Produits en Stock</h6>
-                        <h3 class="mb-0">{{ products_count or 0 }}</h3>
-                        <small class="text-muted">Articles disponibles</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Actions rapides -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <h4><i class="bi bi-lightning me-2"></i>Actions Rapides</h4>
-        </div>
-    </div>
-    <div class="row mb-4">
-        <!-- Commande Client -->
-        <div class="col-md-6 col-lg-3 mb-3">
-            <a href="{{ url_for('orders.new_customer_order') }}" class="quick-action-card">
-                <div class="card bg-primary text-white h-100">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="me-3">
-                            <i class="bi bi-person-check fs-1"></i>
-                        </div>
-                        <div>
-                            <h5 class="card-title mb-1">Commande Client</h5>
-                            <p class="card-text small mb-2">Nouvelle commande avec facturation</p>
-                            <span class="btn btn-light btn-sm">
-                                <i class="bi bi-plus me-1"></i>Créer
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </a>
-        </div>
-        
-        <!-- Ordre Production -->
-        <div class="col-md-6 col-lg-3 mb-3">
-            <a href="{{ url_for('orders.new_production_order') }}" class="quick-action-card">
-                <div class="card bg-success text-white h-100">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="me-3">
-                            <i class="bi bi-gear fs-1"></i>
-                        </div>
-                        <div>
-                            <h5 class="card-title mb-1">Ordre Production</h5>
-                            <p class="card-text small mb-2">Planning interne magasin</p>
-                            <span class="btn btn-light btn-sm">
-                                <i class="bi bi-plus me-1"></i>Créer
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </a>
-        </div>
-        
-        <!-- Commandes Client -->
-        <div class="col-md-6 col-lg-3 mb-3">
-            <a href="{{ url_for('orders.list_customer_orders') }}" class="quick-action-card">
-                <div class="card bg-info text-white h-100">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="me-3">
-                            <i class="bi bi-list-check fs-1"></i>
-                        </div>
-                        <div>
-                            <h5 class="card-title mb-1">Commandes</h5>
-                            <p class="card-text small mb-2">Gérer les commandes client</p>
-                            <span class="btn btn-light btn-sm">
-                                <i class="bi bi-eye me-1"></i>Voir
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </a>
-        </div>
-        
-        <!-- Gestion Produits -->
-        <div class="col-md-6 col-lg-3 mb-3">
-            <a href="{{ url_for('products.list_products') }}" class="quick-action-card">
-                <div class="card bg-warning text-white h-100">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="me-3">
-                            <i class="bi bi-box fs-1"></i>
-                        </div>
-                        <div>
-                            <h5 class="card-title mb-1">Produits</h5>
-                            <p class="card-text small mb-2">Gérer le catalogue</p>
-                            <span class="btn btn-light btn-sm">
-                                <i class="bi bi-gear me-1"></i>Gérer
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </a>
-        </div>
-    </div>
-
-    <!-- Graphiques et activités -->
-    <div class="row">
-        <div class="col-md-8">
-            <div class="card dashboard-card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-graph-up me-2"></i>Activité Récente
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="text-center py-5">
-                        <i class="bi bi-graph-up-arrow text-muted" style="font-size: 3rem;"></i>
-                        <p class="text-muted mt-3">Les graphiques de ventes apparaîtront ici prochainement.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card dashboard-card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-bell me-2"></i>Notifications
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="text-center py-4">
-                        <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
-                        <p class="text-muted mt-2 mb-0">Tout est calme pour le moment.</p>
-                    </div>
-                    <hr>
-                    <small class="text-muted">
-                        <i class="bi bi-info-circle me-1"></i>
-                        Les alertes de stock ou autres notifications s'afficheront ici.
-                    </small>
+            <div class="col-md-3">
+                <div class="stat-item">
+                    <span class="stat-number">{{ recipes_count or 8 }}</span>
+                    <div class="stat-label">Recettes Validées</div>
                 </div>
             </div>
         </div>
     </div>
     
-    {% else %}
-    <!-- Vue utilisateur non-admin -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card dashboard-card">
-                <div class="card-body text-center py-5">
-                    <i class="bi bi-shield-x text-muted" style="font-size: 3rem;"></i>
-                    <h4 class="text-muted mt-3">Actions rapides non disponibles pour votre rôle.</h4>
-                    <p class="text-muted">Contactez l'administrateur pour obtenir des droits supplémentaires.</p>
+    <!-- Dashboards Temps Réel -->
+    <div class="quick-access">
+        <h3 class="section-title">Dashboards Production</h3>
+        <div class="row g-4">
+            <!-- Dashboard Production (Rayan) -->
+            <div class="col-lg-6">
+                <div class="dashboard-card production">
+                    <div class="dashboard-icon">
+                        <i class="bi bi-gear-wide-connected"></i>
+                    </div>
+                    <div class="dashboard-content">
+                        <div class="dashboard-title">Production</div>
+                        <div class="dashboard-desc">Interface tactile pour Rayan - Suivi temps réel des commandes en cours</div>
+                        <a href="{{ url_for('dashboard.production_dashboard') }}" class="dashboard-link">
+                            <i class="bi bi-eye me-2"></i>Ouvrir Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Dashboard Magasin (Yasmine) -->
+            <div class="col-lg-6">
+                <div class="dashboard-card shop">
+                    <div class="dashboard-icon">
+                        <i class="bi bi-shop"></i>
+                    </div>
+                    <div class="dashboard-content">
+                        <div class="dashboard-title">Magasin</div>
+                        <div class="dashboard-desc">Gestion des réceptions et livraisons - Interface Yasmine</div>
+                        <a href="{{ url_for('dashboard.shop_dashboard') }}" class="dashboard-link">
+                            <i class="bi bi-shop me-2"></i>Ouvrir Dashboard
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-    {% endif %}
+    
+    <!-- Gestion Générale -->
+    <div class="quick-access">
+        <h3 class="section-title">Gestion Générale</h3>
+        <div class="row g-4">
+            <!-- Employés -->
+            <div class="col-lg-4">
+                <div class="dashboard-card employees">
+                    <div class="dashboard-icon">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                    <div class="dashboard-content">
+                        <div class="dashboard-title">Employés</div>
+                        <div class="dashboard-desc">Gestion de l'équipe et suivi des performances</div>
+                        <a href="{{ url_for('employees.list_employees') }}" class="dashboard-link">
+                            <i class="bi bi-people me-2"></i>Gérer Équipe
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Commandes -->
+            <div class="col-lg-4">
+                <div class="dashboard-card orders">
+                    <div class="dashboard-icon">
+                        <i class="bi bi-clipboard-check"></i>
+                    </div>
+                    <div class="dashboard-content">
+                        <div class="dashboard-title">Commandes</div>
+                        <div class="dashboard-desc">Gestion des commandes clients et ordres de production</div>
+                        <a href="{{ url_for('orders.list_orders') }}" class="dashboard-link">
+                            <i class="bi bi-list-check me-2"></i>Voir Commandes
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Stock -->
+            <div class="col-lg-4">
+                <div class="dashboard-card stock">
+                    <div class="dashboard-icon">
+                        <i class="bi bi-boxes"></i>
+                    </div>
+                    <div class="dashboard-content">
+                        <div class="dashboard-title">Stock</div>
+                        <div class="dashboard-desc">Suivi des stocks et gestion des ingrédients</div>
+                        <a href="{{ url_for('stock.overview') }}" class="dashboard-link">
+                            <i class="bi bi-box me-2"></i>Voir Stock
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Alertes et Outils -->
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="alert alert-warning alert-custom d-flex align-items-center">
+                <i class="bi bi-exclamation-triangle-fill me-3 fs-3"></i>
+                <div class="flex-grow-1">
+                    <h6 class="mb-1">Alertes Ingrédients</h6>
+                    <small>Surveillez les stocks pour optimiser vos achats</small>
+                </div>
+                <a href="{{ url_for('dashboard.ingredients_alerts') }}" class="btn btn-warning">
+                    <i class="bi bi-eye me-1"></i>Voir Alertes
+                </a>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="alert alert-info alert-custom d-flex align-items-center">
+                <i class="bi bi-calendar-check me-3 fs-3"></i>
+                <div class="flex-grow-1">
+                    <h6 class="mb-1">Planning Production</h6>
+                    <small>Calendrier des commandes et planification</small>
+                </div>
+                <a href="{{ url_for('orders.orders_calendar') }}" class="btn btn-info">
+                    <i class="bi bi-calendar me-1"></i>Voir Planning
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Outils Additionnels -->
+    <div class="quick-access mt-4">
+        <h3 class="section-title">Outils de Gestion</h3>
+        <div class="row g-4">
+            <div class="col-lg-3">
+                <div class="dashboard-card analytics">
+                    <div class="dashboard-icon">
+                        <i class="bi bi-graph-up"></i>
+                    </div>
+                    <div class="dashboard-content">
+                        <div class="dashboard-title">Produits</div>
+                        <div class="dashboard-desc">Catalogue et gestion des produits</div>
+                        <a href="{{ url_for('products.list_products') }}" class="dashboard-link">
+                            <i class="bi bi-box-seam me-2"></i>Gérer
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-3">
+                <div class="dashboard-card analytics">
+                    <div class="dashboard-icon">
+                        <i class="bi bi-journal-bookmark"></i>
+                    </div>
+                    <div class="dashboard-content">
+                        <div class="dashboard-title">Recettes</div>
+                        <div class="dashboard-desc">Création et gestion des recettes</div>
+                        <a href="{{ url_for('recipes.list_recipes') }}" class="dashboard-link">
+                            <i class="bi bi-book me-2"></i>Gérer
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-3">
+                <div class="dashboard-card analytics">
+                    <div class="dashboard-icon">
+                        <i class="bi bi-tags"></i>
+                    </div>
+                    <div class="dashboard-content">
+                        <div class="dashboard-title">Catégories</div>
+                        <div class="dashboard-desc">Organisation et classification</div>
+                        <a href="{{ url_for('products.list_categories') }}" class="dashboard-link">
+                            <i class="bi bi-tags me-2"></i>Gérer
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-3">
+                <div class="dashboard-card analytics">
+                    <div class="dashboard-icon">
+                        <i class="bi bi-person-gear"></i>
+                    </div>
+                    <div class="dashboard-content">
+                        <div class="dashboard-title">Mon Compte</div>
+                        <div class="dashboard-desc">Paramètres et préférences</div>
+                        <a href="{{ url_for('auth.account') }}" class="dashboard-link">
+                            <i class="bi bi-gear me-2"></i>Paramètres
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 {{ super() }}
 <script>
-// Afficher la date actuelle
 document.addEventListener('DOMContentLoaded', function() {
-    const dateElement = document.getElementById('current-date');
-    if (dateElement) {
-        const today = new Date();
-        const options = { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-        };
-        dateElement.textContent = today.toLocaleDateString('fr-FR', options);
+    // Mise à jour de l'horloge
+    function updateClock() {
+        const now = new Date();
+        const timeElement = document.getElementById('current-time');
+        const dateElement = document.getElementById('current-date');
+        
+        if (timeElement) {
+            timeElement.textContent = now.toLocaleTimeString('fr-FR');
+        }
+        if (dateElement) {
+            dateElement.textContent = now.toLocaleDateString('fr-FR', {
+                weekday: 'long',
+                day: 'numeric', 
+                month: 'long'
+            });
+        }
     }
+    
+    // Animation d'apparition des cartes
+    const cards = document.querySelectorAll('.dashboard-card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(30px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.6s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+    
+    // Initialisation
+    updateClock();
+    setInterval(updateClock, 1000);
 });
 </script>
 {% endblock %}

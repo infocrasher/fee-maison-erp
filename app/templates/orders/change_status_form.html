@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Fée Maison{% endblock %}
+
+{% block head %}
+{{ super() }}
+<style>
+    .form-container {
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        margin: 2rem 0;
+    }
+    
+    .order-summary {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        border-left: 4px solid #007bff;
+    }
+    
+    .employee-card {
+        background: white;
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .employee-card:hover {
+        border-color: #007bff;
+        box-shadow: 0 4px 15px rgba(0,123,255,0.1);
+    }
+    
+    .employee-card.selected {
+        border-color: #28a745;
+        background: linear-gradient(135deg, #d4edda 0%, #f8fff9 100%);
+    }
+    
+    .employee-info {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .employee-details {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    
+    .employee-avatar {
+        width: 50px;
+        height: 50px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 1.2rem;
+    }
+    
+    .employee-meta {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-top: 0.5rem;
+    }
+    
+    .status-badge {
+        padding: 0.3rem 0.8rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+    
+    .status-pending { background: #fff3cd; color: #856404; }
+    .status-production { background: #ffeaa7; color: #d63031; }
+    .status-ready { background: #d4edda; color: #155724; }
+    
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-top: 2rem;
+    }
+    
+    .btn-submit {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        border: none;
+        color: white;
+        padding: 0.8rem 2rem;
+        border-radius: 25px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+    }
+    
+    .btn-cancel {
+        background: #6c757d;
+        border: none;
+        color: white;
+        padding: 0.8rem 2rem;
+        border-radius: 25px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-cancel:hover {
+        background: #545b62;
+        color: white;
+        text-decoration: none;
+    }
+    
+    .selection-counter {
+        background: #007bff;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin-bottom: 1rem;
+        text-align: center;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .employee-details {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+        
+        .employee-info {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .action-buttons {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="form-container">
+                <!-- En-tête -->
+                <div class="text-center mb-4">
+                    <h2>
+                        <i class="bi bi-people-fill me-2 text-primary"></i>
+                        Sélection des Employés
+                    </h2>
+                    <p class="text-muted">Qui a produit cette commande ?</p>
+                </div>
+                
+                <!-- Résumé de la commande -->
+                <div class="order-summary">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h5 class="mb-2">
+                                {% if order.order_type == 'customer_order' %}
+                                    <i class="bi bi-person me-2"></i>Commande #{{ order.id }} - {{ order.customer_name }}
+                                {% else %}
+                                    <i class="bi bi-gear me-2"></i>Ordre Production #{{ order.id }}
+                                {% endif %}
+                            </h5>
+                            
+                            <div class="mb-2">
+                                <strong>Produits :</strong>
+                                {% for item in order.items %}
+                                    <span class="badge bg-info me-1">
+                                        {{ item.product.name }} ({{ item.quantity }} {{ item.product.unit }})
+                                    </span>
+                                {% endfor %}
+                            </div>
+                            
+                            <div>
+                                <i class="bi bi-clock me-1"></i>
+                                <strong>Prévue :</strong> {{ order.get_formatted_due_date() }}
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4 text-end">
+                            <span class="status-badge 
+                                {% if order.status == 'pending' %}status-pending
+                                {% elif order.status == 'in_production' %}status-production
+                                {% elif order.status == 'ready_at_shop' %}status-ready
+                                {% endif %}">
+                                {{ order.get_status_display() }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Formulaire de sélection -->
+                <form method="POST" action="{{ url_for('status.change_status_to_ready', order_id=order.id) }}" id="employeeForm">
+                    
+                    <!-- Compteur de sélection -->
+                    <div class="selection-counter" id="selectionCounter" style="display: none;">
+                        <i class="bi bi-check-circle me-2"></i>
+                        <span id="selectedCount">0</span> employé(s) sélectionné(s)
+                    </div>
+                    
+                    <!-- Liste des employés -->
+                    <div class="mb-4">
+                        <h6 class="mb-3">
+                            <i class="bi bi-people me-2"></i>
+                            Employés de Production Disponibles ({{ employees|length }})
+                        </h6>
+                        
+                        {% if employees %}
+                            {% for employee in employees %}
+                            <div class="employee-card" onclick="toggleEmployee('{{ employee.id }}')">
+                                <div class="employee-info">
+                                    <div class="employee-details">
+                                        <div class="employee-avatar">
+                                            {{ employee.name[:2].upper() }}
+                                        </div>
+                                        <div>
+                                            <strong>{{ employee.name }}</strong>
+                                            <div class="employee-meta">
+                                                <i class="bi bi-briefcase me-1"></i>
+                                                {{ employee.role.title().replace('_', ' ') }}
+                                                {% if employee.salaire_fixe %}
+                                                    <span class="ms-2">
+                                                        <i class="bi bi-cash me-1"></i>
+                                                        {{ "%.0f"|format(employee.salaire_fixe|float) }} DA/mois
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-check">
+                                        <input class="form-check-input" 
+                                               type="checkbox" 
+                                               name="employee_ids[]" 
+                                               value="{{ employee.id }}" 
+                                               id="employee_{{ employee.id }}"
+                                               onchange="updateSelection()">
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center py-4 text-muted">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                Aucun employé de production disponible.
+                                <br><small>Veuillez créer des employés depuis le module RH.</small>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Boutons d'action -->
+                    <div class="action-buttons">
+                        {% if employees %}
+                            <button type="submit" class="btn btn-submit" id="submitBtn" disabled>
+                                <i class="bi bi-check-circle me-2"></i>
+                                {% if new_status == 'ready_at_shop' %}
+                                    Marquer "Reçu au Magasin"
+                                {% else %}
+                                    Valider Changement
+                                {% endif %}
+                            </button>
+                        {% endif %}
+                        
+                        <a href="{{ url_for('dashboard.shop_dashboard') }}" class="btn-cancel">
+                            <i class="bi bi-x-circle me-2"></i>
+                            Annuler
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+// Gestion de la sélection d'employés
+function toggleEmployee(employeeId) {
+    const checkbox = document.getElementById(`employee_${employeeId}`);
+    const card = checkbox.closest('.employee-card');
+    
+    // Toggle checkbox
+    checkbox.checked = !checkbox.checked;
+    
+    // Toggle visual state
+    if (checkbox.checked) {
+        card.classList.add('selected');
+    } else {
+        card.classList.remove('selected');
+    }
+    
+    updateSelection();
+}
+
+function updateSelection() {
+    const checkboxes = document.querySelectorAll('input[name="employee_ids[]"]:checked');
+    const counter = document.getElementById('selectionCounter');
+    const countDisplay = document.getElementById('selectedCount');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    const selectedCount = checkboxes.length;
+    
+    // Mettre à jour le compteur
+    if (selectedCount > 0) {
+        counter.style.display = 'block';
+        countDisplay.textContent = selectedCount;
+        submitBtn.disabled = false;
+    } else {
+        counter.style.display = 'none';
+        submitBtn.disabled = true;
+    }
+    
+    // Mettre à jour les cartes visuellement
+    document.querySelectorAll('.employee-card').forEach(card => {
+        const checkbox = card.querySelector('input[type="checkbox"]');
+        if (checkbox.checked) {
+            card.classList.add('selected');
+        } else {
+            card.classList.remove('selected');
+        }
+    });
+}
+
+// Confirmation avant soumission
+document.getElementById('employeeForm').addEventListener('submit', function(e) {
+    const selectedEmployees = document.querySelectorAll('input[name="employee_ids[]"]:checked');
+    const employeeNames = Array.from(selectedEmployees).map(cb => {
+        const card = cb.closest('.employee-card');
+        return card.querySelector('strong').textContent;
+    });
+    
+    const message = `Confirmer que cette commande a été produite par :\n${employeeNames.join(', ')} ?`;
+    
+    if (!confirm(message)) {
+        e.preventDefault();
+    }
+});
+
+// Initialisation
+document.addEventListener('DOMContentLoaded', function() {
+    updateSelection();
+});
+</script>
+{% endblock %}

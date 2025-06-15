@@ -1,0 +1,584 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Fée Maison{% endblock %}
+
+{% block head %}
+{{ super() }}
+<style>
+    body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+    }
+    
+    .form-container {
+        background: rgba(255,255,255,0.95);
+        border-radius: 20px;
+        margin: 2rem auto;
+        max-width: 800px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        backdrop-filter: blur(10px);
+        overflow: hidden;
+    }
+    
+    .form-header {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 3rem 2rem;
+        text-align: center;
+        position: relative;
+    }
+    
+    .form-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="white" opacity="0.1"><polygon points="0,0 1000,0 1000,100 0,80"/></svg>');
+        background-repeat: no-repeat;
+        background-size: cover;
+    }
+    
+    .header-icon {
+        width: 80px;
+        height: 80px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        font-size: 2.5rem;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .form-content {
+        padding: 3rem;
+    }
+    
+    .form-section {
+        margin-bottom: 3rem;
+    }
+    
+    .section-title {
+        display: flex;
+        align-items: center;
+        margin-bottom: 2rem;
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #2c3e50;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #f8f9fa;
+    }
+    
+    .section-title i {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+    }
+    
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .form-group {
+        position: relative;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 0.8rem;
+        display: block;
+        position: relative;
+    }
+    
+    .form-label.required::after {
+        content: '*';
+        color: #dc3545;
+        margin-left: 0.3rem;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 1rem 1.2rem;
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25), 0 4px 15px rgba(102, 126, 234, 0.1);
+        outline: none;
+    }
+    
+    .form-control.is-invalid {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+    }
+    
+    .invalid-feedback {
+        color: #dc3545;
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+        display: block;
+    }
+    
+    .form-text {
+        color: #6c757d;
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+    }
+    
+    .input-group {
+        position: relative;
+    }
+    
+    .input-group-text {
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #6c757d;
+        font-weight: 600;
+        z-index: 3;
+    }
+    
+    .salary-section {
+        background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(32, 201, 151, 0.05) 100%);
+        border-radius: 15px;
+        padding: 2rem;
+        border: 1px solid rgba(40, 167, 69, 0.2);
+    }
+    
+    .checkbox-wrapper {
+        background: white;
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .checkbox-wrapper:hover {
+        border-color: #667eea;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.1);
+    }
+    
+    .checkbox-wrapper.checked {
+        border-color: #28a745;
+        background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(255,255,255, 1) 100%);
+    }
+    
+    .form-check-input {
+        width: 1.5rem;
+        height: 1.5rem;
+        margin-right: 1rem;
+        cursor: pointer;
+    }
+    
+    .form-check-label {
+        font-weight: 600;
+        color: #2c3e50;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        margin: 0;
+    }
+    
+    .textarea-field {
+        min-height: 120px;
+        resize: vertical;
+        font-family: inherit;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-top: 3rem;
+        padding-top: 2rem;
+        border-top: 1px solid #e9ecef;
+    }
+    
+    .btn-submit {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        border: none;
+        padding: 1rem 3rem;
+        border-radius: 25px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
+        cursor: pointer;
+    }
+    
+    .btn-submit:hover {
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(40, 167, 69, 0.4);
+    }
+    
+    .btn-submit:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: 0 6px 20px rgba(40, 167, 69, 0.2);
+    }
+    
+    .btn-cancel {
+        background: #6c757d;
+        color: white;
+        border: none;
+        padding: 1rem 3rem;
+        border-radius: 25px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        display: inline-block;
+    }
+    
+    .btn-cancel:hover {
+        background: #545b62;
+        color: white;
+        text-decoration: none;
+        transform: translateY(-2px);
+    }
+    
+    .preview-card {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 2rem;
+        margin-top: 2rem;
+        border-left: 4px solid #667eea;
+    }
+    
+    .preview-title {
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    .preview-content {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+    
+    .preview-item {
+        background: white;
+        padding: 1rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    
+    .preview-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+    }
+    
+    .preview-value {
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .form-content {
+            padding: 2rem 1.5rem;
+        }
+        
+        .form-row {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+        
+        .action-buttons {
+            flex-direction: column;
+        }
+        
+        .btn-submit, .btn-cancel {
+            width: 100%;
+            margin: 0.5rem 0;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="form-container">
+        <!-- En-tête dynamique -->
+        <div class="form-header">
+            <div class="header-icon">
+                {% if employee %}
+                    <i class="bi bi-person-gear"></i>
+                {% else %}
+                    <i class="bi bi-person-plus"></i>
+                {% endif %}
+            </div>
+            <h1 class="mb-2">{{ title }}</h1>
+            <p class="mb-0 opacity-90">
+                {% if employee %}
+                    Modification des informations de {{ employee.name }}
+                {% else %}
+                    Ajout d'un nouveau membre à l'équipe
+                {% endif %}
+            </p>
+        </div>
+        
+        <!-- Formulaire -->
+        <div class="form-content">
+            <form method="POST" novalidate id="employeeForm">
+                {{ form.hidden_tag() }}
+                
+                <!-- Section Informations Personnelles -->
+                <div class="form-section">
+                    <div class="section-title">
+                        <i class="bi bi-person-vcard"></i>
+                        Informations Personnelles
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            {{ form.name.label(class="form-label required") }}
+                            {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else ""), placeholder="Ex: Ahmed Benali") }}
+                            {% if form.name.errors %}
+                                <div class="invalid-feedback">{{ form.name.errors[0] }}</div>
+                            {% endif %}
+                            <div class="form-text">Nom complet tel qu'il apparaîtra dans les rapports</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            {{ form.role.label(class="form-label required") }}
+                            {{ form.role(class="form-control" + (" is-invalid" if form.role.errors else "")) }}
+                            {% if form.role.errors %}
+                                <div class="invalid-feedback">{{ form.role.errors[0] }}</div>
+                            {% endif %}
+                            <div class="form-text">Définit les permissions et responsabilités</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Section Rémunération -->
+                <div class="form-section">
+                    <div class="section-title">
+                        <i class="bi bi-cash-coin"></i>
+                        Rémunération
+                    </div>
+                    
+                    <div class="salary-section">
+                        <div class="form-row">
+                            <div class="form-group">
+                                {{ form.salaire_fixe.label(class="form-label") }}
+                                <div class="input-group">
+                                    {{ form.salaire_fixe(class="form-control" + (" is-invalid" if form.salaire_fixe.errors else ""), placeholder="50000", step="0.01") }}
+                                    <span class="input-group-text">DA</span>
+                                </div>
+                                {% if form.salaire_fixe.errors %}
+                                    <div class="invalid-feedback">{{ form.salaire_fixe.errors[0] }}</div>
+                                {% endif %}
+                                <div class="form-text">Salaire mensuel de base</div>
+                            </div>
+                            
+                            <div class="form-group">
+                                {{ form.prime.label(class="form-label") }}
+                                <div class="input-group">
+                                    {{ form.prime(class="form-control" + (" is-invalid" if form.prime.errors else ""), placeholder="5000", step="0.01") }}
+                                    <span class="input-group-text">DA</span>
+                                </div>
+                                {% if form.prime.errors %}
+                                    <div class="invalid-feedback">{{ form.prime.errors[0] }}</div>
+                                {% endif %}
+                                <div class="form-text">Prime mensuelle ou bonus</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Aperçu salaire total -->
+                        <div class="preview-card" id="salaryPreview" style="display: none;">
+                            <div class="preview-title">
+                                <i class="bi bi-calculator me-2"></i>
+                                Aperçu Rémunération
+                            </div>
+                            <div class="preview-content">
+                                <div class="preview-item">
+                                    <div class="preview-label">Salaire Fixe</div>
+                                    <div class="preview-value" id="previewSalaire">0 DA</div>
+                                </div>
+                                <div class="preview-item">
+                                    <div class="preview-label">Prime</div>
+                                    <div class="preview-value" id="previewPrime">0 DA</div>
+                                </div>
+                                <div class="preview-item">
+                                    <div class="preview-label">Total Mensuel</div>
+                                    <div class="preview-value text-success" id="previewTotal">0 DA</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Section Statut et Notes -->
+                <div class="form-section">
+                    <div class="section-title">
+                        <i class="bi bi-gear"></i>
+                        Configuration
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <div class="checkbox-wrapper" onclick="toggleCheckbox()" id="statusWrapper">
+                                <div class="form-check-label">
+                                    {{ form.is_active(class="form-check-input", id="statusCheckbox") }}
+                                    <div>
+                                        <strong>Employé Actif</strong>
+                                        <div class="form-text">L'employé peut être assigné aux commandes</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.notes.label(class="form-label") }}
+                        {{ form.notes(class="form-control textarea-field" + (" is-invalid" if form.notes.errors else ""), placeholder="Notes supplémentaires, qualifications, observations...") }}
+                        {% if form.notes.errors %}
+                            <div class="invalid-feedback">{{ form.notes.errors[0] }}</div>
+                        {% endif %}
+                        <div class="form-text">Informations complémentaires (optionnel)</div>
+                    </div>
+                </div>
+                
+                <!-- Boutons d'action -->
+                <div class="action-buttons">
+                    <button type="submit" class="btn-submit">
+                        <i class="bi bi-check-circle me-2"></i>
+                        {{ action }}
+                    </button>
+                    
+                    <a href="{{ url_for('employees.list_employees') }}" class="btn-cancel">
+                        <i class="bi bi-x-circle me-2"></i>
+                        Annuler
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+// Gestion du formulaire employé
+document.addEventListener('DOMContentLoaded', function() {
+    const salaireInput = document.getElementById('salaire_fixe');
+    const primeInput = document.getElementById('prime');
+    const previewCard = document.getElementById('salaryPreview');
+    const previewSalaire = document.getElementById('previewSalaire');
+    const previewPrime = document.getElementById('previewPrime');
+    const previewTotal = document.getElementById('previewTotal');
+    const statusCheckbox = document.getElementById('statusCheckbox');
+    const statusWrapper = document.getElementById('statusWrapper');
+    
+    // Mise à jour de l'aperçu salaire
+    function updateSalaryPreview() {
+        const salaire = parseFloat(salaireInput.value) || 0;
+        const prime = parseFloat(primeInput.value) || 0;
+        const total = salaire + prime;
+        
+        if (salaire > 0 || prime > 0) {
+            previewCard.style.display = 'block';
+            previewSalaire.textContent = salaire.toLocaleString('fr-FR') + ' DA';
+            previewPrime.textContent = prime.toLocaleString('fr-FR') + ' DA';
+            previewTotal.textContent = total.toLocaleString('fr-FR') + ' DA';
+        } else {
+            previewCard.style.display = 'none';
+        }
+    }
+    
+    // Gestion du checkbox statut
+    function updateStatusWrapper() {
+        if (statusCheckbox.checked) {
+            statusWrapper.classList.add('checked');
+        } else {
+            statusWrapper.classList.remove('checked');
+        }
+    }
+    
+    // Fonction pour toggle checkbox
+    window.toggleCheckbox = function() {
+        statusCheckbox.checked = !statusCheckbox.checked;
+        updateStatusWrapper();
+    };
+    
+    // Event listeners
+    if (salaireInput) salaireInput.addEventListener('input', updateSalaryPreview);
+    if (primeInput) primeInput.addEventListener('input', updateSalaryPreview);
+    if (statusCheckbox) statusCheckbox.addEventListener('change', updateStatusWrapper);
+    
+    // Initialisation
+    updateSalaryPreview();
+    updateStatusWrapper();
+    
+    // Validation du formulaire
+    const form = document.getElementById('employeeForm');
+    form.addEventListener('submit', function(e) {
+        const name = document.getElementById('name').value.trim();
+        const role = document.getElementById('role').value;
+        
+        if (!name || !role) {
+            e.preventDefault();
+            alert('Veuillez remplir au minimum le nom et le rôle de l\'employé.');
+            return false;
+        }
+        
+        // Confirmation si salaire non renseigné
+        const salaire = parseFloat(salaireInput.value) || 0;
+        if (salaire === 0) {
+            if (!confirm('Aucun salaire n\'est renseigné. Voulez-vous continuer ?')) {
+                e.preventDefault();
+                return false;
+            }
+        }
+        
+        return true;
+    });
+    
+    // Animation d'apparition des sections
+    const sections = document.querySelectorAll('.form-section');
+    sections.forEach((section, index) => {
+        section.style.opacity = '0';
+        section.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+            section.style.transition = 'all 0.5s ease';
+            section.style.opacity = '1';
+            section.style.transform = 'translateY(0)';
+        }, index * 200);
+    });
+});
+</script>
+{% endblock %}
