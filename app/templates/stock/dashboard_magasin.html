@@ -56,6 +56,11 @@
         border-radius: 10px;
         background: rgba(255,255,255,0.9);
     }
+    .progress-0 { width: 0%; }
+    .progress-25 { width: 25%; }
+    .progress-50 { width: 50%; }
+    .progress-75 { width: 75%; }
+    .progress-100 { width: 100%; }
 </style>
 {% endblock %}
 
@@ -127,7 +132,18 @@
                                     <span class="badge bg-light text-dark">{{ ingredient.stock_ingredients_magasin or 0 }} {{ ingredient.unit or 'unités' }}</span>
                                 </div>
                                 <div class="progress mb-2">
-                                    <div class="progress-bar" style="width: {{ (ingredient.stock_ingredients_magasin / ingredient.seuil_magasin * 100) if ingredient.seuil_magasin else 0 }}%"></div>
+                                    {% set stock_level = ingredient.stock_ingredients_magasin or 0 %}
+                                    {% set seuil = ingredient.seuil_magasin or 50 %}
+                                    {% set percentage = (stock_level / seuil * 100) if seuil > 0 else 0 %}
+                                    {% if percentage <= 25 %}
+                                        <div class="progress-bar progress-25"></div>
+                                    {% elif percentage <= 50 %}
+                                        <div class="progress-bar progress-50"></div>
+                                    {% elif percentage <= 75 %}
+                                        <div class="progress-bar progress-75"></div>
+                                    {% else %}
+                                        <div class="progress-bar progress-100"></div>
+                                    {% endif %}
                                 </div>
                                 <small>Seuil: {{ ingredient.seuil_magasin or 50 }} {{ ingredient.unit or 'unités' }}</small>
                             </div>
@@ -176,7 +192,16 @@
                                         <span class="badge bg-light text-dark">{{ stock_level }} {{ ingredient.unit or 'unités' }}</span>
                                     </div>
                                     <div class="progress mb-2">
-                                        <div class="progress-bar" style="width: {{ (stock_level / seuil * 100) if seuil else 0 }}%"></div>
+                                        {% set percentage = (stock_level / seuil * 100) if seuil > 0 else 0 %}
+                                        {% if percentage <= 25 %}
+                                            <div class="progress-bar progress-25"></div>
+                                        {% elif percentage <= 50 %}
+                                            <div class="progress-bar progress-50"></div>
+                                        {% elif percentage <= 75 %}
+                                            <div class="progress-bar progress-75"></div>
+                                        {% else %}
+                                            <div class="progress-bar progress-100"></div>
+                                        {% endif %}
                                     </div>
                                     <div class="d-flex justify-content-between">
                                         <small>Seuil: {{ seuil }}</small>
