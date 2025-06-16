@@ -206,7 +206,7 @@
                                         </div>
                                         <div>
                                             {% if can_sell %}
-                                            <button class="sale-btn" onclick="quickSale({{ product.id }}, '{{ product.name }}')">
+                                            <button class="sale-btn" data-product-id="{{ product.id }}" data-product-name="{{ product.name|e }}" data-product-price="{{ product.price or 0 }}"></button>
                                                 <i class="bi bi-cart-plus"></i> Vendre
                                             </button>
                                             {% else %}
