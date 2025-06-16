@@ -112,11 +112,11 @@ def create_app():
     from app.orders.routes import orders as orders_blueprint
     app.register_blueprint(orders_blueprint, url_prefix='/orders')
 
-    from app.orders.dashboard_routes import dashboard as dashboard_blueprint
-    app.register_blueprint(dashboard_blueprint, url_prefix='/dashboard')
+    from app.orders.dashboard_routes import dashboard_bp
+    app.register_blueprint(dashboard_bp, url_prefix='/dashboard')
 
-    from app.orders.status_routes import status as status_blueprint
-    app.register_blueprint(status_blueprint, url_prefix='/status')
+    from app.orders.status_routes import status_bp
+    app.register_blueprint(status_bp, url_prefix='/orders')
 
     from app.employees.routes import employees as employees_blueprint
     app.register_blueprint(employees_blueprint, url_prefix='/employees')
