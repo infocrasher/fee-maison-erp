@@ -12,5 +12,7 @@ from . import models
 # Création du blueprint stock
 bp = Blueprint('stock', __name__, url_prefix='/stock')
 
-# Import des routes après création du blueprint pour éviter les imports circulaires
+# CORRECTION CRITIQUE : Import automatique des routes dès la création du blueprint
+# Ceci évite l'erreur "blueprint already registered" en important les routes 
+# AVANT l'enregistrement du blueprint dans l'application
 from . import routes

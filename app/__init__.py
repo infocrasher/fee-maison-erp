@@ -1,210 +1,216 @@
 import os
-from flask import Flask, url_for, render_template  # ← CORRECTION: ajout render_template
-from config import config_by_name
-from extensions import db, migrate, login
+from flask import Flask, g, request
 from datetime import datetime
-from flask_wtf.csrf import generate_csrf # <-- Importer la fonction
+from extensions import db, migrate, login_manager, csrf
+from config import Config
 
-def create_app(config_name=None):
+def create_app():
     app = Flask(__name__)
+    app.config.from_object(Config)
 
-    if config_name is None:
-        config_name = os.environ.get('FLASK_ENV') or 'default'
-    app.config.from_object(config_by_name[config_name])
-
+    # Initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)
-    login.init_app(app)
+    login_manager.init_app(app)
+    csrf.init_app(app)
 
-    login.login_view = 'auth.login'
-    login.login_message_category = 'info'
-    login.login_message = "Veuillez vous connecter pour accéder à cette page."
+    # Configure login manager
+    login_manager.login_view = 'auth.login'
+    login_manager.login_message = 'Veuillez vous connecter pour accéder à cette page.'
+    login_manager.login_message_category = 'info'
 
-    from models import User
-    @login.user_loader
+    @login_manager.user_loader
     def load_user(user_id):
-        return db.session.get(User, int(user_id))
-    
-    # --- PROCESSEURS DE CONTEXTE POUR LES VARIABLES GLOBALES ---
+        from models import User
+        return User.query.get(int(user_id))
+
+    # Request tracking
+    @app.before_request
+    def before_request():
+        g.start_time = datetime.utcnow()
+
+    @app.after_request
+    def after_request(response):
+        if hasattr(g, 'start_time'):
+            duration = datetime.utcnow() - g.start_time
+            total_ms = duration.total_seconds() * 1000
+            if total_ms > 1000:  # Only log slow requests
+                print(f"⏱️ Slow request: {request.endpoint} took {total_ms:.0f}ms")
+        return response
+
+    # Template context processors
     @app.context_processor
-    def inject_global_variables():
-        """
-        Injecte des variables globales dans tous les templates
-        """
+    def inject_global_vars():
         try:
-            # Variables toujours disponibles
-            base_vars = {
-                # Tokens CSRF
-                'csrf_token': generate_csrf,
-                'manual_csrf_token': generate_csrf,
-                # Date courante
-                'current_year': datetime.now().year,
-            }
+            from models import Order
+            from app.employees.models import Employee
             
-            # Variables nécessitant un context d'application
-            with app.app_context():
-                from models import Product
-                
-                # Statistiques pour dashboard (avec gestion d'erreur)
-                try:
-                    total_products = Product.query.count()
-                    low_stock = Product.query.filter(Product.quantity_in_stock <= 5).count()
-                    out_of_stock = Product.query.filter(Product.quantity_in_stock <= 0).count()
-                    
-                    base_vars.update({
-                        'total_products_count': total_products,
-                        'low_stock_products': low_stock,
-                        'out_of_stock_products': out_of_stock,
-                    })
-                except Exception as e:
-                    # En cas d'erreur DB, fournir des valeurs par défaut
-                    app.logger.warning(f"Erreur context processor statistiques: {e}")
-                    base_vars.update({
-                        'total_products_count': 0,
-                        'low_stock_products': 0,
-                        'out_of_stock_products': 0,
-                    })
+            # Safe query execution with error handling
+            try:
+                pending_orders_count = Order.query.filter_by(status='pending').count()
+            except Exception as e:
+                print(f"Error counting pending orders: {e}")
+                pending_orders_count = 0
             
-            return base_vars
+            try:
+                total_employees = Employee.query.count()
+            except Exception as e:
+                print(f"Error counting employees: {e}")
+                total_employees = 0
             
-        except Exception as e:
-            # Fallback minimal en cas d'erreur totale
-            app.logger.error(f"Erreur context processor: {e}")
             return {
-                'csrf_token': generate_csrf,
-                'manual_csrf_token': generate_csrf,
-                'current_year': datetime.now().year,
-                'total_products_count': 0,
-                'low_stock_products': 0,
-                'out_of_stock_products': 0,
+                'pending_orders_count': pending_orders_count,
+                'total_employees': total_employees,
+                'current_year': datetime.now().year
             }
-    
-    @app.template_filter('nl2br')
-    def nl2br_filter(text):
-        """Convertit les retours à la ligne en <br>"""
-        if not text:
-            return text
-        from markupsafe import Markup
-        return Markup(text.replace('\n', '<br>'))
-    
+        except ImportError as e:
+            print(f"Import error in context processor: {e}")
+            return {
+                'pending_orders_count': 0,
+                'total_employees': 0,
+                'current_year': datetime.now().year
+            }
+
+    # Custom template filters
     @app.template_filter('currency')
     def currency_filter(amount):
-        """Formate un montant en devise"""
+        """Format currency with DA symbol"""
         if amount is None:
             return "0,00 DA"
         try:
-            return f"{float(amount):,.2f} DA".replace(',', ' ')
+            return f"{amount:,.2f} DA".replace(',', ' ')
         except (ValueError, TypeError):
             return "0,00 DA"
-    
-    @app.template_filter('stock_status')
-    def stock_status_filter(quantity):
-        """Retourne une classe CSS selon le niveau de stock"""
+
+    @app.template_filter('datetime_format')
+    def datetime_format_filter(dt, format='%d/%m/%Y %H:%M'):
+        """Format datetime for display"""
+        if dt is None:
+            return ""
         try:
-            qty = float(quantity) if quantity is not None else 0
-            if qty <= 0:
-                return 'text-danger'  # Rouge pour rupture
-            elif qty <= 5:
-                return 'text-warning'  # Orange pour stock bas
-            else:
-                return 'text-success'  # Vert pour stock OK
-        except (ValueError, TypeError):
-            return 'text-muted'
-    
-    # Enregistrement des Blueprints
+            return dt.strftime(format)
+        except (ValueError, AttributeError):
+            return str(dt)
+
+    # Register blueprints
     from app.main.routes import main as main_blueprint
     app.register_blueprint(main_blueprint)
 
     from app.auth.routes import auth as auth_blueprint
     app.register_blueprint(auth_blueprint, url_prefix='/auth')
 
-    from app.products.routes import products as products_blueprint
-    app.register_blueprint(products_blueprint, url_prefix='/admin/products')
+    from app.categories.routes import categories as categories_blueprint
+    app.register_blueprint(categories_blueprint, url_prefix='/categories')
 
-    from app.orders.routes import orders as orders_blueprint
-    app.register_blueprint(orders_blueprint, url_prefix='/admin/orders')
+    from app.products.routes import products as products_blueprint
+    app.register_blueprint(products_blueprint, url_prefix='/products')
 
     from app.recipes.routes import recipes as recipes_blueprint
-    app.register_blueprint(recipes_blueprint, url_prefix='/admin/recipes')
+    app.register_blueprint(recipes_blueprint, url_prefix='/recipes')
+
+    from app.orders.routes import orders as orders_blueprint
+    app.register_blueprint(orders_blueprint, url_prefix='/orders')
+
+    from app.orders.dashboard_routes import dashboard as dashboard_blueprint
+    app.register_blueprint(dashboard_blueprint, url_prefix='/dashboard')
+
+    from app.orders.status_routes import status as status_blueprint
+    app.register_blueprint(status_blueprint, url_prefix='/status')
+
+    from app.employees.routes import employees as employees_blueprint
+    app.register_blueprint(employees_blueprint, url_prefix='/employees')
+
+    # CORRECTION : Enregistrement des nouveaux blueprints avec import automatique
+    # Les routes sont maintenant importées automatiquement dans les __init__.py des modules
     
-    from app.admin.routes import admin as admin_blueprint
-    app.register_blueprint(admin_blueprint, url_prefix='/admin')
-
-    from app.orders.dashboard_routes import dashboard_bp
-    app.register_blueprint(dashboard_bp, url_prefix='/dashboard')
-
-    from app.orders.status_routes import status_bp
-    app.register_blueprint(status_bp, url_prefix='/orders')
-
-    from app.employees.routes import employees_bp
-    app.register_blueprint(employees_bp, url_prefix='/employees')
-
+    # Blueprint Stock - Nouveau système 4 localisations
     try:
         from app.stock import bp as stock_bp
         app.register_blueprint(stock_bp)
-        # Import des routes APRÈS enregistrement du blueprint
-        from app.stock import routes
         print("✅ Blueprint stock enregistré avec succès")
     except ImportError as e:
         print(f"⚠️ Blueprint stock non disponible: {e}")
+    except Exception as e:
+        print(f"❌ Erreur blueprint stock: {e}")
     
-    # Enregistrement blueprint purchases
+    # Blueprint Purchases - Gestion achats fournisseurs
     try:
         from app.purchases import bp as purchases_bp
         app.register_blueprint(purchases_bp)
-        # Import des routes APRÈS enregistrement du blueprint
-        from app.purchases import routes
         print("✅ Blueprint purchases enregistré avec succès")
     except ImportError as e:
         print(f"⚠️ Blueprint purchases non disponible: {e}")
+    except Exception as e:
+        print(f"❌ Erreur blueprint purchases: {e}")
 
-    # Gestionnaire d'erreurs personnalisés
-    @app.errorhandler(404)
-    def not_found_error(error):
-        return render_template('errors/404.html'), 404  # ← Maintenant défini
-    
-    @app.errorhandler(500)
-    def internal_error(error):
-        db.session.rollback()
-        return render_template('errors/500.html'), 500  # ← Maintenant défini
-
-    # Commande CLI pour créer un admin
+    # CLI commands
     @app.cli.command("create-admin")
     def create_admin():
-        """Crée un utilisateur administrateur"""
+        """Create an admin user"""
         from models import User
         
-        if User.query.filter_by(email="admin@example.com").first():
-            print("L'utilisateur admin existe déjà.")
+        username = input("Nom d'utilisateur admin: ")
+        email = input("Email admin: ")
+        password = input("Mot de passe admin: ")
+        
+        # Check if user already exists
+        if User.query.filter_by(username=username).first():
+            print(f"❌ L'utilisateur '{username}' existe déjà")
             return
         
-        admin_user = User(username="admin", email="admin@example.com", role='admin')
-        admin_user.set_password("password123")
-        db.session.add(admin_user)
-        db.session.commit()
-        print("Utilisateur admin créé avec succès.")
-        print("Email: admin@example.com")
-        print("Mot de passe: password123")
+        if User.query.filter_by(email=email).first():
+            print(f"❌ L'email '{email}' est déjà utilisé")
+            return
+        
+        # Create admin user
+        admin_user = User(
+            username=username,
+            email=email,
+            role='admin'
+        )
+        admin_user.set_password(password)
+        
+        try:
+            db.session.add(admin_user)
+            db.session.commit()
+            print(f"✅ Utilisateur admin '{username}' créé avec succès")
+        except Exception as e:
+            db.session.rollback()
+            print(f"❌ Erreur lors de la création: {e}")
 
-    # Commande CLI pour les statistiques
     @app.cli.command("stats")
     def show_stats():
-        """Affiche les statistiques de l'application"""
-        from models import User, Product, Recipe, Order
-        
-        print("=== STATISTIQUES FÉE MAISON ===")
-        print(f"Utilisateurs: {User.query.count()}")
-        print(f"Produits: {Product.query.count()}")
-        print(f"Recettes: {Recipe.query.count()}")
-        print(f"Commandes: {Order.query.count()}")
-        
-        # Statistiques détaillées produits
-        ingredients = Product.query.filter_by(product_type='ingredient').count()
-        finished = Product.query.filter_by(product_type='finished').count()
-        low_stock = Product.query.filter(Product.quantity_in_stock <= 5).count()
-        
-        print(f"\nProduits - Ingrédients: {ingredients}")
-        print(f"Produits - Finis: {finished}")
-        print(f"Produits - Stock bas: {low_stock}")
+        """Show application statistics"""
+        try:
+            from models import User, Product, Order, Category
+            from app.employees.models import Employee
+            
+            print("\n📊 STATISTIQUES DE L'APPLICATION")
+            print("=" * 50)
+            
+            # Users
+            total_users = User.query.count()
+            admin_users = User.query.filter_by(role='admin').count()
+            print(f"👥 Utilisateurs: {total_users} (dont {admin_users} admins)")
+            
+            # Products and Categories
+            total_products = Product.query.count()
+            total_categories = Category.query.count()
+            print(f"📦 Produits: {total_products} dans {total_categories} catégories")
+            
+            # Orders
+            total_orders = Order.query.count()
+            pending_orders = Order.query.filter_by(status='pending').count()
+            completed_orders = Order.query.filter_by(status='completed').count()
+            print(f"🛒 Commandes: {total_orders} (en attente: {pending_orders}, terminées: {completed_orders})")
+            
+            # Employees
+            total_employees = Employee.query.count()
+            print(f"👨‍💼 Employés: {total_employees}")
+            
+            print("=" * 50)
+            
+        except Exception as e:
+            print(f"❌ Erreur lors du calcul des statistiques: {e}")
 
     return app
