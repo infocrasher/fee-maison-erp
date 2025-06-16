@@ -8,7 +8,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, TextAreaField, FloatField, IntegerField, SelectField, SubmitField, HiddenField, FieldList, FormField
 from wtforms.fields import DateTimeLocalField
 from wtforms.validators import DataRequired, Optional, Length, NumberRange, Email, ValidationError
-from wtforms_sqlalchemy.fields import QuerySelectField
+import sys
 from decimal import Decimal
 from models import Product
 from .models import PurchaseStatus, PurchaseUrgency
