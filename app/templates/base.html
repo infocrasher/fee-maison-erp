@@ -309,7 +309,7 @@
             username: "{{ current_user.username }}",
             {% if current_user.is_admin %}
             apiEndpoints: {
-                pendingPurchasesCount: "{{ url_for('purchases.api_pending_count') if 'purchases.api_pending_count' in url_for.__globals__ else '#' }}"
+                pendingPurchasesCount: "{{ url_for('purchases.api_pending_count') }}"
             }
             {% endif %}
             {% else %}
@@ -346,8 +346,7 @@
             if (window.FEE_MAISON_CONFIG && 
                 window.FEE_MAISON_CONFIG.isAdmin && 
                 window.FEE_MAISON_CONFIG.apiEndpoints && 
-                window.FEE_MAISON_CONFIG.apiEndpoints.pendingPurchasesCount &&
-                window.FEE_MAISON_CONFIG.apiEndpoints.pendingPurchasesCount !== '#') {
+                window.FEE_MAISON_CONFIG.apiEndpoints.pendingPurchasesCount) {
                 
                 fetch(window.FEE_MAISON_CONFIG.apiEndpoints.pendingPurchasesCount)
                     .then(response => response.json())
