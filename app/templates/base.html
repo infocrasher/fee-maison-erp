@@ -311,22 +311,29 @@
         // Configuration locale pour moment.js
         moment.locale('fr');
         
-        // Actualisation automatique des compteurs de notifications
+        // Variables globales définies côté serveur
         {% if current_user.is_authenticated and current_user.is_admin %}
+        const API_ENDPOINTS = {
+            pendingCount: "{{ url_for('purchases.api_pending_count') }}"
+        };
+        
+        // Actualisation automatique des compteurs de notifications
         function updateNotificationCounters() {
-            // Compteur des approbations en attente (purchases)
-            fetch('{{ url_for("purchases.api_pending_count") }}')
-                .then(response => response.json())
-                .then(data => {
-                    const counter = document.getElementById('pending-approvals-count');
-                    if (counter && data.count > 0) {
-                        counter.textContent = data.count;
-                        counter.style.display = 'inline';
-                    } else if (counter) {
-                        counter.style.display = 'none';
-                    }
-                })
-                .catch(error => console.log('Erreur chargement notifications:', error));
+            // Vérification que l'endpoint existe avant d'appeler
+            if (typeof API_ENDPOINTS !== 'undefined' && API_ENDPOINTS.pendingCount) {
+                fetch(API_ENDPOINTS.pendingCount)
+                    .then(response => response.json())
+                    .then(data => {
+                        const counter = document.getElementById('pending-approvals-count');
+                        if (counter && data.count > 0) {
+                            counter.textContent = data.count;
+                            counter.style.display = 'inline';
+                        } else if (counter) {
+                            counter.style.display = 'none';
+                        }
+                    })
+                    .catch(error => console.log('Erreur chargement notifications:', error));
+            }
         }
         
         // Actualisation toutes les 30 secondes
@@ -350,8 +357,10 @@
             alerts.forEach(function(alert) {
                 if (!alert.classList.contains('alert-danger')) {
                     setTimeout(function() {
-                        const bsAlert = new bootstrap.Alert(alert);
-                        bsAlert.close();
+                        if (typeof bootstrap !== 'undefined') {
+                            const bsAlert = new bootstrap.Alert(alert);
+                            bsAlert.close();
+                        }
                     }, 5000);
                 }
             });
@@ -370,10 +379,12 @@
         
         // Tooltip Bootstrap pour les éléments avec title
         document.addEventListener('DOMContentLoaded', function() {
-            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            tooltipTriggerList.map(function(tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl);
-            });
+            if (typeof bootstrap !== 'undefined') {
+                const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                tooltipTriggerList.map(function(tooltipTriggerEl) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl);
+                });
+            }
         });
     </script>
     
