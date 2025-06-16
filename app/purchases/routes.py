@@ -37,7 +37,7 @@ def get_main_models():
 @login_required
 def list_purchases():
     """Liste de tous les achats avec filtres"""
-    form = PurchaseSearchForm()
+    Product, User = get_main_models()
     
     # Construction de la requête de base
     query = Purchase.query
