@@ -142,11 +142,24 @@ def create_app(config_name=None):
     from app.employees.routes import employees_bp
     app.register_blueprint(employees_bp, url_prefix='/employees')
 
-    from app.purchases import bp as purchases_bp
-    app.register_blueprint(purchases_bp)
-
-    from app.stock import bp as stock_bp
-    app.register_blueprint(stock_bp)
+    try:
+        from app.stock import bp as stock_bp
+        app.register_blueprint(stock_bp)
+        # Import des routes APRÈS enregistrement du blueprint
+        from app.stock import routes
+        print("✅ Blueprint stock enregistré avec succès")
+    except ImportError as e:
+        print(f"⚠️ Blueprint stock non disponible: {e}")
+    
+    # Enregistrement blueprint purchases
+    try:
+        from app.purchases import bp as purchases_bp
+        app.register_blueprint(purchases_bp)
+        # Import des routes APRÈS enregistrement du blueprint
+        from app.purchases import routes
+        print("✅ Blueprint purchases enregistré avec succès")
+    except ImportError as e:
+        print(f"⚠️ Blueprint purchases non disponible: {e}")
 
     # Gestionnaire d'erreurs personnalisés
     @app.errorhandler(404)
