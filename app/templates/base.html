@@ -48,6 +48,10 @@
             margin-top: 40px;
             border-top: 1px solid #dee2e6;
         }
+        .nav-coming-soon {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
     </style>
     {% block head %}{% endblock %}
 </head>
@@ -131,77 +135,20 @@
                         </ul>
                     </li>
 
-                    <!-- === NOUVEAU : MODULE STOCK 4 LOCALISATIONS === -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="stockDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-warehouse me-1"></i>Stock
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><h6 class="dropdown-header">Vue d'Ensemble</h6></li>
-                            <li><a class="dropdown-item" href="{{ url_for('stock.overview') }}">
-                                <i class="fas fa-chart-pie me-2"></i>Vue d'ensemble 4 Stocks
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><h6 class="dropdown-header">Dashboards par Localisation</h6></li>
-                            <li><a class="dropdown-item" href="{{ url_for('stock.dashboard_magasin') }}">
-                                <i class="fas fa-store me-2 text-primary"></i>Stock Magasin <span class="badge bg-info">Amel</span>
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('stock.dashboard_local') }}">
-                                <i class="fas fa-industry me-2 text-warning"></i>Stock Local Production <span class="badge bg-warning">Rayan</span>
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('stock.dashboard_comptoir') }}">
-                                <i class="fas fa-cash-register me-2 text-success"></i>Stock Comptoir <span class="badge bg-success">Yasmine</span>
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('stock.dashboard_consommables') }}">
-                                <i class="fas fa-boxes me-2 text-secondary"></i>Stock Consommables <span class="badge bg-info">Amel</span>
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><h6 class="dropdown-header">Outils</h6></li>
-                            <li><a class="dropdown-item" href="{{ url_for('stock.quick_entry') }}">
-                                <i class="fas fa-plus me-2"></i>Réception Rapide
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('stock.adjustment') }}">
-                                <i class="fas fa-edit me-2"></i>Ajustement Multi-Stocks
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('stock.transfers_list') }}">
-                                <i class="fas fa-exchange-alt me-2"></i>Gestion Transferts
-                            </a></li>
-                        </ul>
+                    <!-- === STOCK - TEMPORAIREMENT MASQUÉ === -->
+                    <li class="nav-item">
+                        <span class="nav-link nav-coming-soon">
+                            <i class="fas fa-warehouse me-1"></i>Stock 
+                            <small class="text-muted">(en développement)</small>
+                        </span>
                     </li>
 
-                    <!-- === NOUVEAU : MODULE PURCHASES === -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="purchasesDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-shopping-cart me-1"></i>Achats
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><h6 class="dropdown-header">Créer</h6></li>
-                            <li><a class="dropdown-item" href="{{ url_for('purchases.new_purchase') }}">
-                                <i class="fas fa-plus-circle me-2"></i>Nouveau Bon d'Achat
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('purchases.quick_purchase') }}">
-                                <i class="fas fa-bolt me-2"></i>Achat Rapide
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><h6 class="dropdown-header">Consulter</h6></li>
-                            <li><a class="dropdown-item" href="{{ url_for('purchases.list_purchases') }}">
-                                <i class="fas fa-list me-2"></i>Liste des Achats
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('purchases.dashboard') }}">
-                                <i class="fas fa-chart-line me-2"></i>Dashboard Achats
-                            </a></li>
-                            {% if current_user.is_admin %}
-                            <li><hr class="dropdown-divider"></li>
-                            <li><h6 class="dropdown-header">Administration</h6></li>
-                            <li><a class="dropdown-item" href="{{ url_for('purchases.pending_approvals') }}">
-                                <i class="fas fa-check-circle me-2 text-warning"></i>Approbations en Attente
-                                <span id="pending-approvals-count" class="badge-notification" style="display: none;"></span>
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('purchases.overdue_purchases') }}">
-                                <i class="fas fa-exclamation-triangle me-2 text-danger"></i>Achats en Retard
-                            </a></li>
-                            {% endif %}
-                        </ul>
+                    <!-- === ACHATS - TEMPORAIREMENT MASQUÉ === -->
+                    <li class="nav-item">
+                        <span class="nav-link nav-coming-soon">
+                            <i class="fas fa-shopping-cart me-1"></i>Achats 
+                            <small class="text-muted">(en développement)</small>
+                        </span>
                     </li>
                 </ul>
 
@@ -299,26 +246,6 @@
         </div>
     </footer>
 
-    <!-- Variables globales pour JavaScript -->
-    <script type="text/javascript">
-        // Configuration globale de l'application
-        window.FEE_MAISON_CONFIG = {
-            {% if current_user.is_authenticated %}
-            isAuthenticated: true,
-            isAdmin: {{ 'true' if current_user.is_admin else 'false' }},
-            username: "{{ current_user.username }}",
-            {% if current_user.is_admin %}
-            apiEndpoints: {
-                pendingPurchasesCount: "{{ url_for('purchases.api_pending_count') }}"
-            }
-            {% endif %}
-            {% else %}
-            isAuthenticated: false,
-            isAdmin: false
-            {% endif %}
-        };
-    </script>
-
     <!-- Scripts JavaScript -->
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -326,50 +253,19 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/locale/fr.min.js"></script>
     
-    <!-- Scripts personnalisés -->
-    <script type="text/javascript">
-        // Configuration locale pour moment.js
-        if (typeof moment !== 'undefined') {
-            moment.locale('fr');
-        }
-
-        // Définition de l'année courante
+    <!-- Scripts personnalisés SIMPLIFIÉS - Sans Jinja2 -->
+    <script>
+        // Configuration de base sans syntaxe de template
         document.addEventListener('DOMContentLoaded', function() {
+            // Configuration locale pour moment.js
+            if (typeof moment !== 'undefined') {
+                moment.locale('fr');
+            }
+
+            // Définition de l'année courante
             const yearElement = document.getElementById('current-year');
             if (yearElement) {
                 yearElement.textContent = new Date().getFullYear();
-            }
-        });
-        
-        // Actualisation automatique des compteurs de notifications
-        function updateNotificationCounters() {
-            if (window.FEE_MAISON_CONFIG && 
-                window.FEE_MAISON_CONFIG.isAdmin && 
-                window.FEE_MAISON_CONFIG.apiEndpoints && 
-                window.FEE_MAISON_CONFIG.apiEndpoints.pendingPurchasesCount) {
-                
-                fetch(window.FEE_MAISON_CONFIG.apiEndpoints.pendingPurchasesCount)
-                    .then(response => response.json())
-                    .then(data => {
-                        const counter = document.getElementById('pending-approvals-count');
-                        if (counter && data.count && data.count > 0) {
-                            counter.textContent = data.count;
-                            counter.style.display = 'inline';
-                        } else if (counter) {
-                            counter.style.display = 'none';
-                        }
-                    })
-                    .catch(error => console.log('Erreur chargement notifications:', error));
-            }
-        }
-        
-        // Initialisation après chargement du DOM
-        document.addEventListener('DOMContentLoaded', function() {
-            // Actualisation des compteurs
-            if (window.FEE_MAISON_CONFIG && window.FEE_MAISON_CONFIG.isAdmin) {
-                updateNotificationCounters();
-                // Actualisation toutes les 30 secondes
-                setInterval(updateNotificationCounters, 30000);
             }
             
             // Auto-hide des alerts après 5 secondes
@@ -385,7 +281,7 @@
                 }
             });
             
-            // Tooltip Bootstrap pour les éléments avec title
+            // Tooltip Bootstrap
             if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
                 const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
                 tooltipTriggerList.map(function(tooltipTriggerEl) {
