@@ -68,8 +68,92 @@ class Product(db.Model):
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # === NOUVEAU : Gestion 4 Stocks ===
+    stock_comptoir = db.Column(db.Float, default=0.0, nullable=False)
+    stock_ingredients_local = db.Column(db.Float, default=0.0, nullable=False) 
+    stock_ingredients_magasin = db.Column(db.Float, default=0.0, nullable=False)
+    stock_consommables = db.Column(db.Float, default=0.0, nullable=False)
+    
+    # Seuils d'alerte par stock
+    seuil_min_comptoir = db.Column(db.Float, default=0.0)
+    seuil_min_ingredients_local = db.Column(db.Float, default=0.0)
+    seuil_min_ingredients_magasin = db.Column(db.Float, default=0.0)
+    seuil_min_consommables = db.Column(db.Float, default=0.0)
+    
+    # Date dernière mise à jour stock
+    last_stock_update = db.Column(db.DateTime, default=datetime.utcnow)
+    
     # Relations
     order_items = db.relationship('OrderItem', backref='product', lazy='dynamic')
+    
+    # === NOUVELLES MÉTHODES UTILITAIRES ===
+    
+    @property
+    def total_stock_all_locations(self):
+        """Stock total toutes localisations confondues"""
+        return (self.stock_comptoir + self.stock_ingredients_local + 
+                self.stock_ingredients_magasin + self.stock_consommables)
+    
+    @property
+    def stock_value_total(self):
+        """Valeur totale du stock (toutes localisations)"""
+        cost = self.cost_price or 0.0
+        return float(self.total_stock_all_locations) * float(cost)
+    
+    def get_stock_by_location_type(self, location_type):
+        """Récupère le stock par type de localisation"""
+        location_mapping = {
+            'comptoir': self.stock_comptoir,
+            'ingredients_local': self.stock_ingredients_local,
+            'ingredients_magasin': self.stock_ingredients_magasin,
+            'consommables': self.stock_consommables
+        }
+        return location_mapping.get(location_type, 0.0)
+    
+    def get_seuil_min_by_location(self, location_type):
+        """Récupère le seuil minimum par localisation"""
+        seuil_mapping = {
+            'comptoir': self.seuil_min_comptoir or 0.0,
+            'ingredients_local': self.seuil_min_ingredients_local or 0.0,
+            'ingredients_magasin': self.seuil_min_ingredients_magasin or 0.0,
+            'consommables': self.seuil_min_consommables or 0.0
+        }
+        return seuil_mapping.get(location_type, 0.0)
+    
+    def is_low_stock_by_location(self, location_type):
+        """Vérifie si le stock est faible pour une localisation"""
+        current_stock = self.get_stock_by_location_type(location_type)
+        min_threshold = self.get_seuil_min_by_location(location_type)
+        return current_stock <= min_threshold
+    
+    def get_low_stock_locations(self):
+        """Retourne la liste des localisations en stock faible"""
+        locations = ['comptoir', 'ingredients_local', 'ingredients_magasin', 'consommables']
+        return [loc for loc in locations if self.is_low_stock_by_location(loc)]
+    
+    def update_stock_location(self, location_type, quantity_change):
+        """Met à jour le stock d'une localisation spécifique"""
+        if location_type == 'comptoir':
+            self.stock_comptoir = max(0, self.stock_comptoir + quantity_change)
+        elif location_type == 'ingredients_local':
+            self.stock_ingredients_local = max(0, self.stock_ingredients_local + quantity_change)
+        elif location_type == 'ingredients_magasin':
+            self.stock_ingredients_magasin = max(0, self.stock_ingredients_magasin + quantity_change)
+        elif location_type == 'consommables':
+            self.stock_consommables = max(0, self.stock_consommables + quantity_change)
+        
+        self.last_stock_update = datetime.utcnow()
+        return True
+    
+    def get_location_display_name(self, location_type):
+        """Retourne le nom d'affichage de la localisation"""
+        names = {
+            'comptoir': 'Stock Comptoir',
+            'ingredients_local': 'Stock Local Production',
+            'ingredients_magasin': 'Stock Magasin',
+            'consommables': 'Stock Consommables'
+        }
+        return names.get(location_type, location_type.title())
     
     def __repr__(self):
         return f'<Product {self.name}>'
@@ -155,7 +239,7 @@ class RecipeIngredient(db.Model):
         return Decimal(self.quantity_needed) * converted_cost_per_unit
     
     def __repr__(self):
-        return f'<RecipeIngredient {self.product.name if self.product else "Unknown"}: {self.quantity_needed} {self.unit}>'
+        return f'<RecipeIngredient {self.recipe.name} - {self.product.name}>'
 
 class Order(db.Model):
     __tablename__ = 'orders'
@@ -234,13 +318,13 @@ class Order(db.Model):
             'completed': 'Terminée',
             
             # ✅ NOUVEAUX ÉTATS - Workflow production
-            'in_production': 'En production',           # → Calendrier Rayan
-            'ready_at_shop': 'Reçue au magasin',       # → Yasmine peut livrer
-            'out_for_delivery': 'En livraison',        # → En cours de livraison
-            'delivered': 'Livrée',                     # → Stock décrementé
+            'in_production': 'En production',  # → Calendrier Rayan
+            'ready_at_shop': 'Reçue au magasin',  # → Yasmine peut livrer
+            'out_for_delivery': 'En livraison',  # → En cours de livraison
+            'delivered': 'Livrée',  # → Stock décrementé
             
             # États existants (compatibilité)
-            'in_progress': 'En préparation', 
+            'in_progress': 'En préparation',
             'ready': 'Prête',
             'awaiting_payment': 'En attente de paiement'
         }
@@ -261,10 +345,10 @@ class Order(db.Model):
         """Retourne la classe CSS selon le statut pour l'affichage"""
         status_colors = {
             'pending': 'secondary',
-            'in_production': 'warning',      # Orange pour Rayan
-            'ready_at_shop': 'info',         # Bleu pour Yasmine
-            'out_for_delivery': 'primary',   # Bleu foncé en livraison
-            'delivered': 'success',          # Vert livré
+            'in_production': 'warning',  # Orange pour Rayan
+            'ready_at_shop': 'info',  # Bleu pour Yasmine
+            'out_for_delivery': 'primary',  # Bleu foncé en livraison
+            'delivered': 'success',  # Vert livré
             'completed': 'success',
             'cancelled': 'danger',
             'awaiting_payment': 'warning'
@@ -312,31 +396,29 @@ class Order(db.Model):
         """Incrémente le stock comptoir quand la commande arrive au magasin"""
         for item in self.items:
             if item.product:
-                # Ajouter au stock comptoir
-                item.product.quantity_in_stock += float(item.quantity)
+                # MODIFICATION : Utiliser le nouveau système 4 stocks
+                item.product.update_stock_location('comptoir', float(item.quantity))
                 # Log du mouvement
-                print(f"📦 Stock incrémenté: {item.product.name} +{item.quantity}")
+                print(f"📦 Stock comptoir incrémenté: {item.product.name} +{item.quantity}")
     
     def _decrement_shop_stock(self):
         """Décrémente le stock comptoir quand la commande est livrée"""
         for item in self.items:
             if item.product:
-                # Retirer du stock comptoir
-                item.product.quantity_in_stock = max(0, item.product.quantity_in_stock - float(item.quantity))
+                # MODIFICATION : Utiliser le nouveau système 4 stocks
+                item.product.update_stock_location('comptoir', -float(item.quantity))
                 # Log du mouvement
-                print(f"📦 Stock décrémenté: {item.product.name} -{item.quantity}")
+                print(f"📦 Stock comptoir décrémenté: {item.product.name} -{item.quantity}")
     
     # ✅ CORRECTION : Méthode calculate_total_amount manquante
     def calculate_total_amount(self):
         """Calcule et met à jour le montant total de la commande"""
         items_total = Decimal('0.0')
-        
         for item in self.items:
             items_total += item.subtotal
         
         delivery_cost = Decimal(self.delivery_cost or 0)
         self.total_amount = items_total + delivery_cost
-        
         return self.total_amount
     
     def get_items_subtotal(self):
@@ -372,7 +454,7 @@ class Order(db.Model):
         return 'info'
     
     def __repr__(self):
-        return f'<Order #{self.id} - {self.customer_name or "Production"} - {self.status}>'
+        return f'<Order {self.id}: {self.customer_name or "Sans nom"}>'
 
 class OrderItem(db.Model):
     __tablename__ = 'order_items'
@@ -415,4 +497,4 @@ class OrderItem(db.Model):
         return f"{self.quantity:.2f}"
     
     def __repr__(self):
-        return f'<OrderItem {self.product.name if self.product else "Unknown"}: {self.quantity} x {self.unit_price}>'
+        return f'<OrderItem {self.product.name if self.product else "N/A"}: {self.quantity}x{self.unit_price}>'
