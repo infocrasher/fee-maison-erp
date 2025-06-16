@@ -1,0 +1,567 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Fée Maison{% endblock %}
+
+{% block head %}
+<style>
+    .dashboard-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 15px;
+        color: white;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .dashboard-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    }
+    .consumable-card {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 15px;
+        color: white;
+    }
+    .consumable-high { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+    .consumable-medium { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+    .consumable-low { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+    .consumable-critical { background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%); }
+    
+    .action-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 25px;
+        color: white;
+        padding: 10px 20px;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        display: inline-block;
+        margin: 5px;
+    }
+    .action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        color: white;
+        text-decoration: none;
+    }
+    .btn-adjust { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+    .btn-purchase { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+    
+    .progress {
+        height: 8px;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.3);
+    }
+    .progress-bar {
+        border-radius: 10px;
+        background: rgba(255,255,255,0.9);
+    }
+    .progress-0 { width: 0%; }
+    .progress-25 { width: 25%; }
+    .progress-50 { width: 50%; }
+    .progress-75 { width: 75%; }
+    .progress-100 { width: 100%; }
+    
+    .autocomplete-container {
+        position: relative;
+    }
+    .autocomplete-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+    }
+    .autocomplete-item {
+        padding: 10px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background 0.2s ease;
+    }
+    .autocomplete-item:hover,
+    .autocomplete-item.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    .autocomplete-item:last-child {
+        border-bottom: none;
+    }
+    
+    .quick-adjust-btn {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ffa8a8 100%);
+        border: none;
+        color: white;
+        padding: 6px 12px;
+        border-radius: 15px;
+        font-size: 0.8em;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .quick-adjust-btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 3px 10px rgba(255,107,107,0.4);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête du Dashboard -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-1">📦 Stock Consommables - Fournitures</h1>
+                    <p class="text-muted">Emballages, produits d'entretien et fournitures diverses</p>
+                </div>
+                <div>
+                    <button class="action-btn btn-adjust" data-bs-toggle="modal" data-bs-target="#quickAdjustModal">
+                        <i class="bi bi-tools me-2"></i>Ajustement Rapide
+                    </button>
+                    <a href="{{ url_for('purchases.new_purchase') }}" class="action-btn btn-purchase">
+                        <i class="bi bi-cart-plus me-2"></i>Nouvel Achat
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistiques Rapides -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card dashboard-card text-center p-3">
+                <h3 class="mb-1">{{ total_consommables or 0 }}</h3>
+                <small>Types de Consommables</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card dashboard-card text-center p-3">
+                <h3 class="mb-1">{{ critical_consommables or 0 }}</h3>
+                <small>Stock Critique</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card dashboard-card text-center p-3">
+                <h3 class="mb-1">{{ adjustments_this_month or 0 }}</h3>
+                <small>Ajustements ce Mois</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card dashboard-card text-center p-3">
+                <h3 class="mb-1">{{ estimated_consumption or '0' }}%</h3>
+                <small>Consommation Estimée</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Suggestions Automatiques -->
+    {% if suggested_adjustments %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-lightbulb me-2"></i>💡 Suggestions d'Ajustement Automatique</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">Basé sur l'activité des 30 derniers jours, voici les ajustements suggérés :</p>
+                    <div class="row">
+                        {% for suggestion in suggested_adjustments %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="alert alert-light py-2 px-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ suggestion.product_name }}</strong><br>
+                                        <small class="text-muted">Consommation estimée: {{ suggestion.estimated_consumption }} {{ suggestion.unit }}</small>
+                                    </div>
+                                    <button class="quick-adjust-btn" 
+                                            data-product-id="{{ suggestion.product_id }}" 
+                                            data-product-name="{{ suggestion.product_name|e }}" 
+                                            data-suggested-quantity="{{ suggestion.estimated_consumption }}">
+                                        Appliquer
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Consommables par Catégorie -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-archive me-2"></i>État des Consommables par Type</h5>
+                </div>
+                <div class="card-body">
+                    {% for category, consumables in consumables_by_category.items() %}
+                    <div class="mb-4">
+                        <h6 class="text-primary mb-3">📋 {{ category }}</h6>
+                        <div class="row">
+                            {% for consumable in consumables %}
+                            {% set stock_level = consumable.stock_consommables or 0 %}
+                            {% set seuil = consumable.seuil_consommables or 20 %}
+                            {% if stock_level <= 0 %}
+                                {% set level_class = 'consumable-critical' %}
+                                {% set level_icon = '🔴' %}
+                                {% set status_text = 'ÉPUISÉ' %}
+                            {% elif stock_level <= seuil * 0.5 %}
+                                {% set level_class = 'consumable-low' %}
+                                {% set level_icon = '🟡' %}
+                                {% set status_text = 'STOCK BAS' %}
+                            {% elif stock_level <= seuil %}
+                                {% set level_class = 'consumable-medium' %}
+                                {% set level_icon = '🟠' %}
+                                {% set status_text = 'SURVEILLER' %}
+                            {% else %}
+                                {% set level_class = 'consumable-high' %}
+                                {% set level_icon = '🟢' %}
+                                {% set status_text = 'SUFFISANT' %}
+                            {% endif %}
+                            
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="consumable-card {{ level_class }}">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="fw-bold">{{ level_icon }} {{ consumable.name }}</span>
+                                        <span class="badge bg-light text-dark">{{ stock_level }} {{ consumable.unit or 'unités' }}</span>
+                                    </div>
+                                    <div class="progress mb-2">
+                                        {% set percentage = (stock_level / seuil) * 100 if seuil > 0 else 0 %}
+                                        {% if percentage <= 25 %}
+                                            <div class="progress-bar progress-25"></div>
+                                        {% elif percentage <= 50 %}
+                                            <div class="progress-bar progress-50"></div>
+                                        {% elif percentage <= 75 %}
+                                            <div class="progress-bar progress-75"></div>
+                                        {% else %}
+                                            <div class="progress-bar progress-100"></div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <small>{{ status_text }}</small><br>
+                                            <small>Seuil: {{ seuil }} {{ consumable.unit or 'unités' }}</small>
+                                        </div>
+                                        <button class="quick-adjust-btn" 
+                                                data-product-id="{{ consumable.id }}" 
+                                                data-product-name="{{ consumable.name|e }}" 
+                                                data-current-stock="{{ stock_level }}">
+                                            Ajuster
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions et Historique -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>Ajustements Récents</h6>
+                </div>
+                <div class="card-body">
+                    {% for adjustment in recent_adjustments %}
+                    <div class="card mb-2">
+                        <div class="card-body py-2">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <strong>{{ adjustment.product_name }}</strong><br>
+                                    <small class="text-muted">{{ adjustment.reason or 'Ajustement manuel' }}</small>
+                                </div>
+                                <div class="text-end">
+                                    {% if adjustment.quantity > 0 %}
+                                    <small class="text-success">+{{ adjustment.quantity }}</small>
+                                    {% else %}
+                                    <small class="text-danger">{{ adjustment.quantity }}</small>
+                                    {% endif %}
+                                    <br><small class="text-muted">{{ adjustment.time_ago }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Actions Rapides -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>Actions Rapides</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-list-ul me-2"></i>Historique Achats
+                        </a>
+                        <a href="{{ url_for('stock.overview') }}" class="btn btn-outline-info btn-sm">
+                            <i class="bi bi-pie-chart me-2"></i>Vue d'Ensemble Stock
+                        </a>
+                        <a href="{{ url_for('stock.adjustment') }}" class="btn btn-outline-warning btn-sm">
+                            <i class="bi bi-tools me-2"></i>Ajustement Détaillé
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ajustement Rapide avec Autocomplétion -->
+<div class="modal fade" id="quickAdjustModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">⚡ Ajustement Rapide - Consommables</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">🔍 Rechercher Consommable</label>
+                    <div class="autocomplete-container">
+                        <input type="text" 
+                               class="form-control" 
+                               id="productSearch" 
+                               placeholder="Tapez 2-3 lettres (ex: SA pour Sacs)"
+                               autocomplete="off">
+                        <div id="autocompleteSuggestions" class="autocomplete-suggestions"></div>
+                    </div>
+                    <small class="text-muted">Tapez au moins 2 caractères pour voir les suggestions</small>
+                </div>
+                <div id="selectedProductInfo" style="display: none;">
+                    <div class="alert alert-info">
+                        <strong id="selectedProductName"></strong><br>
+                        <small>Stock actuel: <span id="currentStock"></span></small>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Quantité d'Ajustement</label>
+                    <input type="number" class="form-control" id="adjustmentQuantity" placeholder="+ pour ajout, - pour consommation">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Raison</label>
+                    <select class="form-control" id="adjustmentReason">
+                        <option value="purchase">Réception Achat</option>
+                        <option value="consumption">Consommation Estimée</option>
+                        <option value="inventory">Inventaire Physique</option>
+                        <option value="waste">Gaspillage/Perte</option>
+                        <option value="other">Autre</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-success" id="confirmAdjustment">Confirmer Ajustement</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Variables globales
+let selectedProductId = null;
+let autocompleteData = [];
+
+// Actualisation automatique toutes les 5 minutes
+setTimeout(function() {
+    location.reload();
+}, 300000);
+
+// ✅ PREMIÈRE IMPLÉMENTATION AUTOCOMPLÉTION
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('productSearch');
+    const suggestionsContainer = document.getElementById('autocompleteSuggestions');
+    let currentSuggestionIndex = -1;
+    
+    // Event listener pour la recherche
+    searchInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        
+        if (query.length >= 2) {
+            // Simuler un appel API - À remplacer par vraie API
+            searchProducts(query);
+        } else {
+            hideSuggestions();
+        }
+    });
+    
+    // Gestion clavier (flèches + entrée)
+    searchInput.addEventListener('keydown', function(e) {
+        const suggestions = suggestionsContainer.querySelectorAll('.autocomplete-item');
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            currentSuggestionIndex = Math.min(currentSuggestionIndex + 1, suggestions.length - 1);
+            updateActiveSuggestion(suggestions);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            currentSuggestionIndex = Math.max(currentSuggestionIndex - 1, -1);
+            updateActiveSuggestion(suggestions);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (currentSuggestionIndex >= 0 && suggestions[currentSuggestionIndex]) {
+                selectProduct(suggestions[currentSuggestionIndex]);
+            }
+        } else if (e.key === 'Escape') {
+            hideSuggestions();
+        }
+    });
+    
+    // Fermer suggestions si clic ailleurs
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.autocomplete-container')) {
+            hideSuggestions();
+        }
+    });
+    
+    // Event listeners pour boutons ajustement rapide
+    document.querySelectorAll('.quick-adjust-btn').forEach(function(button) {
+        button.addEventListener('click', function() {
+            const productId = this.dataset.productId;
+            const productName = this.dataset.productName;
+            const currentStock = this.dataset.currentStock || this.dataset.suggestedQuantity || '';
+            
+            selectedProductId = productId;
+            document.getElementById('productSearch').value = productName;
+            document.getElementById('selectedProductName').textContent = productName;
+            document.getElementById('currentStock').textContent = currentStock;
+            document.getElementById('selectedProductInfo').style.display = 'block';
+            
+            new bootstrap.Modal(document.getElementById('quickAdjustModal')).show();
+        });
+    });
+    
+    // Confirmer ajustement
+    document.getElementById('confirmAdjustment').addEventListener('click', function() {
+        const quantity = document.getElementById('adjustmentQuantity').value;
+        const reason = document.getElementById('adjustmentReason').value;
+        
+        if (!selectedProductId || !quantity) {
+            alert('Veuillez sélectionner un produit et entrer une quantité');
+            return;
+        }
+        
+        // Ici appel API pour ajustement
+        console.log('Ajustement:', {
+            productId: selectedProductId,
+            quantity: quantity,
+            reason: reason
+        });
+        
+        alert('Ajustement enregistré: ' + quantity + ' unités');
+        
+        // Fermer modal et recharger
+        bootstrap.Modal.getInstance(document.getElementById('quickAdjustModal')).hide();
+        setTimeout(function() {
+            location.reload();
+        }, 1000);
+    });
+});
+
+// Fonction de recherche produits (simulation - À remplacer par API)
+function searchProducts(query) {
+    // Simulation de données - À remplacer par fetch('/api/products/search?q=' + query)
+    const mockData = [
+        {id: 1, name: 'Sacs Papier 10cm', category: 'Emballage', current_stock: 150},
+        {id: 2, name: 'Sacs Papier 15cm', category: 'Emballage', current_stock: 75},
+        {id: 3, name: 'Sachets Plastique', category: 'Emballage', current_stock: 200},
+        {id: 4, name: 'Savon Désinfectant', category: 'Entretien', current_stock: 5},
+        {id: 5, name: 'Serviettes Papier', category: 'Hygiène', current_stock: 30}
+    ];
+    
+    const filteredResults = mockData.filter(item => 
+        item.name.toLowerCase().includes(query.toLowerCase())
+    );
+    
+    showSuggestions(filteredResults);
+}
+
+// Afficher suggestions
+function showSuggestions(results) {
+    const container = document.getElementById('autocompleteSuggestions');
+    container.innerHTML = '';
+    
+    if (results.length === 0) {
+        container.innerHTML = '<div class="autocomplete-item">Aucun résultat trouvé</div>';
+    } else {
+        results.forEach(function(item, index) {
+            const div = document.createElement('div');
+            div.className = 'autocomplete-item';
+            div.innerHTML = '<strong>' + item.name + '</strong><br><small class="text-muted">' + item.category + ' - Stock: ' + item.current_stock + '</small>';
+            div.addEventListener('click', function() {
+                selectProduct(this, item);
+            });
+            container.appendChild(div);
+        });
+    }
+    
+    container.style.display = 'block';
+}
+
+// Masquer suggestions
+function hideSuggestions() {
+    document.getElementById('autocompleteSuggestions').style.display = 'none';
+    currentSuggestionIndex = -1;
+}
+
+// Mettre à jour suggestion active
+function updateActiveSuggestion(suggestions) {
+    suggestions.forEach(function(item, index) {
+        item.classList.toggle('active', index === currentSuggestionIndex);
+    });
+}
+
+// Sélectionner un produit
+function selectProduct(element, productData) {
+    if (!productData) {
+        // Extraire données depuis l'élément
+        const text = element.textContent;
+        productData = {
+            id: Date.now(), // Temporaire
+            name: text.split('\n')[0],
+            current_stock: text.match(/Stock: (\d+)/)?.[1] || '0'
+        };
+    }
+    
+    selectedProductId = productData.id;
+    document.getElementById('productSearch').value = productData.name;
+    document.getElementById('selectedProductName').textContent = productData.name;
+    document.getElementById('currentStock').textContent = productData.current_stock;
+    document.getElementById('selectedProductInfo').style.display = 'block';
+    
+    hideSuggestions();
+}
+
+// Animation d'entrée pour les cartes
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.consumable-card');
+    cards.forEach(function(card, index) {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(10px)';
+        setTimeout(function() {
+            card.style.transition = 'all 0.3s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 75);
+    });
+});
+</script>
+{% endblock %}
