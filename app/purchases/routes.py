@@ -7,7 +7,7 @@ Auteur: ERP Fée Maison
 from flask import render_template, redirect, url_for, flash, request, jsonify, current_app, abort
 from flask_login import login_required, current_user
 from extensions import db
-from models import Product, User
+# CORRECTION : Import local pour éviter la circularité
 from .models import Purchase, PurchaseItem, PurchaseStatus, PurchaseUrgency
 from .forms import (PurchaseForm, PurchaseApprovalForm, PurchaseReceiptForm, 
                     PurchaseSearchForm, QuickPurchaseForm, PurchaseReceiptItemForm)
@@ -18,6 +18,18 @@ import json
 
 # Import du blueprint depuis __init__.py
 from . import bp as purchases
+
+# Fonction helper pour récupérer les modèles principaux
+def get_main_models():
+    """Fonction helper pour importer Product et User sans circularité"""
+    import sys
+    if 'models' in sys.modules:
+        models_module = sys.modules['models']
+        return models_module.Product, models_module.User
+    else:
+        # Import direct si le module principal n'est pas encore chargé
+        from models import Product, User
+        return Product, User
 
 # ==================== ROUTES PRINCIPALES CRUD ====================
 
