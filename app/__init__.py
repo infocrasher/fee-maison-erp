@@ -3,10 +3,11 @@ from flask import Flask, g, request
 from datetime import datetime
 from extensions import db, migrate, login_manager, csrf
 from config import Config
+from config import DevelopmentConfigPostgreSQL
 
 def create_app():
     app = Flask(__name__)
-    app.config.from_object(Config)
+    app.config.from_object(DevelopmentConfigPostgreSQL) 
 
     # Initialize extensions
     db.init_app(app)
