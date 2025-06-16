@@ -99,13 +99,8 @@ def create_app():
     from app.auth.routes import auth as auth_blueprint
     app.register_blueprint(auth_blueprint, url_prefix='/auth')
 
-    try:
-        from app.categories import bp as categories_bp
-        app.register_blueprint(categories_bp)
-        print("✅ Blueprint categories enregistré avec succès")
-    except ImportError as e:
-        print(f"⚠️ Blueprint categories non disponible: {e}")
-    # Module categories sera créé plus tard si nécessaire
+    # from app.categories import bp as categories_bp
+    # app.register_blueprint(categories_bp)
 
     from app.products.routes import products as products_blueprint
     app.register_blueprint(products_blueprint, url_prefix='/products')
