@@ -127,9 +127,6 @@ def create_app(config_name=None):
     from app.recipes.routes import recipes as recipes_blueprint
     app.register_blueprint(recipes_blueprint, url_prefix='/admin/recipes')
     
-    from app.stock.routes import stock as stock_blueprint
-    app.register_blueprint(stock_blueprint, url_prefix='/admin/stock')
-
     from app.admin.routes import admin as admin_blueprint
     app.register_blueprint(admin_blueprint, url_prefix='/admin')
 
