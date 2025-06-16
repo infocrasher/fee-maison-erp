@@ -195,7 +195,7 @@
                             <li><h6 class="dropdown-header">Administration</h6></li>
                             <li><a class="dropdown-item" href="{{ url_for('purchases.pending_approvals') }}">
                                 <i class="fas fa-check-circle me-2 text-warning"></i>Approbations en Attente
-                                <span id="pending-approvals-count" class="badge-notification"></span>
+                                <span id="pending-approvals-count" class="badge-notification" style="display: none;"></span>
                             </a></li>
                             <li><a class="dropdown-item" href="{{ url_for('purchases.overdue_purchases') }}">
                                 <i class="fas fa-exclamation-triangle me-2 text-danger"></i>Achats en Retard
@@ -292,12 +292,32 @@
                 <div class="col-md-6 text-end">
                     <p class="mb-0">
                         <i class="fas fa-calendar me-1"></i>
-                        {{ moment().format('YYYY') }} - Version 2.0
+                        <span id="current-year"></span> - Version 2.0
                     </p>
                 </div>
             </div>
         </div>
     </footer>
+
+    <!-- Variables globales pour JavaScript -->
+    <script type="text/javascript">
+        // Configuration globale de l'application
+        window.FEE_MAISON_CONFIG = {
+            {% if current_user.is_authenticated %}
+            isAuthenticated: true,
+            isAdmin: {{ 'true' if current_user.is_admin else 'false' }},
+            username: "{{ current_user.username }}",
+            {% if current_user.is_admin %}
+            apiEndpoints: {
+                pendingPurchasesCount: "{{ url_for('purchases.api_pending_count') if 'purchases.api_pending_count' in url_for.__globals__ else '#' }}"
+            }
+            {% endif %}
+            {% else %}
+            isAuthenticated: false,
+            isAdmin: false
+            {% endif %}
+        };
+    </script>
 
     <!-- Scripts JavaScript -->
     <!-- Bootstrap JS -->
@@ -307,25 +327,33 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/locale/fr.min.js"></script>
     
     <!-- Scripts personnalisés -->
-    <script>
+    <script type="text/javascript">
         // Configuration locale pour moment.js
-        moment.locale('fr');
-        
-        // Variables globales définies côté serveur
-        {% if current_user.is_authenticated and current_user.is_admin %}
-        const API_ENDPOINTS = {
-            pendingCount: "{{ url_for('purchases.api_pending_count') }}"
-        };
+        if (typeof moment !== 'undefined') {
+            moment.locale('fr');
+        }
+
+        // Définition de l'année courante
+        document.addEventListener('DOMContentLoaded', function() {
+            const yearElement = document.getElementById('current-year');
+            if (yearElement) {
+                yearElement.textContent = new Date().getFullYear();
+            }
+        });
         
         // Actualisation automatique des compteurs de notifications
         function updateNotificationCounters() {
-            // Vérification que l'endpoint existe avant d'appeler
-            if (typeof API_ENDPOINTS !== 'undefined' && API_ENDPOINTS.pendingCount) {
-                fetch(API_ENDPOINTS.pendingCount)
+            if (window.FEE_MAISON_CONFIG && 
+                window.FEE_MAISON_CONFIG.isAdmin && 
+                window.FEE_MAISON_CONFIG.apiEndpoints && 
+                window.FEE_MAISON_CONFIG.apiEndpoints.pendingPurchasesCount &&
+                window.FEE_MAISON_CONFIG.apiEndpoints.pendingPurchasesCount !== '#') {
+                
+                fetch(window.FEE_MAISON_CONFIG.apiEndpoints.pendingPurchasesCount)
                     .then(response => response.json())
                     .then(data => {
                         const counter = document.getElementById('pending-approvals-count');
-                        if (counter && data.count > 0) {
+                        if (counter && data.count && data.count > 0) {
                             counter.textContent = data.count;
                             counter.style.display = 'inline';
                         } else if (counter) {
@@ -336,11 +364,36 @@
             }
         }
         
-        // Actualisation toutes les 30 secondes
-        setInterval(updateNotificationCounters, 30000);
-        // Actualisation au chargement
-        document.addEventListener('DOMContentLoaded', updateNotificationCounters);
-        {% endif %}
+        // Initialisation après chargement du DOM
+        document.addEventListener('DOMContentLoaded', function() {
+            // Actualisation des compteurs
+            if (window.FEE_MAISON_CONFIG && window.FEE_MAISON_CONFIG.isAdmin) {
+                updateNotificationCounters();
+                // Actualisation toutes les 30 secondes
+                setInterval(updateNotificationCounters, 30000);
+            }
+            
+            // Auto-hide des alerts après 5 secondes
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                if (!alert.classList.contains('alert-danger')) {
+                    setTimeout(function() {
+                        if (typeof bootstrap !== 'undefined' && bootstrap.Alert) {
+                            const bsAlert = new bootstrap.Alert(alert);
+                            bsAlert.close();
+                        }
+                    }, 5000);
+                }
+            });
+            
+            // Tooltip Bootstrap pour les éléments avec title
+            if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+                const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                tooltipTriggerList.map(function(tooltipTriggerEl) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl);
+                });
+            }
+        });
         
         // Fonction utilitaire pour formater les montants
         function formatCurrency(amount) {
@@ -351,21 +404,6 @@
             }).format(amount);
         }
         
-        // Auto-hide des alerts après 5 secondes
-        document.addEventListener('DOMContentLoaded', function() {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(function(alert) {
-                if (!alert.classList.contains('alert-danger')) {
-                    setTimeout(function() {
-                        if (typeof bootstrap !== 'undefined') {
-                            const bsAlert = new bootstrap.Alert(alert);
-                            bsAlert.close();
-                        }
-                    }, 5000);
-                }
-            });
-        });
-        
         // Confirmation pour les actions destructives
         document.addEventListener('click', function(e) {
             if (e.target.matches('[data-confirm]')) {
@@ -374,16 +412,6 @@
                     e.preventDefault();
                     return false;
                 }
-            }
-        });
-        
-        // Tooltip Bootstrap pour les éléments avec title
-        document.addEventListener('DOMContentLoaded', function() {
-            if (typeof bootstrap !== 'undefined') {
-                const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-                tooltipTriggerList.map(function(tooltipTriggerEl) {
-                    return new bootstrap.Tooltip(tooltipTriggerEl);
-                });
             }
         });
     </script>
