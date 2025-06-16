@@ -145,6 +145,9 @@ def create_app(config_name=None):
     from app.purchases import bp as purchases_bp
     app.register_blueprint(purchases_bp)
 
+    from app.stock import bp as stock_bp
+    app.register_blueprint(stock_bp)
+
     # Gestionnaire d'erreurs personnalisés
     @app.errorhandler(404)
     def not_found_error(error):
