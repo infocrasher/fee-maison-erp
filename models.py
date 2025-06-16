@@ -7,6 +7,8 @@ from extensions import db
 
 # Import de la table de liaison depuis employees
 from app.employees.models import order_employees
+# Import de la table de liaison depuis Purchases
+from app.purchases.models import PurchaseStatus, PurchaseUrgency
 
 CONVERSION_FACTORS = {
     'kg_g': 1000, 'g_kg': 0.001,
