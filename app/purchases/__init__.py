@@ -12,5 +12,5 @@ from . import models
 # Création du blueprint purchases
 bp = Blueprint('purchases', __name__, url_prefix='/purchases')
 
-# Import des routes après création du blueprint pour éviter les imports circulaires
-from . import routes
+# IMPORTANT : Les routes seront importées dans app/__init__.py
+# après l'enregistrement du blueprint pour éviter les imports circulaires

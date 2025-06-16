@@ -8,8 +8,6 @@ from extensions import db
 # Import de la table de liaison depuis employees
 from app.employees.models import order_employees
 
-
-
 CONVERSION_FACTORS = {
     'kg_g': 1000, 'g_kg': 0.001,
     'l_ml': 1000, 'ml_l': 0.001,

@@ -8,20 +8,28 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, TextAreaField, FloatField, IntegerField, SelectField, SubmitField, HiddenField, FieldList, FormField
 from wtforms.fields import DateTimeLocalField
 from wtforms.validators import DataRequired, Optional, Length, NumberRange, Email, ValidationError
-import sys
+from wtforms_sqlalchemy.fields import QuerySelectField
 from decimal import Decimal
-from models import Product
 from .models import PurchaseStatus, PurchaseUrgency
+import sys
 
-# Factory pour lister tous les produits
+# Factory pour lister tous les produits - Import sécurisé
 def all_products_query():
-    return Product.query.order_by(Product.name)
+    """Factory pour récupérer tous les produits sans import circulaire"""
+    if 'models' in sys.modules:
+        Product = sys.modules['models'].Product
+        return Product.query.order_by(Product.name)
+    return []
 
 # Factory pour lister les produits ingrédients et consommables
 def purchasable_products_query():
-    return Product.query.filter(
-        Product.product_type.in_(['ingredient', 'consommable'])
-    ).order_by(Product.name)
+    """Factory pour récupérer les produits achetables"""
+    if 'models' in sys.modules:
+        Product = sys.modules['models'].Product
+        return Product.query.filter(
+            Product.product_type.in_(['ingredient', 'consommable'])
+        ).order_by(Product.name)
+    return []
 
 class PurchaseItemForm(FlaskForm):
     """Formulaire pour une ligne d'article d'achat"""
@@ -104,47 +112,6 @@ class PurchaseForm(FlaskForm):
         
         if valid_items == 0:
             raise ValidationError('Au moins un article avec quantité et prix doit être spécifié.')
-    
-    def validate_expected_delivery_date(self, field):
-        """Validation de la date de livraison"""
-        if field.data:
-            from datetime import datetime
-            if field.data < datetime.now():
-                raise ValidationError('La date de livraison ne peut pas être dans le passé.')
-
-class PurchaseApprovalForm(FlaskForm):
-    """Formulaire d'approbation d'un bon d'achat"""
-    approval_notes = TextAreaField('Notes d\'approbation', validators=[Optional(), Length(max=500)],
-                                  render_kw={"rows": 3, "placeholder": "Commentaires sur l'approbation..."})
-    
-    # Modifications autorisées lors de l'approbation
-    shipping_cost = FloatField('Frais de port (DA)', validators=[Optional(), NumberRange(min=0)])
-    tax_amount = FloatField('Montant TVA (DA)', validators=[Optional(), NumberRange(min=0)])
-    expected_delivery_date = DateTimeLocalField('Date de livraison prévue', validators=[Optional()], format='%Y-%m-%dT%H:%M')
-    
-    approve = SubmitField('Approuver')
-    reject = SubmitField('Rejeter')
-
-class PurchaseReceiptForm(FlaskForm):
-    """Formulaire de réception de marchandises"""
-    receipt_notes = TextAreaField('Notes de réception', validators=[Optional(), Length(max=500)],
-                                 render_kw={"rows": 3, "placeholder": "État des marchandises, problèmes éventuels..."})
-    
-    # Champs pour chaque ligne (généré dynamiquement)
-    partial_receipt = SubmitField('Réception partielle')
-    complete_receipt = SubmitField('Réception complète')
-
-class PurchaseReceiptItemForm(FlaskForm):
-    """Formulaire pour la réception d'un article spécifique"""
-    item_id = HiddenField('Article ID')
-    quantity_to_receive = FloatField('Quantité à recevoir', validators=[DataRequired(), NumberRange(min=0.01)])
-    stock_location = SelectField('Stock destination', choices=[
-        ('ingredients_magasin', 'Stock Magasin'),
-        ('ingredients_local', 'Stock Local Production'),
-        ('comptoir', 'Stock Comptoir'),
-        ('consommables', 'Stock Consommables')
-    ])
-    notes = StringField('Notes', validators=[Optional(), Length(max=255)])
 
 class PurchaseSearchForm(FlaskForm):
     """Formulaire de recherche dans les achats"""
@@ -203,40 +170,21 @@ class QuickPurchaseForm(FlaskForm):
     
     submit = SubmitField('Créer l\'achat rapide')
 
-class SupplierForm(FlaskForm):
-    """Formulaire de gestion des informations fournisseur"""
-    name = StringField('Nom du fournisseur', validators=[DataRequired(), Length(min=2, max=200)])
-    contact_person = StringField('Personne de contact', validators=[Optional(), Length(max=100)])
-    phone = StringField('Téléphone', validators=[Optional(), Length(max=20)])
-    email = StringField('Email', validators=[Optional(), Email(), Length(max=120)])
-    address = TextAreaField('Adresse complète', validators=[Optional(), Length(max=500)],
-                           render_kw={"rows": 3})
-    
-    default_payment_terms = StringField('Conditions de paiement par défaut', validators=[Optional(), Length(max=100)],
-                                       render_kw={"placeholder": "Ex: 30 jours net"})
-    
-    notes = TextAreaField('Notes sur le fournisseur', validators=[Optional(), Length(max=1000)],
-                         render_kw={"rows": 3, "placeholder": "Historique, particularités..."})
-    
-    submit = SubmitField('Enregistrer le fournisseur')
+# Placeholder pour autres formulaires
+class PurchaseApprovalForm(FlaskForm):
+    """Formulaire d'approbation d'un bon d'achat - Placeholder"""
+    approval_notes = TextAreaField('Notes d\'approbation', validators=[Optional(), Length(max=500)])
+    approve = SubmitField('Approuver')
+    reject = SubmitField('Rejeter')
 
-class BulkPurchaseStatusForm(FlaskForm):
-    """Formulaire de modification en masse du statut d'achats"""
-    new_status = SelectField('Nouveau statut', choices=[
-        (PurchaseStatus.ORDERED.value, 'Marquer comme Commandé'),
-        (PurchaseStatus.CANCELLED.value, 'Annuler'),
-        (PurchaseStatus.APPROVED.value, 'Approuver')
-    ], validators=[DataRequired()])
-    
-    reason = TextAreaField('Motif de la modification', validators=[DataRequired(), Length(min=5, max=500)],
-                          render_kw={"rows": 3, "placeholder": "Expliquez la raison de cette modification en masse..."})
-    
-    confirm = StringField('Tapez "CONFIRMER" pour valider', validators=[DataRequired()],
-                         render_kw={"placeholder": "CONFIRMER"})
-    
-    submit = SubmitField('Appliquer à la sélection')
-    
-    def validate_confirm(self, field):
-        """Validation de confirmation"""
-        if field.data.upper() != 'CONFIRMER':
-            raise ValidationError('Vous devez taper "CONFIRMER" pour valider cette opération.')
+class PurchaseReceiptForm(FlaskForm):
+    """Formulaire de réception de marchandises - Placeholder"""
+    receipt_notes = TextAreaField('Notes de réception', validators=[Optional(), Length(max=500)])
+    partial_receipt = SubmitField('Réception partielle')
+    complete_receipt = SubmitField('Réception complète')
+
+class PurchaseReceiptItemForm(FlaskForm):
+    """Formulaire pour la réception d'un article spécifique - Placeholder"""
+    item_id = HiddenField('Article ID')
+    quantity_to_receive = FloatField('Quantité à recevoir', validators=[DataRequired(), NumberRange(min=0.01)])
+    notes = StringField('Notes', validators=[Optional(), Length(max=255)])
