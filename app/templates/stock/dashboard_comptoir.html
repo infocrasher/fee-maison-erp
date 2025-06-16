@@ -69,6 +69,7 @@
         border-radius: 20px;
         font-size: 0.9em;
         transition: all 0.3s ease;
+        cursor: pointer;
     }
     .sale-btn:hover {
         transform: scale(1.05);
@@ -206,7 +207,10 @@
                                         </div>
                                         <div>
                                             {% if can_sell %}
-                                            <button class="sale-btn" data-product-id="{{ product.id }}" data-product-name="{{ product.name|e }}" data-product-price="{{ product.price or 0 }}"></button>
+                                            <button class="sale-btn" 
+                                                    data-product-id="{{ product.id }}" 
+                                                    data-product-name="{{ product.name|e }}" 
+                                                    data-product-price="{{ product.price or 0 }}">
                                                 <i class="bi bi-cart-plus"></i> Vendre
                                             </button>
                                             {% else %}
@@ -316,18 +320,6 @@ setTimeout(function() {
     location.reload();
 }, 180000);
 
-// Fonction vente rapide
-function quickSale(productId, productName) {
-    currentProductId = productId;
-    document.getElementById('productName').textContent = productName;
-    
-    // Récupérer le prix depuis la base (ou utiliser une valeur par défaut)
-    // Ici on pourrait faire un appel AJAX pour récupérer le prix
-    document.getElementById('salePrice').value = ''; // À remplir par l'utilisateur
-    
-    new bootstrap.Modal(document.getElementById('quickSaleModal')).show();
-}
-
 // Confirmer la vente
 function confirmSale() {
     const quantity = document.getElementById('saleQuantity').value;
@@ -340,20 +332,38 @@ function confirmSale() {
     
     // Ici on ferait un appel AJAX pour enregistrer la vente
     // Pour l'instant, simulation
-    alert(`Vente enregistrée: ${quantity} pcs à ${price} DA`);
+    alert('Vente enregistrée: ' + quantity + ' pcs à ' + price + ' DA');
     
     // Fermer modal et recharger
     bootstrap.Modal.getInstance(document.getElementById('quickSaleModal')).hide();
-    setTimeout(() => location.reload(), 1000);
+    setTimeout(function() {
+        location.reload();
+    }, 1000);
 }
 
-// Animation d'entrée pour les cartes
+// Event listeners et animations
 document.addEventListener('DOMContentLoaded', function() {
+    // ✅ CORRECTION: Event listeners pour boutons vente avec data attributes
+    document.querySelectorAll('.sale-btn').forEach(function(button) {
+        button.addEventListener('click', function() {
+            const productId = this.dataset.productId;
+            const productName = this.dataset.productName;
+            const productPrice = this.dataset.productPrice;
+            
+            currentProductId = productId;
+            document.getElementById('productName').textContent = productName;
+            document.getElementById('salePrice').value = productPrice;
+            
+            new bootstrap.Modal(document.getElementById('quickSaleModal')).show();
+        });
+    });
+    
+    // Animation d'entrée pour les cartes
     const cards = document.querySelectorAll('.product-card');
-    cards.forEach((card, index) => {
+    cards.forEach(function(card, index) {
         card.style.opacity = '0';
         card.style.transform = 'scale(0.9)';
-        setTimeout(() => {
+        setTimeout(function() {
             card.style.transition = 'all 0.4s ease';
             card.style.opacity = '1';
             card.style.transform = 'scale(1)';
