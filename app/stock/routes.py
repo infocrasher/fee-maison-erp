@@ -258,4 +258,204 @@ def dashboard_consommables():
     low_stock_consommables = [p for p in Product.query.all() if p.is_low_stock_by_location('consommables')]
     
     # Valeur totale stock consommables
-    total_value =
+    total_value = sum(p.stock_consommables * float(p.cost_price or 0) for p in products_consommables)
+    
+    # Ajustements récents
+    recent_adjustments = StockMovement.query.filter(
+        and_(
+            StockMovement.stock_location == StockLocationType.CONSOMMABLES,
+            StockMovement.movement_type.in_([StockMovementType.AJUSTEMENT_POSITIF, StockMovementType.AJUSTEMENT_NEGATIF])
+        )
+    ).order_by(StockMovement.created_at.desc()).limit(5).all()
+    
+    return render_template(
+        'stock/dashboard_consommables.html',
+        title="Dashboard Stock Consommables",
+        products_consommables=products_consommables,
+        low_stock_consommables=low_stock_consommables,
+        total_value=total_value,
+        recent_adjustments=recent_adjustments,
+        total_consommables=len(products_consommables),
+        low_stock_count=len(low_stock_consommables)
+    )
+
+# ==================== ROUTES GESTION DES TRANSFERTS ====================
+
+@stock.route('/transfers')
+@login_required
+def transfers_list():
+    """Liste des transferts entre stocks"""
+    transfers = StockTransfer.query.order_by(StockTransfer.requested_date.desc()).all()
+    
+    return render_template(
+        'stock/transfers.html',
+        title="Gestion des Transferts",
+        transfers=transfers
+    )
+
+@stock.route('/transfers/create', methods=['GET', 'POST'])
+@login_required
+def create_transfer():
+    """Création d'un nouveau transfert"""
+    form = StockTransferForm()
+    
+    if form.validate_on_submit():
+        # Création du transfert principal
+        transfer = StockTransfer(
+            source_location=getattr(StockLocationType, form.source_location.data.upper()),
+            destination_location=getattr(StockLocationType, form.destination_location.data.upper()),
+            requested_by_id=current_user.id,
+            reason=form.reason.data,
+            notes=form.notes.data,
+            priority=form.priority.data
+        )
+        
+        db.session.add(transfer)
+        db.session.flush()  # Pour obtenir l'ID du transfert
+        
+        # Ajout des lignes de transfert
+        for line_data in form.transfer_lines.data:
+            if line_data['product_id'] and line_data['quantity_requested'] > 0:
+                transfer_line = StockTransferLine(
+                    transfer_id=transfer.id,
+                    product_id=line_data['product_id'],
+                    quantity_requested=line_data['quantity_requested'],
+                    unit_cost=Product.query.get(line_data['product_id']).cost_price or 0.0,
+                    notes=line_data.get('notes', '')
+                )
+                db.session.add(transfer_line)
+        
+        db.session.commit()
+        flash(f'Transfert {transfer.reference} créé avec succès.', 'success')
+        return redirect(url_for('stock.transfers_list'))
+    
+    return render_template(
+        'stock/create_transfer.html',
+        title="Créer un Transfert",
+        form=form
+    )
+
+@stock.route('/transfers/<int:transfer_id>/approve', methods=['POST'])
+@login_required
+@admin_required
+def approve_transfer(transfer_id):
+    """Approbation d'un transfert"""
+    transfer = StockTransfer.query.get_or_404(transfer_id)
+    
+    if transfer.approve(current_user.id):
+        db.session.commit()
+        flash(f'Transfert {transfer.reference} approuvé.', 'success')
+    else:
+        flash('Impossible d\'approuver ce transfert.', 'danger')
+    
+    return redirect(url_for('stock.transfers_list'))
+
+@stock.route('/transfers/<int:transfer_id>/complete', methods=['POST'])
+@login_required
+def complete_transfer(transfer_id):
+    """Finalisation d'un transfert avec mise à jour des stocks"""
+    transfer = StockTransfer.query.get_or_404(transfer_id)
+    
+    if not transfer.can_be_completed:
+        flash('Ce transfert ne peut pas être finalisé.', 'danger')
+        return redirect(url_for('stock.transfers_list'))
+    
+    try:
+        # Traitement de chaque ligne de transfert
+        for line in transfer.transfer_lines:
+            product = line.product
+            quantity = line.quantity_requested
+            
+            # Vérification du stock source
+            source_stock = product.get_stock_by_location_type(transfer.source_location.value)
+            if source_stock < quantity:
+                flash(f'Stock insuffisant pour {product.name} (disponible: {source_stock}, demandé: {quantity}).', 'danger')
+                return redirect(url_for('stock.transfers_list'))
+            
+            # Décrémentation stock source
+            product.update_stock_location(transfer.source_location.value, -quantity)
+            
+            # Incrémentation stock destination
+            product.update_stock_location(transfer.destination_location.value, quantity)
+            
+            # Création des mouvements de traçabilité
+            # Mouvement sortie
+            movement_out = StockMovement(
+                product_id=product.id,
+                stock_location=transfer.source_location,
+                movement_type=StockMovementType.TRANSFERT_SORTIE,
+                quantity=-quantity,
+                unit_cost=line.unit_cost,
+                user_id=current_user.id,
+                transfer_id=transfer.id,
+                reason=f"Transfert {transfer.reference} - Sortie"
+            )
+            db.session.add(movement_out)
+            
+            # Mouvement entrée
+            movement_in = StockMovement(
+                product_id=product.id,
+                stock_location=transfer.destination_location,
+                movement_type=StockMovementType.TRANSFERT_ENTREE,
+                quantity=quantity,
+                unit_cost=line.unit_cost,
+                user_id=current_user.id,
+                transfer_id=transfer.id,
+                reason=f"Transfert {transfer.reference} - Entrée"
+            )
+            db.session.add(movement_in)
+            
+            # Mise à jour de la ligne de transfert
+            line.quantity_transferred = quantity
+        
+        # Finalisation du transfert
+        transfer.complete(current_user.id)
+        db.session.commit()
+        
+        flash(f'Transfert {transfer.reference} finalisé avec succès.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erreur lors de la finalisation du transfert: {str(e)}', 'danger')
+    
+    return redirect(url_for('stock.transfers_list'))
+
+# ==================== ROUTES API/AJAX ====================
+
+@stock.route('/api/stock_levels/<int:product_id>')
+@login_required
+def api_stock_levels(product_id):
+    """API pour récupérer les niveaux de stock d'un produit"""
+    product = Product.query.get_or_404(product_id)
+    
+    return jsonify({
+        'comptoir': product.stock_comptoir,
+        'ingredients_local': product.stock_ingredients_local,
+        'ingredients_magasin': product.stock_ingredients_magasin,
+        'consommables': product.stock_consommables,
+        'total': product.total_stock_all_locations,
+        'low_stock_locations': product.get_low_stock_locations()
+    })
+
+@stock.route('/api/movements_history/<int:product_id>')
+@login_required
+def api_movements_history(product_id):
+    """API pour l'historique des mouvements d'un produit"""
+    movements = StockMovement.query.filter_by(product_id=product_id)\
+        .order_by(StockMovement.created_at.desc())\
+        .limit(20).all()
+    
+    movements_data = []
+    for movement in movements:
+        movements_data.append({
+            'reference': movement.reference,
+            'date': movement.created_at.strftime('%d/%m/%Y %H:%M'),
+            'type': movement.movement_type.value,
+            'location': movement.stock_location.value,
+            'quantity': movement.quantity,
+            'stock_after': movement.stock_after,
+            'reason': movement.reason,
+            'user': movement.user.username if movement.user else 'N/A'
+        })
+    
+    return jsonify(movements_data)
