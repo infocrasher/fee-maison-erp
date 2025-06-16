@@ -127,13 +127,18 @@ def create_app(config_name=None):
     from app.recipes.routes import recipes as recipes_blueprint
     app.register_blueprint(recipes_blueprint, url_prefix='/admin/recipes')
     
-    from app.stock.routes import stock as stock_blueprint
+    # ✅ CORRECTION : Import correct du blueprint stock
+    from app.stock import bp as stock_blueprint
     app.register_blueprint(stock_blueprint, url_prefix='/admin/stock')
 
     from app.admin.routes import admin as admin_blueprint
     app.register_blueprint(admin_blueprint, url_prefix='/admin')
 
-    # ✅ CORRECTIONS APPLIQUÉES - Blueprints spéciaux
+    # ✅ CORRECTION : Import correct du blueprint purchases
+    from app.purchases import bp as purchases_blueprint
+    app.register_blueprint(purchases_blueprint, url_prefix='/admin/purchases')
+
+    # Blueprints spéciaux (existants)
     from app.orders.dashboard_routes import dashboard_bp
     app.register_blueprint(dashboard_bp, url_prefix='/dashboard')
 
