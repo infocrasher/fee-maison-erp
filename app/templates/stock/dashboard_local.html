@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Fée Maison{% endblock %}
+
+{% block head %}
+<style>
+    .dashboard-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 15px;
+        color: white;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .dashboard-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    }
+    .production-card {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 15px;
+        color: white;
+    }
+    .ingredient-available { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+    .ingredient-low { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+    .ingredient-critical { background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%); }
+    
+    .action-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 25px;
+        color: white;
+        padding: 10px 20px;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        display: inline-block;
+        margin: 5px;
+    }
+    .action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        color: white;
+        text-decoration: none;
+    }
+    .btn-request { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+    .btn-production { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+    
+    .progress {
+        height: 8px;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.3);
+    }
+    .progress-bar {
+        border-radius: 10px;
+        background: rgba(255,255,255,0.9);
+    }
+    .progress-0 { width: 0%; }
+    .progress-25 { width: 25%; }
+    .progress-50 { width: 50%; }
+    .progress-75 { width: 75%; }
+    .progress-100 { width: 100%; }
+    
+    .order-urgent { border-left: 4px solid #ff4757; }
+    .order-soon { border-left: 4px solid #ffa502; }
+    .order-normal { border-left: 4px solid #2ed573; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête du Dashboard -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-1">🍰 Stock Local - Laboratoire Production</h1>
+                    <p class="text-muted">Ingrédients disponibles pour production immédiate</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('stock.create_transfer') }}" class="action-btn btn-request">
+                        <i class="bi bi-box-arrow-in-down me-2"></i>Demander Transfert
+                    </a>
+                    <a href="{{ url_for('dashboard.production_dashboard') }}" class="action-btn btn-production">
+                        <i class="bi bi-play-circle me-2"></i>Dashboard Production
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistiques Rapides -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card dashboard-card text-center p-3">
+                <h3 class="mb-1">{{ total_ingredients_local or 0 }}</h3>
+                <small>Ingrédients Disponibles</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card dashboard-card text-center p-3">
+                <h3 class="mb-1">{{ ingredients_needed or 0 }}</h3>
+                <small>Ingrédients Manquants</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card dashboard-card text-center p-3">
+                <h3 class="mb-1">{{ orders_pending or 0 }}</h3>
+                <small>Commandes en Attente</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card dashboard-card text-center p-3">
+                <h3 class="mb-1">{{ production_capacity or '100' }}%</h3>
+                <small>Capacité Production</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alertes Urgentes -->
+    {% if missing_ingredients_urgent %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-danger">
+                <h5 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>🚨 PRODUCTION BLOQUÉE</h5>
+                <p class="mb-2">Les ingrédients suivants manquent pour les commandes urgentes :</p>
+                <div class="row">
+                    {% for ingredient in missing_ingredients_urgent %}
+                    <div class="col-md-4">
+                        <span class="badge bg-danger me-2">{{ ingredient.name }}</span>
+                        <small>Besoin: {{ ingredient.needed_quantity }} {{ ingredient.unit }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+                <hr>
+                <a href="{{ url_for('stock.create_transfer') }}" class="btn btn-outline-danger">
+                    <i class="bi bi-arrow-down-circle me-2"></i>Demander Transfert Urgent
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Ingrédients par Statut -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-clipboard-check me-2"></i>État des Ingrédients - Production</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for ingredient in ingredients_local %}
+                        {% set stock_level = ingredient.stock_ingredients_local or 0 %}
+                        {% set seuil = ingredient.seuil_local or 10 %}
+                        {% if stock_level <= 0 %}
+                            {% set level_class = 'ingredient-critical' %}
+                            {% set level_icon = '🔴' %}
+                            {% set status_text = 'RUPTURE' %}
+                        {% elif stock_level <= seuil %}
+                            {% set level_class = 'ingredient-low' %}
+                            {% set level_icon = '🟡' %}
+                            {% set status_text = 'STOCK BAS' %}
+                        {% else %}
+                            {% set level_class = 'ingredient-available' %}
+                            {% set level_icon = '🟢' %}
+                            {% set status_text = 'DISPONIBLE' %}
+                        {% endif %}
+                        
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="production-card {{ level_class }}">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="fw-bold">{{ level_icon }} {{ ingredient.name }}</span>
+                                    <span class="badge bg-light text-dark">{{ stock_level }}</span>
+                                </div>
+                                <div class="progress mb-2">
+                                    {% set percentage = (stock_level / seuil) * 100 if seuil > 0 else 0 %}
+                                    {% if percentage <= 25 %}
+                                        <div class="progress-bar progress-25"></div>
+                                    {% elif percentage <= 50 %}
+                                        <div class="progress-bar progress-50"></div>
+                                    {% elif percentage <= 75 %}
+                                        <div class="progress-bar progress-75"></div>
+                                    {% else %}
+                                        <div class="progress-bar progress-100"></div>
+                                    {% endif %}
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <small>{{ status_text }}</small>
+                                    <small>{{ ingredient.unit or 'unités' }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Commandes en Attente -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-clock me-2"></i>Commandes en Attente</h5>
+                </div>
+                <div class="card-body">
+                    {% for order in pending_orders %}
+                    {% set time_until_due = (order.due_date - current_time).total_seconds() / 3600 if order.due_date else 24 %}
+                    {% if time_until_due <= 2 %}
+                        {% set urgency_class = 'order-urgent' %}
+                        {% set urgency_icon = '🔥' %}
+                    {% elif time_until_due <= 8 %}
+                        {% set urgency_class = 'order-soon' %}
+                        {% set urgency_icon = '⚡' %}
+                    {% else %}
+                        {% set urgency_class = 'order-normal' %}
+                        {% set urgency_icon = '📋' %}
+                    {% endif %}
+                    
+                    <div class="card mb-2 {{ urgency_class }}">
+                        <div class="card-body py-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>{{ urgency_icon }} Commande #{{ order.id }}</strong>
+                                    <br><small class="text-muted">{{ order.items|length }} produit(s)</small>
+                                </div>
+                                <div class="text-end">
+                                    <small class="text-muted">
+                                        {% if order.due_date %}
+                                            {{ order.due_date.strftime('%H:%M') }}
+                                        {% else %}
+                                            Pas de délai
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Actions Rapides -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>Actions Rapides</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('stock.transfers_list') }}" class="btn btn-outline-success btn-sm">
+                            <i class="bi bi-arrow-left-right me-2"></i>Historique Transferts
+                        </a>
+                        <a href="{{ url_for('stock.overview') }}" class="btn btn-outline-info btn-sm">
+                            <i class="bi bi-pie-chart me-2"></i>Vue d'Ensemble
+                        </a>
+                        <a href="{{ url_for('stock.adjustment') }}" class="btn btn-outline-warning btn-sm">
+                            <i class="bi bi-tools me-2"></i>Ajustement
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Actualisation automatique toutes les 2 minutes (plus fréquent pour production)
+setTimeout(function() {
+    location.reload();
+}, 120000);
+
+// Animation d'entrée pour les cartes
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.production-card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateX(-20px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.4s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateX(0)';
+        }, index * 50);
+    });
+});
+
+// Clignotement pour alertes critiques
+const criticalCards = document.querySelectorAll('.ingredient-critical');
+criticalCards.forEach(card => {
+    setInterval(() => {
+        card.style.opacity = card.style.opacity === '0.7' ? '1' : '0.7';
+    }, 1000);
+});
+</script>
+{% endblock %}
