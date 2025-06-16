@@ -142,6 +142,9 @@ def create_app(config_name=None):
     from app.employees.routes import employees_bp
     app.register_blueprint(employees_bp, url_prefix='/employees')
 
+    from app.purchases import bp as purchases_bp
+    app.register_blueprint(purchases_bp)
+
     # Gestionnaire d'erreurs personnalisés
     @app.errorhandler(404)
     def not_found_error(error):
