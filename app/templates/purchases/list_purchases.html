@@ -1,0 +1,534 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Fée Maison{% endblock %}
+
+{% block head %}
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        color: white;
+        padding: 30px;
+        margin-bottom: 30px;
+    }
+    .filter-card {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        color: white;
+    }
+    .purchase-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 15px;
+        border-left: 4px solid #ddd;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .purchase-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    .purchase-pending { border-left-color: #ffa502; }
+    .purchase-validated { border-left-color: #2ed573; }
+    .purchase-cancelled { border-left-color: #ff4757; }
+    
+    .action-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 25px;
+        color: white;
+        padding: 10px 20px;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        display: inline-block;
+        margin: 5px;
+    }
+    .action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        color: white;
+        text-decoration: none;
+    }
+    .btn-new { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+    .btn-export { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+    
+    .status-badge {
+        padding: 8px 15px;
+        border-radius: 20px;
+        font-size: 0.85em;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    .status-pending { background: linear-gradient(135deg, #ffa502 0%, #ff6348 100%); color: white; }
+    .status-validated { background: linear-gradient(135deg, #2ed573 0%, #17c0eb 100%); color: white; }
+    .status-cancelled { background: linear-gradient(135deg, #ff4757 0%, #ff3742 100%); color: white; }
+    
+    .stats-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        padding: 20px;
+        color: white;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    
+    .search-container {
+        position: relative;
+    }
+    .search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+    }
+    .search-item {
+        padding: 10px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background 0.2s ease;
+    }
+    .search-item:hover {
+        background: #f8f9fa;
+    }
+    .search-item:last-child {
+        border-bottom: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête avec statistiques -->
+    <div class="page-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="h2 mb-2">📋 Historique des Achats Fournisseurs</h1>
+                <p class="mb-0">Gestion et suivi de tous vos bons d'achat</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('purchases.new_purchase') }}" class="action-btn btn-new">
+                    <i class="bi bi-plus-circle me-2"></i>Nouveau Bon d'Achat
+                </a>
+                <button class="action-btn btn-export" onclick="exportPurchases()">
+                    <i class="bi bi-download me-2"></i>Exporter
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistiques rapides -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h3 class="mb-1">{{ total_purchases or 0 }}</h3>
+                <small>Total Achats</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h3 class="mb-1">{{ pending_purchases or 0 }}</h3>
+                <small>En Attente</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h3 class="mb-1">{{ total_amount_month or '0' }} DA</h3>
+                <small>Montant ce Mois</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h3 class="mb-1">{{ suppliers_count or 0 }}</h3>
+                <small>Fournisseurs Actifs</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres et Recherche -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="filter-card">
+                <div class="row align-items-center">
+                    <div class="col-md-3">
+                        <label class="form-label mb-2">🔍 Recherche</label>
+                        <div class="search-container">
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="searchInput" 
+                                   placeholder="Fournisseur, N° facture..."
+                                   autocomplete="off">
+                            <div id="searchResults" class="search-results"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label mb-2">📊 Statut</label>
+                        <select class="form-control" id="statusFilter">
+                            <option value="">Tous les statuts</option>
+                            <option value="pending">En attente</option>
+                            <option value="validated">Validé</option>
+                            <option value="cancelled">Annulé</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label mb-2">🏢 Fournisseur</label>
+                        <select class="form-control" id="supplierFilter">
+                            <option value="">Tous fournisseurs</option>
+                            {% for supplier in suppliers_list %}
+                            <option value="{{ supplier }}">{{ supplier }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label mb-2">📅 Date</label>
+                        <select class="form-control" id="dateFilter">
+                            <option value="">Toutes dates</option>
+                            <option value="today">Aujourd'hui</option>
+                            <option value="week">Cette semaine</option>
+                            <option value="month">Ce mois</option>
+                            <option value="quarter">Ce trimestre</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-2">⚙️ Actions</label>
+                        <div>
+                            <button class="btn btn-outline-light btn-sm me-2" onclick="applyFilters()">
+                                <i class="bi bi-funnel"></i> Filtrer
+                            </button>
+                            <button class="btn btn-outline-light btn-sm" onclick="resetFilters()">
+                                <i class="bi bi-arrow-clockwise"></i> Reset
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liste des achats -->
+    <div class="row">
+        <div class="col-12">
+            <div id="purchasesList">
+                {% for purchase in purchases %}
+                <div class="purchase-card purchase-{{ purchase.status }}" data-purchase-id="{{ purchase.id }}">
+                    <div class="row align-items-center">
+                        <div class="col-md-2">
+                            <div class="fw-bold">Bon #{{ purchase.id }}</div>
+                            <small class="text-muted">{{ purchase.purchase_date.strftime('%d/%m/%Y') if purchase.purchase_date else 'Date inconnue' }}</small>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="fw-bold">{{ purchase.supplier_name }}</div>
+                            {% if purchase.invoice_number %}
+                            <small class="text-muted">Facture: {{ purchase.invoice_number }}</small>
+                            {% else %}
+                            <small class="text-muted">Pas de N° facture</small>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-2">
+                            <span class="status-badge status-{{ purchase.status }}">
+                                {% if purchase.status == 'pending' %}
+                                    ⏳ En Attente
+                                {% elif purchase.status == 'validated' %}
+                                    ✅ Validé
+                                {% elif purchase.status == 'cancelled' %}
+                                    ❌ Annulé
+                                {% else %}
+                                    📋 {{ purchase.status|title }}
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="fw-bold">{{ purchase.total_amount or 0 }} DA</div>
+                            <small class="text-muted">{{ purchase.items|length if purchase.items else 0 }} produit(s)</small>
+                        </div>
+                        <div class="col-md-3 text-end">
+                            <a href="{{ url_for('purchases.view_purchase', purchase_id=purchase.id) }}" 
+                               class="btn btn-outline-primary btn-sm me-2">
+                                <i class="bi bi-eye"></i> Voir
+                            </a>
+                            {% if purchase.status == 'pending' %}
+                            <a href="{{ url_for('purchases.edit_purchase', purchase_id=purchase.id) }}" 
+                               class="btn btn-outline-warning btn-sm me-2">
+                                <i class="bi bi-pencil"></i> Modifier
+                            </a>
+                            <button class="btn btn-outline-success btn-sm me-2" 
+                                    onclick="validatePurchase({{ purchase.id }})">
+                                <i class="bi bi-check"></i> Valider
+                            </button>
+                            {% endif %}
+                            <div class="dropdown d-inline">
+                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" 
+                                        data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" onclick="duplicatePurchase({{ purchase.id }})">
+                                        <i class="bi bi-copy me-2"></i>Dupliquer
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="exportPurchase({{ purchase.id }})">
+                                        <i class="bi bi-download me-2"></i>Exporter PDF
+                                    </a></li>
+                                    {% if purchase.status == 'pending' %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="#" onclick="cancelPurchase({{ purchase.id }})">
+                                        <i class="bi bi-x-circle me-2"></i>Annuler
+                                    </a></li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if purchase.notes %}
+                    <div class="row mt-2">
+                        <div class="col-12">
+                            <small class="text-muted">
+                                <i class="bi bi-chat-quote me-1"></i>{{ purchase.notes }}
+                            </small>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                
+                {% if not purchases %}
+                <div class="text-center py-5">
+                    <i class="bi bi-inbox display-1 text-muted"></i>
+                    <h4 class="mt-3">Aucun bon d'achat trouvé</h4>
+                    <p class="text-muted">Commencez par créer votre premier bon d'achat</p>
+                    <a href="{{ url_for('purchases.new_purchase') }}" class="action-btn btn-new">
+                        <i class="bi bi-plus-circle me-2"></i>Créer le Premier Bon d'Achat
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Pagination -->
+            {% if pagination %}
+            <nav class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if pagination.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('purchases.list_purchases', page=pagination.prev_num) }}">Précédent</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in pagination.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != pagination.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('purchases.list_purchases', page=page_num) }}">{{ page_num }}</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">…</span>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if pagination.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('purchases.list_purchases', page=pagination.next_num) }}">Suivant</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Variables globales
+let allPurchases = [];
+let filteredPurchases = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialiser les données
+    loadPurchasesData();
+    
+    // Event listeners pour filtres
+    document.getElementById('statusFilter').addEventListener('change', applyFilters);
+    document.getElementById('supplierFilter').addEventListener('change', applyFilters);
+    document.getElementById('dateFilter').addEventListener('change', applyFilters);
+    
+    // Event listener pour recherche avec délai
+    let searchTimeout;
+    document.getElementById('searchInput').addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(function() {
+            performSearch();
+        }, 300);
+    });
+});
+
+// Charger données des achats (simulation)
+function loadPurchasesData() {
+    // En production, ceci serait un appel fetch() vers l'API
+    allPurchases = Array.from(document.querySelectorAll('.purchase-card')).map(function(card) {
+        return {
+            id: card.dataset.purchaseId,
+            element: card
+        };
+    });
+    filteredPurchases = [...allPurchases];
+}
+
+// Recherche instantanée
+function performSearch() {
+    const query = document.getElementById('searchInput').value.toLowerCase().trim();
+    
+    if (query.length === 0) {
+        showAllPurchases();
+        return;
+    }
+    
+    // Filtrer les cartes d'achat
+    allPurchases.forEach(function(purchase) {
+        const cardText = purchase.element.textContent.toLowerCase();
+        const isMatch = cardText.includes(query);
+        
+        purchase.element.style.display = isMatch ? 'block' : 'none';
+    });
+}
+
+// Appliquer filtres
+function applyFilters() {
+    const statusFilter = document.getElementById('statusFilter').value;
+    const supplierFilter = document.getElementById('supplierFilter').value;
+    const dateFilter = document.getElementById('dateFilter').value;
+    
+    allPurchases.forEach(function(purchase) {
+        let shouldShow = true;
+        
+        // Filtre statut
+        if (statusFilter && !purchase.element.classList.contains('purchase-' + statusFilter)) {
+            shouldShow = false;
+        }
+        
+        // Filtre fournisseur
+        if (supplierFilter) {
+            const supplierText = purchase.element.textContent;
+            if (!supplierText.includes(supplierFilter)) {
+                shouldShow = false;
+            }
+        }
+        
+        // Filtre date (logique simplifiée)
+        if (dateFilter) {
+            // Ici on implémenterait la logique de filtrage par date
+            // Pour l'instant, on garde tous les éléments
+        }
+        
+        purchase.element.style.display = shouldShow ? 'block' : 'none';
+    });
+}
+
+// Reset filtres
+function resetFilters() {
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('supplierFilter').value = '';
+    document.getElementById('dateFilter').value = '';
+    document.getElementById('searchInput').value = '';
+    
+    showAllPurchases();
+}
+
+// Afficher tous les achats
+function showAllPurchases() {
+    allPurchases.forEach(function(purchase) {
+        purchase.element.style.display = 'block';
+    });
+}
+
+// Actions sur les achats
+function validatePurchase(purchaseId) {
+    if (confirm('Valider ce bon d\'achat ?\n\nCela va mettre à jour les stocks automatiquement.')) {
+        // Appel API pour validation
+        fetch('/api/purchases/' + purchaseId + '/validate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        })
+        .then(function(response) {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Erreur lors de la validation');
+            }
+        })
+        .catch(function(error) {
+            console.error('Erreur:', error);
+            alert('Erreur de connexion');
+        });
+    }
+}
+
+function cancelPurchase(purchaseId) {
+    if (confirm('Annuler ce bon d\'achat ?\n\nCette action est irréversible.')) {
+        // Simulation - remplacer par vraie API
+        alert('Bon d\'achat #' + purchaseId + ' annulé');
+        location.reload();
+    }
+}
+
+function duplicatePurchase(purchaseId) {
+    // Rediriger vers création avec pré-remplissage
+    window.location.href = '/admin/purchases/new?duplicate=' + purchaseId;
+}
+
+function exportPurchase(purchaseId) {
+    // Générer PDF de l'achat
+    window.open('/api/purchases/' + purchaseId + '/pdf', '_blank');
+}
+
+function exportPurchases() {
+    // Exporter tous les achats filtrés
+    const visiblePurchases = Array.from(document.querySelectorAll('.purchase-card:not([style*="none"])'));
+    const ids = visiblePurchases.map(function(card) {
+        return card.dataset.purchaseId;
+    });
+    
+    if (ids.length === 0) {
+        alert('Aucun achat à exporter');
+        return;
+    }
+    
+    // Générer export Excel/CSV
+    window.open('/api/purchases/export?ids=' + ids.join(','), '_blank');
+}
+
+// Animation d'entrée pour les cartes
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.purchase-card');
+    cards.forEach(function(card, index) {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        setTimeout(function() {
+            card.style.transition = 'all 0.4s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
+</script>
+{% endblock %}

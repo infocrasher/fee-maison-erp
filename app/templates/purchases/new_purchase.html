@@ -1,0 +1,501 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Fée Maison{% endblock %}
+
+{% block head %}
+<style>
+    .form-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 15px;
+        color: white;
+        padding: 30px;
+        margin-bottom: 20px;
+    }
+    .item-row {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 10px;
+        color: white;
+        transition: all 0.3s ease;
+    }
+    .item-row:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    
+    .action-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 25px;
+        color: white;
+        padding: 10px 20px;
+        transition: all 0.3s ease;
+    }
+    .action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        color: white;
+    }
+    .btn-add { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+    .btn-save { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+    .btn-remove { background: linear-gradient(135deg, #ff6b6b 0%, #ffa8a8 100%); }
+    
+    .autocomplete-container {
+        position: relative;
+    }
+    .autocomplete-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+    }
+    .autocomplete-item {
+        padding: 10px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background 0.2s ease;
+        color: #333;
+    }
+    .autocomplete-item:hover,
+    .autocomplete-item.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    .autocomplete-item:last-child {
+        border-bottom: none;
+    }
+    
+    .total-section {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        border-radius: 12px;
+        padding: 20px;
+        color: white;
+        text-align: center;
+    }
+    
+    .supplier-info {
+        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 20px;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-1">🛒 Nouveau Bon d'Achat Fournisseur</h1>
+                    <p class="text-muted">Création d'un bon d'achat avec impact stock immédiat</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-2"></i>Retour Liste
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <form id="purchaseForm" method="POST">
+        {{ form.hidden_tag() }}
+        
+        <!-- Informations Fournisseur -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="card form-card">
+                    <h5 class="mb-3"><i class="bi bi-building me-2"></i>Informations Fournisseur</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.supplier_name.label(class="form-label") }}
+                                {{ form.supplier_name(class="form-control", placeholder="Nom du fournisseur") }}
+                                {% if form.supplier_name.errors %}
+                                    <div class="text-warning mt-1">{{ form.supplier_name.errors[0] }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.invoice_number.label(class="form-label") }}
+                                {{ form.invoice_number(class="form-control", placeholder="N° facture (optionnel)") }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                {{ form.notes.label(class="form-label") }}
+                                {{ form.notes(class="form-control", rows="3", placeholder="Notes et remarques...") }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="supplier-info">
+                    <h6><i class="bi bi-info-circle me-2"></i>Rappel Workflow</h6>
+                    <small>
+                        ✅ <strong>Stock immédiat :</strong> Dès validation, les ingrédients seront ajoutés au stock magasin<br><br>
+                        📦 <strong>Localisation :</strong> Stock ingrédients magasin (réserve principale)<br><br>
+                        🔄 <strong>Transferts :</strong> Vous pourrez ensuite transférer vers le stock local production
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lignes d'Achat -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card form-card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5><i class="bi bi-cart me-2"></i>Lignes d'Achat</h5>
+                        <button type="button" class="action-btn btn-add" id="addItemBtn">
+                            <i class="bi bi-plus-circle me-2"></i>Ajouter Produit
+                        </button>
+                    </div>
+                    
+                    <div id="itemsContainer">
+                        <!-- Les lignes d'achat seront ajoutées ici dynamiquement -->
+                    </div>
+                    
+                    <div class="alert alert-info mt-3" id="emptyItemsMessage">
+                        <i class="bi bi-info-circle me-2"></i>Cliquez sur "Ajouter Produit" pour commencer à créer votre bon d'achat
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total et Validation -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="d-flex gap-2">
+                    <button type="submit" class="action-btn btn-save" name="action" value="save">
+                        <i class="bi bi-check-circle me-2"></i>Enregistrer Bon d'Achat
+                    </button>
+                    <button type="submit" class="action-btn btn-save" name="action" value="save_and_validate">
+                        <i class="bi bi-check2-all me-2"></i>Enregistrer et Valider (Impact Stock)
+                    </button>
+                    <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-outline-light">Annuler</a>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="total-section">
+                    <h5>💰 Total Bon d'Achat</h5>
+                    <h3 id="totalAmount">0,00 DA</h3>
+                    <small id="itemCount">0 produit(s)</small>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Template pour ligne d'achat -->
+<template id="itemRowTemplate">
+    <div class="item-row" data-item-index="">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <label class="form-label">🔍 Produit</label>
+                <div class="autocomplete-container">
+                    <input type="text" 
+                           class="form-control product-search" 
+                           placeholder="Tapez 2-3 lettres (ex: FA pour Farine)"
+                           autocomplete="off">
+                    <input type="hidden" class="product-id" name="items[][product_id]">
+                    <div class="autocomplete-suggestions"></div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Quantité</label>
+                <input type="number" 
+                       class="form-control item-quantity" 
+                       name="items[][quantity]" 
+                       placeholder="0"
+                       min="1"
+                       step="1">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Prix Unitaire</label>
+                <input type="number" 
+                       class="form-control item-price" 
+                       name="items[][unit_price]" 
+                       placeholder="0,00"
+                       min="0"
+                       step="0.01">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Total</label>
+                <div class="fw-bold item-total">0,00 DA</div>
+            </div>
+            <div class="col-md-2 text-end">
+                <button type="button" class="action-btn btn-remove remove-item-btn">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</template>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let itemIndex = 0;
+let availableProducts = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Ajouter première ligne automatiquement
+    addItemRow();
+    
+    // Event listener pour ajouter ligne
+    document.getElementById('addItemBtn').addEventListener('click', addItemRow);
+    
+    // Charger produits pour autocomplétion
+    loadAvailableProducts();
+});
+
+// Ajouter une ligne d'achat
+function addItemRow() {
+    const container = document.getElementById('itemsContainer');
+    const template = document.getElementById('itemRowTemplate');
+    const clone = template.content.cloneNode(true);
+    
+    // Mettre à jour l'index
+    const itemRow = clone.querySelector('.item-row');
+    itemRow.setAttribute('data-item-index', itemIndex);
+    
+    // Configurer autocomplétion pour cette ligne
+    const searchInput = clone.querySelector('.product-search');
+    setupAutocomplete(searchInput, itemIndex);
+    
+    // Event listeners pour calculs
+    const quantityInput = clone.querySelector('.item-quantity');
+    const priceInput = clone.querySelector('.item-price');
+    
+    quantityInput.addEventListener('input', function() {
+        calculateItemTotal(itemIndex);
+        calculateGrandTotal();
+    });
+    
+    priceInput.addEventListener('input', function() {
+        calculateItemTotal(itemIndex);
+        calculateGrandTotal();
+    });
+    
+    // Event listener pour supprimer
+    clone.querySelector('.remove-item-btn').addEventListener('click', function() {
+        removeItemRow(itemIndex);
+    });
+    
+    container.appendChild(clone);
+    
+    // Masquer message vide
+    document.getElementById('emptyItemsMessage').style.display = 'none';
+    
+    itemIndex++;
+}
+
+// Supprimer ligne d'achat
+function removeItemRow(index) {
+    const row = document.querySelector(`[data-item-index="${index}"]`);
+    if (row) {
+        row.remove();
+        calculateGrandTotal();
+        
+        // Afficher message si plus de lignes
+        const remainingRows = document.querySelectorAll('.item-row');
+        if (remainingRows.length === 0) {
+            document.getElementById('emptyItemsMessage').style.display = 'block';
+        }
+    }
+}
+
+// Configuration autocomplétion
+function setupAutocomplete(inputElement, index) {
+    const suggestionsContainer = inputElement.parentNode.querySelector('.autocomplete-suggestions');
+    let currentSuggestionIndex = -1;
+    
+    inputElement.addEventListener('input', function() {
+        const query = this.value.trim();
+        
+        if (query.length >= 2) {
+            showSuggestions(query, suggestionsContainer, inputElement, index);
+        } else {
+            hideSuggestions(suggestionsContainer);
+        }
+    });
+    
+    // Navigation clavier
+    inputElement.addEventListener('keydown', function(e) {
+        const suggestions = suggestionsContainer.querySelectorAll('.autocomplete-item');
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            currentSuggestionIndex = Math.min(currentSuggestionIndex + 1, suggestions.length - 1);
+            updateActiveSuggestion(suggestions, currentSuggestionIndex);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            currentSuggestionIndex = Math.max(currentSuggestionIndex - 1, -1);
+            updateActiveSuggestion(suggestions, currentSuggestionIndex);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (currentSuggestionIndex >= 0 && suggestions[currentSuggestionIndex]) {
+                selectProduct(suggestions[currentSuggestionIndex], inputElement, index);
+            }
+        } else if (e.key === 'Escape') {
+            hideSuggestions(suggestionsContainer);
+        }
+    });
+}
+
+// Charger produits disponibles
+function loadAvailableProducts() {
+    // Simulation - À remplacer par fetch('/api/products/ingredients')
+    availableProducts = [
+        {id: 1, name: 'Farine T55', category: 'Farine', unit: 'kg', current_stock: 25},
+        {id: 2, name: 'Farine T65', category: 'Farine', unit: 'kg', current_stock: 15},
+        {id: 3, name: 'Sucre Blanc', category: 'Sucre', unit: 'kg', current_stock: 30},
+        {id: 4, name: 'Sucre Roux', category: 'Sucre', unit: 'kg', current_stock: 10},
+        {id: 5, name: 'Beurre', category: 'Produits Laitiers', unit: 'kg', current_stock: 5},
+        {id: 6, name: 'Œufs', category: 'Produits Frais', unit: 'unités', current_stock: 120},
+        {id: 7, name: 'Levure Chimique', category: 'Additifs', unit: 'g', current_stock: 500},
+        {id: 8, name: 'Vanille Liquide', category: 'Arômes', unit: 'ml', current_stock: 250}
+    ];
+}
+
+// Afficher suggestions autocomplétion
+function showSuggestions(query, container, inputElement, index) {
+    const filteredProducts = availableProducts.filter(product => 
+        product.name.toLowerCase().includes(query.toLowerCase())
+    );
+    
+    container.innerHTML = '';
+    
+    if (filteredProducts.length === 0) {
+        container.innerHTML = '<div class="autocomplete-item">Aucun ingrédient trouvé</div>';
+    } else {
+        filteredProducts.forEach(function(product) {
+            const div = document.createElement('div');
+            div.className = 'autocomplete-item';
+            div.innerHTML = '<strong>' + product.name + '</strong><br>' +
+                           '<small class="text-muted">' + product.category + ' - Stock: ' + product.current_stock + ' ' + product.unit + '</small>';
+            
+            div.addEventListener('click', function() {
+                selectProduct(this, inputElement, index, product);
+            });
+            
+            container.appendChild(div);
+        });
+    }
+    
+    container.style.display = 'block';
+}
+
+// Masquer suggestions
+function hideSuggestions(container) {
+    container.style.display = 'none';
+}
+
+// Mettre à jour suggestion active
+function updateActiveSuggestion(suggestions, activeIndex) {
+    suggestions.forEach(function(item, index) {
+        item.classList.toggle('active', index === activeIndex);
+    });
+}
+
+// Sélectionner un produit
+function selectProduct(element, inputElement, index, productData) {
+    if (!productData) {
+        // Extraire depuis l'élément si pas de données
+        const text = element.textContent;
+        productData = {
+            id: Date.now(),
+            name: text.split('\n')[0]
+        };
+    }
+    
+    inputElement.value = productData.name;
+    
+    // Mettre à jour le champ caché
+    const row = document.querySelector(`[data-item-index="${index}"]`);
+    const hiddenInput = row.querySelector('.product-id');
+    hiddenInput.value = productData.id;
+    
+    hideSuggestions(inputElement.parentNode.querySelector('.autocomplete-suggestions'));
+}
+
+// Calculer total d'une ligne
+function calculateItemTotal(index) {
+    const row = document.querySelector(`[data-item-index="${index}"]`);
+    if (!row) return;
+    
+    const quantity = parseFloat(row.querySelector('.item-quantity').value) || 0;
+    const price = parseFloat(row.querySelector('.item-price').value) || 0;
+    const total = quantity * price;
+    
+    row.querySelector('.item-total').textContent = total.toFixed(2) + ' DA';
+}
+
+// Calculer total général
+function calculateGrandTotal() {
+    let grandTotal = 0;
+    let itemCount = 0;
+    
+    document.querySelectorAll('.item-row').forEach(function(row) {
+        const quantity = parseFloat(row.querySelector('.item-quantity').value) || 0;
+        const price = parseFloat(row.querySelector('.item-price').value) || 0;
+        
+        if (quantity > 0 && price > 0) {
+            grandTotal += quantity * price;
+            itemCount++;
+        }
+    });
+    
+    document.getElementById('totalAmount').textContent = grandTotal.toFixed(2) + ' DA';
+    document.getElementById('itemCount').textContent = itemCount + ' produit(s)';
+}
+
+// Validation formulaire
+document.getElementById('purchaseForm').addEventListener('submit', function(e) {
+    const rows = document.querySelectorAll('.item-row');
+    let hasValidItems = false;
+    
+    rows.forEach(function(row) {
+        const productId = row.querySelector('.product-id').value;
+        const quantity = row.querySelector('.item-quantity').value;
+        const price = row.querySelector('.item-price').value;
+        
+        if (productId && quantity && price) {
+            hasValidItems = true;
+        }
+    });
+    
+    if (!hasValidItems) {
+        e.preventDefault();
+        alert('Veuillez ajouter au moins un produit avec quantité et prix');
+        return false;
+    }
+    
+    const supplierName = document.querySelector('input[name="supplier_name"]').value;
+    if (!supplierName.trim()) {
+        e.preventDefault();
+        alert('Veuillez renseigner le nom du fournisseur');
+        return false;
+    }
+});
+</script>
+{% endblock %}
