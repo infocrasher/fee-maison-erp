@@ -208,7 +208,7 @@ def dashboard_local():
     missing_ingredients_urgent = []
     for product in ingredients_local:
         stock_level = product.stock_ingredients_local or 0
-        seuil = product.seuil_local or 10
+        seuil = product.seuil_min_ingredients_local or 10
         if stock_level <= 0:
             missing_ingredients_urgent.append({
                 'name': product.name,
@@ -319,7 +319,7 @@ def dashboard_consommables():
     suggested_adjustments = []
     for product in all_consommables:
         stock_level = product.stock_consommables or 0
-        seuil = product.seuil_consommables or 20
+        seuil = product.seuil_min_consommables or 20
         if stock_level <= seuil:
             suggested_adjustments.append({
                 'product_id': product.id,
