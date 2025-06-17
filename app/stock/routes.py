@@ -37,6 +37,7 @@ def overview():
     local_low = []
     magasin_low = []
     consommables_low = []
+    out_of_stock_products = []  # ✅ AJOUT : Variable manquante
     
     for product in products:
         # Stock comptoir bas
@@ -54,6 +55,14 @@ def overview():
         # Stock consommables bas
         if (product.stock_consommables or 0) <= (product.seuil_min_consommables or 5):
             consommables_low.append(product)
+        
+        # ✅ AJOUT : Produits en rupture totale (toutes localisations)
+        total_stock = ((product.stock_comptoir or 0) + 
+                      (product.stock_ingredients_local or 0) + 
+                      (product.stock_ingredients_magasin or 0) + 
+                      (product.stock_consommables or 0))
+        if total_stock <= 0:
+            out_of_stock_products.append(product)
     
     # Calcul des valeurs totales par stock
     total_value_comptoir = sum((p.stock_comptoir or 0) * float(p.cost_price or 0) for p in products)
@@ -87,6 +96,8 @@ def overview():
         pending_transfers=pending_transfers,
         total_stock_value=total_stock_value,
         low_stock_products=low_stock_products,
+        # ✅ AJOUT : Variable manquante pour le template
+        out_of_stock_products=out_of_stock_products
     )
 
 @stock.route('/quick_entry', methods=['GET', 'POST'])
