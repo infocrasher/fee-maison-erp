@@ -66,7 +66,7 @@ def overview():
         total_value_consommables=total_value_consommables,
         pending_transfers=pending_transfers,
         # ✅ CORRECTION : Variable manquante ajoutée
-        total_stock_value=total_stock_value
+        total_stock_value=total_stock_value,
         low_stock_products=low_stock_products,
     )
 
