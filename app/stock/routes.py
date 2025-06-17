@@ -46,6 +46,7 @@ def overview():
     
     # ✅ CORRECTION : Calcul total_stock_value manquant
     total_stock_value = total_value_comptoir + total_value_local + total_value_magasin + total_value_consommables
+    low_stock_products = comptoir_low + local_low + magasin_low + consommables_low
     
     # Transferts en attente
     pending_transfers = StockTransfer.query.filter(
@@ -66,6 +67,7 @@ def overview():
         pending_transfers=pending_transfers,
         # ✅ CORRECTION : Variable manquante ajoutée
         total_stock_value=total_stock_value
+        low_stock_products=low_stock_products,
     )
 
 @stock.route('/quick_entry', methods=['GET', 'POST'])
