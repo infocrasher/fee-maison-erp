@@ -164,7 +164,7 @@ def dashboard_magasin():
     suggested_purchases = []
     for product in all_ingredients:
         stock_level = product.stock_ingredients_magasin or 0
-        seuil = product.seuil_magasin or 50
+        seuil = product.seuil_min_ingredients_magasin or 50
         if stock_level <= seuil and stock_level > 0:
             suggested_purchases.append({
                 'product_id': product.id,
