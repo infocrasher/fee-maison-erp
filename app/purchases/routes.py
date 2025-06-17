@@ -1,6 +1,8 @@
 """
 Routes pour la gestion des achats fournisseurs
+
 Module: app/purchases/routes.py
+
 Auteur: ERP Fée Maison
 """
 
@@ -8,8 +10,8 @@ from flask import render_template, redirect, url_for, flash, request, jsonify, c
 from flask_login import login_required, current_user
 from extensions import db
 from .models import Purchase, PurchaseItem, PurchaseStatus, PurchaseUrgency
-from .forms import (PurchaseForm, PurchaseApprovalForm, PurchaseReceiptForm, 
-                    PurchaseSearchForm, QuickPurchaseForm, PurchaseReceiptItemForm)
+from .forms import (PurchaseForm, PurchaseApprovalForm, PurchaseReceiptForm,
+                   PurchaseSearchForm, QuickPurchaseForm, PurchaseReceiptItemForm)
 from decorators import admin_required
 from sqlalchemy import and_, or_, desc, func
 from datetime import datetime, timedelta
@@ -37,6 +39,7 @@ def get_main_models():
 def list_purchases():
     """Liste de tous les achats avec filtres"""
     Product, User = get_main_models()
+    
     form = PurchaseSearchForm()
     
     # Construction de la requête de base
@@ -82,12 +85,23 @@ def list_purchases():
         'overdue': len([p for p in Purchase.query.all() if p.is_overdue()])
     }
     
+    # Variables pour le template
+    suppliers_list = db.session.query(Purchase.supplier_name).distinct().all()
+    suppliers_list = [s[0] for s in suppliers_list if s[0]]
+    
     return render_template(
         'purchases/list_purchases.html',
         title="Gestion des Achats",
         purchases=purchases,
         form=form,
-        stats=stats
+        stats=stats,
+        # Variables template corrigées
+        total_purchases=stats['total_purchases'],
+        pending_purchases=stats['pending_approval'],
+        total_amount_month=0,  # À calculer si nécessaire
+        suppliers_count=len(suppliers_list),
+        suppliers_list=suppliers_list,
+        pagination=purchases
     )
 
 @purchases.route('/new', methods=['GET', 'POST'])
@@ -95,6 +109,7 @@ def list_purchases():
 def new_purchase():
     """Création d'un nouveau bon d'achat"""
     Product, User = get_main_models()
+    
     form = PurchaseForm()
     
     if form.validate_on_submit():
@@ -129,8 +144,8 @@ def new_purchase():
         # Ajout des lignes d'articles
         items_added = 0
         for item_data in form.items.data:
-            if (item_data.get('product_id') and 
-                item_data.get('quantity_ordered', 0) > 0 and 
+            if (item_data.get('product_id') and
+                item_data.get('quantity_ordered', 0) > 0 and
                 item_data.get('unit_price', 0) > 0):
                 
                 purchase_item = PurchaseItem(
@@ -144,6 +159,7 @@ def new_purchase():
                     supplier_reference=item_data.get('supplier_reference'),
                     notes=item_data.get('notes')
                 )
+                
                 db.session.add(purchase_item)
                 items_added += 1
         
@@ -153,7 +169,6 @@ def new_purchase():
         
         # Calcul des totaux
         purchase.calculate_totals()
-        
         db.session.commit()
         
         action_text = "créé et demandé pour approbation" if purchase.status == PurchaseStatus.REQUESTED else "créé en brouillon"
@@ -161,9 +176,19 @@ def new_purchase():
         
         return redirect(url_for('purchases.view_purchase', id=purchase.id))
     
-    return render_template('purchases/new_purchase.html', form=form, title='Nouveau Bon d\'Achat')
+    # Variables pour le template
+    available_products = Product.query.filter(
+        Product.product_type.in_(['ingredient', 'consommable'])
+    ).all()
+    
+    return render_template(
+        'purchases/new_purchase.html', 
+        form=form, 
+        title='Nouveau Bon d\'Achat',
+        available_products=available_products
+    )
 
-@purchases.route('/<int:id>')
+@purchases.route('/<int:id>')  # ✅ CORRECTION : était '/' 
 @login_required
 def view_purchase(id):
     """Affichage détaillé d'un bon d'achat"""
@@ -180,6 +205,95 @@ def view_purchase(id):
         purchase=purchase
     )
 
+@purchases.route('/<int:id>/edit', methods=['GET', 'POST'])  # ✅ AJOUT : Route manquante
+@login_required
+def edit_purchase(id):
+    """Modification d'un bon d'achat"""
+    Product, User = get_main_models()
+    
+    purchase = Purchase.query.get_or_404(id)
+    
+    # Vérification des permissions
+    if not current_user.is_admin and purchase.requested_by_id != current_user.id:
+        flash('Vous n\'avez pas l\'autorisation de modifier ce bon d\'achat.', 'danger')
+        return redirect(url_for('purchases.list_purchases'))
+    
+    # Vérification du statut (seuls les brouillons et demandés peuvent être modifiés)
+    if purchase.status not in [PurchaseStatus.DRAFT, PurchaseStatus.REQUESTED]:
+        flash('Ce bon d\'achat ne peut plus être modifié dans son état actuel.', 'warning')
+        return redirect(url_for('purchases.view_purchase', id=id))
+    
+    form = PurchaseForm(obj=purchase)
+    
+    if form.validate_on_submit():
+        # Mise à jour des informations principales
+        purchase.supplier_name = form.supplier_name.data
+        purchase.supplier_contact = form.supplier_contact.data
+        purchase.supplier_phone = form.supplier_phone.data
+        purchase.supplier_email = form.supplier_email.data
+        purchase.supplier_address = form.supplier_address.data
+        purchase.expected_delivery_date = form.expected_delivery_date.data
+        purchase.urgency = PurchaseUrgency(form.urgency.data)
+        purchase.default_stock_location = form.default_stock_location.data
+        purchase.payment_terms = form.payment_terms.data
+        purchase.shipping_cost = form.shipping_cost.data or 0.0
+        purchase.tax_amount = form.tax_amount.data or 0.0
+        purchase.notes = form.notes.data
+        purchase.internal_notes = form.internal_notes.data
+        purchase.terms_conditions = form.terms_conditions.data
+        
+        # Statut selon l'action choisie
+        if 'submit_and_request' in request.form:
+            purchase.status = PurchaseStatus.REQUESTED
+        
+        # Mise à jour des lignes d'articles (suppression et recréation)
+        PurchaseItem.query.filter_by(purchase_id=purchase.id).delete()
+        
+        items_added = 0
+        for item_data in form.items.data:
+            if (item_data.get('product_id') and
+                item_data.get('quantity_ordered', 0) > 0 and
+                item_data.get('unit_price', 0) > 0):
+                
+                purchase_item = PurchaseItem(
+                    purchase_id=purchase.id,
+                    product_id=item_data['product_id'],
+                    quantity_ordered=item_data['quantity_ordered'],
+                    unit_price=item_data['unit_price'],
+                    discount_percentage=item_data.get('discount_percentage', 0.0),
+                    stock_location=item_data.get('stock_location', purchase.default_stock_location),
+                    description_override=item_data.get('description_override'),
+                    supplier_reference=item_data.get('supplier_reference'),
+                    notes=item_data.get('notes')
+                )
+                
+                db.session.add(purchase_item)
+                items_added += 1
+        
+        if items_added == 0:
+            flash('Aucun article valide n\'a été ajouté au bon d\'achat.', 'danger')
+            return render_template('purchases/edit_purchase.html', form=form, purchase=purchase, title='Modifier Bon d\'Achat')
+        
+        # Recalcul des totaux
+        purchase.calculate_totals()
+        db.session.commit()
+        
+        flash(f'Bon d\'achat {purchase.reference} modifié avec succès.', 'success')
+        return redirect(url_for('purchases.view_purchase', id=purchase.id))
+    
+    # Variables pour le template
+    available_products = Product.query.filter(
+        Product.product_type.in_(['ingredient', 'consommable'])
+    ).all()
+    
+    return render_template(
+        'purchases/edit_purchase.html',
+        form=form,
+        purchase=purchase,
+        title=f'Modifier Bon d\'Achat {purchase.reference}',
+        available_products=available_products
+    )
+
 # ==================== ROUTES API/AJAX ====================
 
 @purchases.route('/api/products_search')
@@ -187,6 +301,7 @@ def view_purchase(id):
 def api_products_search():
     """API de recherche de produits pour l'auto-complétion"""
     Product, User = get_main_models()
+    
     search_term = request.args.get('q', '')
     if len(search_term) < 2:
         return jsonify([])
@@ -221,5 +336,3 @@ def api_pending_count():
     ).count()
     
     return jsonify({'count': count})
-
-# Placeholder pour autres routes - seront ajoutées progressivement
