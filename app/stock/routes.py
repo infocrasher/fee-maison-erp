@@ -29,14 +29,31 @@ def overview():
     """Vue d'ensemble globale des 4 stocks"""
     low_stock_threshold = current_app.config.get('LOW_STOCK_THRESHOLD', 5)
     
-    # Récupération des produits avec stocks faibles par localisation
+    # Récupération de tous les produits
     products = Product.query.all()
     
-    # Analyse par localisation
-    comptoir_low = [p for p in products if p.is_low_stock_by_location('comptoir')]
-    local_low = [p for p in products if p.is_low_stock_by_location('ingredients_local')]
-    magasin_low = [p for p in products if p.is_low_stock_by_location('ingredients_magasin')]
-    consommables_low = [p for p in products if p.is_low_stock_by_location('consommables')]
+    # ✅ CORRECTION : Analyse par localisation avec vrais attributs
+    comptoir_low = []
+    local_low = []
+    magasin_low = []
+    consommables_low = []
+    
+    for product in products:
+        # Stock comptoir bas
+        if (product.stock_comptoir or 0) <= (product.seuil_min_comptoir or 5):
+            comptoir_low.append(product)
+        
+        # Stock local bas
+        if (product.stock_ingredients_local or 0) <= (product.seuil_min_ingredients_local or 5):
+            local_low.append(product)
+        
+        # Stock magasin bas
+        if (product.stock_ingredients_magasin or 0) <= (product.seuil_min_ingredients_magasin or 5):
+            magasin_low.append(product)
+        
+        # Stock consommables bas
+        if (product.stock_consommables or 0) <= (product.seuil_min_consommables or 5):
+            consommables_low.append(product)
     
     # Calcul des valeurs totales par stock
     total_value_comptoir = sum((p.stock_comptoir or 0) * float(p.cost_price or 0) for p in products)
@@ -44,14 +61,17 @@ def overview():
     total_value_magasin = sum((p.stock_ingredients_magasin or 0) * float(p.cost_price or 0) for p in products)
     total_value_consommables = sum((p.stock_consommables or 0) * float(p.cost_price or 0) for p in products)
     
-    # ✅ CORRECTION : Calcul total_stock_value manquant
+    # Calculs corrigés
     total_stock_value = total_value_comptoir + total_value_local + total_value_magasin + total_value_consommables
     low_stock_products = comptoir_low + local_low + magasin_low + consommables_low
     
-    # Transferts en attente
-    pending_transfers = StockTransfer.query.filter(
-        StockTransfer.status.in_([TransferStatus.REQUESTED, TransferStatus.APPROVED])
-    ).count()
+    # Transferts en attente (simulation si table pas encore créée)
+    try:
+        pending_transfers = StockTransfer.query.filter(
+            StockTransfer.status.in_([TransferStatus.REQUESTED, TransferStatus.APPROVED])
+        ).count()
+    except:
+        pending_transfers = 0
     
     return render_template(
         'stock/stock_overview.html',
@@ -65,7 +85,6 @@ def overview():
         total_value_magasin=total_value_magasin,
         total_value_consommables=total_value_consommables,
         pending_transfers=pending_transfers,
-        # ✅ CORRECTION : Variable manquante ajoutée
         total_stock_value=total_stock_value,
         low_stock_products=low_stock_products,
     )
