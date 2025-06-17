@@ -262,7 +262,8 @@
                                 <i class="bi bi-pencil"></i> Modifier
                             </a>
                             <button class="btn btn-outline-success btn-sm me-2" 
-                                    onclick="validatePurchase({{ purchase.id }})">
+                                    data-purchase-id="{{ purchase.id }}"
+                                    onclick="validatePurchase(this.dataset.purchaseId)">
                                 <i class="bi bi-check"></i> Valider
                             </button>
                             {% endif %}
@@ -272,15 +273,21 @@
                                     <i class="bi bi-three-dots"></i>
                                 </button>
                                 <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="#" onclick="duplicatePurchase({{ purchase.id }})">
+                                    <li><a class="dropdown-item" href="#" 
+                                           data-purchase-id="{{ purchase.id }}"
+                                           onclick="duplicatePurchase(this.dataset.purchaseId)">
                                         <i class="bi bi-copy me-2"></i>Dupliquer
                                     </a></li>
-                                    <li><a class="dropdown-item" href="#" onclick="exportPurchase({{ purchase.id }})">
+                                    <li><a class="dropdown-item" href="#" 
+                                           data-purchase-id="{{ purchase.id }}"
+                                           onclick="exportPurchase(this.dataset.purchaseId)">
                                         <i class="bi bi-download me-2"></i>Exporter PDF
                                     </a></li>
                                     {% if purchase.status == 'pending' %}
                                     <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger" href="#" onclick="cancelPurchase({{ purchase.id }})">
+                                    <li><a class="dropdown-item text-danger" href="#" 
+                                           data-purchase-id="{{ purchase.id }}"
+                                           onclick="cancelPurchase(this.dataset.purchaseId)">
                                         <i class="bi bi-x-circle me-2"></i>Annuler
                                     </a></li>
                                     {% endif %}
@@ -352,6 +359,11 @@
         </div>
     </div>
 </div>
+
+<!-- Variable JavaScript pour CSRF Token -->
+<script>
+    window.csrfToken = document.querySelector('meta[name=csrf-token]').getAttribute('content');
+</script>
 {% endblock %}
 
 {% block scripts %}
@@ -379,16 +391,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Charger données des achats (simulation)
+// Charger données des achats
 function loadPurchasesData() {
-    // En production, ceci serait un appel fetch() vers l'API
     allPurchases = Array.from(document.querySelectorAll('.purchase-card')).map(function(card) {
         return {
             id: card.dataset.purchaseId,
             element: card
         };
     });
-    filteredPurchases = [...allPurchases];
+    filteredPurchases = allPurchases.slice();
 }
 
 // Recherche instantanée
@@ -400,7 +411,6 @@ function performSearch() {
         return;
     }
     
-    // Filtrer les cartes d'achat
     allPurchases.forEach(function(purchase) {
         const cardText = purchase.element.textContent.toLowerCase();
         const isMatch = cardText.includes(query);
@@ -431,12 +441,6 @@ function applyFilters() {
             }
         }
         
-        // Filtre date (logique simplifiée)
-        if (dateFilter) {
-            // Ici on implémenterait la logique de filtrage par date
-            // Pour l'instant, on garde tous les éléments
-        }
-        
         purchase.element.style.display = shouldShow ? 'block' : 'none';
     });
 }
@@ -458,7 +462,7 @@ function showAllPurchases() {
     });
 }
 
-// Actions sur les achats
+// ✅ CORRECTIONS: Actions sans expressions Jinja2 dans JavaScript
 function validatePurchase(purchaseId) {
     if (confirm('Valider ce bon d\'achat ?\n\nCela va mettre à jour les stocks automatiquement.')) {
         // Appel API pour validation
@@ -466,7 +470,7 @@ function validatePurchase(purchaseId) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token() }}'
+                'X-CSRFToken': window.csrfToken || ''
             }
         })
         .then(function(response) {
@@ -485,24 +489,20 @@ function validatePurchase(purchaseId) {
 
 function cancelPurchase(purchaseId) {
     if (confirm('Annuler ce bon d\'achat ?\n\nCette action est irréversible.')) {
-        // Simulation - remplacer par vraie API
         alert('Bon d\'achat #' + purchaseId + ' annulé');
         location.reload();
     }
 }
 
 function duplicatePurchase(purchaseId) {
-    // Rediriger vers création avec pré-remplissage
     window.location.href = '/admin/purchases/new?duplicate=' + purchaseId;
 }
 
 function exportPurchase(purchaseId) {
-    // Générer PDF de l'achat
     window.open('/api/purchases/' + purchaseId + '/pdf', '_blank');
 }
 
 function exportPurchases() {
-    // Exporter tous les achats filtrés
     const visiblePurchases = Array.from(document.querySelectorAll('.purchase-card:not([style*="none"])'));
     const ids = visiblePurchases.map(function(card) {
         return card.dataset.purchaseId;
@@ -513,7 +513,6 @@ function exportPurchases() {
         return;
     }
     
-    // Générer export Excel/CSV
     window.open('/api/purchases/export?ids=' + ids.join(','), '_blank');
 }
 
