@@ -60,6 +60,10 @@ class PurchaseForm(FlaskForm):
     supplier_email = StringField('Email', validators=[Optional(), Email(), Length(max=120)])
     supplier_address = TextAreaField('Adresse', validators=[Optional(), Length(max=500)])
     
+    # ✅ AJOUT : Champ manquant utilisé dans le template
+    invoice_number = StringField('N° Facture', validators=[Optional(), Length(max=100)], 
+                                render_kw={'placeholder': 'F2025-001'})
+    
     # Dates et urgence
     expected_delivery_date = DateTimeLocalField('Date de livraison prévue', validators=[Optional()], format='%Y-%m-%dT%H:%M')
     urgency = SelectField('Urgence', choices=[
@@ -170,21 +174,20 @@ class QuickPurchaseForm(FlaskForm):
     
     submit = SubmitField('Créer l\'achat rapide')
 
-# Placeholder pour autres formulaires
 class PurchaseApprovalForm(FlaskForm):
-    """Formulaire d'approbation d'un bon d'achat - Placeholder"""
+    """Formulaire d'approbation d'un bon d'achat"""
     approval_notes = TextAreaField('Notes d\'approbation', validators=[Optional(), Length(max=500)])
     approve = SubmitField('Approuver')
     reject = SubmitField('Rejeter')
 
 class PurchaseReceiptForm(FlaskForm):
-    """Formulaire de réception de marchandises - Placeholder"""
+    """Formulaire de réception de marchandises"""
     receipt_notes = TextAreaField('Notes de réception', validators=[Optional(), Length(max=500)])
     partial_receipt = SubmitField('Réception partielle')
     complete_receipt = SubmitField('Réception complète')
 
 class PurchaseReceiptItemForm(FlaskForm):
-    """Formulaire pour la réception d'un article spécifique - Placeholder"""
+    """Formulaire pour la réception d'un article spécifique"""
     item_id = HiddenField('Article ID')
     quantity_to_receive = FloatField('Quantité à recevoir', validators=[DataRequired(), NumberRange(min=0.01)])
     notes = StringField('Notes', validators=[Optional(), Length(max=255)])
