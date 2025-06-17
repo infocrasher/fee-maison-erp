@@ -423,10 +423,14 @@ function printPurchase() {
 }
 
 // Auto-refresh si statut pending (toutes les 30 secondes)
-{% if purchase.status == 'pending' %}
-setTimeout(function() {
-    window.location.reload();
-}, 30000);
-{% endif %}
+document.addEventListener('DOMContentLoaded', function() {
+    // Vérifier si le statut est pending depuis le DOM
+    const statusBadge = document.querySelector('.status-pending');
+    if (statusBadge) {
+        setTimeout(function() {
+            window.location.reload();
+        }, 30000);
+    }
+});
 </script>
 {% endblock %}
