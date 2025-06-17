@@ -39,10 +39,13 @@ def overview():
     consommables_low = [p for p in products if p.is_low_stock_by_location('consommables')]
     
     # Calcul des valeurs totales par stock
-    total_value_comptoir = sum(p.stock_comptoir * float(p.cost_price or 0) for p in products)
-    total_value_local = sum(p.stock_ingredients_local * float(p.cost_price or 0) for p in products)
-    total_value_magasin = sum(p.stock_ingredients_magasin * float(p.cost_price or 0) for p in products)
-    total_value_consommables = sum(p.stock_consommables * float(p.cost_price or 0) for p in products)
+    total_value_comptoir = sum((p.stock_comptoir or 0) * float(p.cost_price or 0) for p in products)
+    total_value_local = sum((p.stock_ingredients_local or 0) * float(p.cost_price or 0) for p in products)
+    total_value_magasin = sum((p.stock_ingredients_magasin or 0) * float(p.cost_price or 0) for p in products)
+    total_value_consommables = sum((p.stock_consommables or 0) * float(p.cost_price or 0) for p in products)
+    
+    # ✅ CORRECTION : Calcul total_stock_value manquant
+    total_stock_value = total_value_comptoir + total_value_local + total_value_magasin + total_value_consommables
     
     # Transferts en attente
     pending_transfers = StockTransfer.query.filter(
@@ -60,7 +63,9 @@ def overview():
         total_value_local=total_value_local,
         total_value_magasin=total_value_magasin,
         total_value_consommables=total_value_consommables,
-        pending_transfers=pending_transfers
+        pending_transfers=pending_transfers,
+        # ✅ CORRECTION : Variable manquante ajoutée
+        total_stock_value=total_stock_value
     )
 
 @stock.route('/quick_entry', methods=['GET', 'POST'])
