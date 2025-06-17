@@ -1,10 +1,12 @@
-from flask import render_template, jsonify
+from flask import render_template, jsonify, Blueprint
 from flask_login import login_required
-from . import dashboard_bp
 from models import Order, Product
 from app.employees.models import Employee
 from datetime import datetime, timedelta
 from decorators import admin_required
+
+# ✅ CORRECTION : Créer le blueprint ici au lieu de l'importer
+dashboard_bp = Blueprint('dashboard', __name__)
 
 @dashboard_bp.route('/production')
 @login_required
