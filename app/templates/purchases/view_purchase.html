@@ -180,7 +180,7 @@
                                 <small>{{ item.product.category.name if item.product and item.product.category else 'Catégorie inconnue' }}</small>
                             </div>
                             <div class="col-md-2 text-center">
-                                <strong>{{ item.quantity }}</strong><br>
+                                <strong>{{ item.quantity_ordered }}</strong><br>
                                 <small>{{ item.product.unit if item.product else 'unités' }}</small>
                             </div>
                             <div class="col-md-2 text-center">
@@ -198,7 +198,7 @@
                         <div class="stock-impact">
                             <small>
                                 <i class="bi bi-check-circle text-success me-1"></i>
-                                <strong>Stock mis à jour :</strong> +{{ item.quantity }} {{ item.product.unit if item.product else 'unités' }} 
+                                <strong>Stock mis à jour :</strong> +{{ item.quantity_ordered }} {{ item.product.unit if item.product else 'unités' }} 
                                 ajouté au stock ingrédients magasin
                             </small>
                         </div>
