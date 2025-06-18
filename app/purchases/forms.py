@@ -25,18 +25,18 @@ def all_products_query():
 
 # Factory pour lister les produits ingrédients et consommables
 def purchasable_products_query():
-    """Factory pour récupérer les produits achetables - Version robuste"""
+    """Factory pour récupérer les produits achetables"""
     try:
         # Import direct et sécurisé
         from models import Product
         return Product.query.filter(
             Product.product_type.in_(['ingredient', 'consommable'])
-        ).order_by(Product.name).all()
+        ).order_by(Product.name)
     except Exception as e:
         print(f"Erreur dans purchasable_products_query: {e}")
         return []
 
-# ✅ NOUVEAU : Factory pour lister les unités actives
+# Factory pour lister les unités actives
 def active_units_query():
     """Factory pour récupérer les unités actives"""
     if 'models' in sys.modules:
@@ -49,7 +49,7 @@ class PurchaseItemForm(FlaskForm):
     product_id = IntegerField('Produit ID', validators=[Optional()])
     product = QuerySelectField('Produit', query_factory=purchasable_products_query, get_label='name', allow_blank=True)
     
-    # ✅ NOUVEAU : Sélection unité de conditionnement
+    # Sélection unité de conditionnement
     unit = QuerySelectField('Conditionnement', 
                            query_factory=active_units_query, 
                            get_label='name', 
@@ -60,7 +60,7 @@ class PurchaseItemForm(FlaskForm):
     unit_price = FloatField('Prix unitaire (DA)', validators=[Optional(), NumberRange(min=0.01)])
     discount_percentage = FloatField('Remise (%)', validators=[Optional(), NumberRange(min=0, max=100)], default=0.0)
     
-    # ✅ NOUVEAU : Champs calculés automatiquement
+    # Champs calculés automatiquement
     total_base_quantity = HiddenField('Quantité totale en unité de base')
     calculated_unit_cost = HiddenField('Coût unitaire en unité de base')
     
@@ -76,7 +76,7 @@ class PurchaseItemForm(FlaskForm):
     notes = TextAreaField('Notes', validators=[Optional(), Length(max=500)])
 
 class PurchaseForm(FlaskForm):
-    """Formulaire principal de création/modification d'achat"""
+    """Formulaire principal de création/modification d'achat - Version corrigée sans FieldList"""
     
     # Informations fournisseur
     supplier_name = StringField('Nom du fournisseur', validators=[DataRequired(), Length(min=2, max=200)])
@@ -85,7 +85,7 @@ class PurchaseForm(FlaskForm):
     supplier_email = StringField('Email', validators=[Optional(), Email(), Length(max=120)])
     supplier_address = TextAreaField('Adresse', validators=[Optional(), Length(max=500)])
     
-    # ✅ EXISTANT : Champ utilisé dans le template
+    # Champ utilisé dans le template
     invoice_number = StringField('N° Facture', validators=[Optional(), Length(max=100)], 
                                 render_kw={'placeholder': 'F2025-001'})
     
@@ -120,8 +120,8 @@ class PurchaseForm(FlaskForm):
     terms_conditions = TextAreaField('Conditions particulières', validators=[Optional(), Length(max=1000)],
                                     render_kw={"rows": 3, "placeholder": "Conditions spéciales..."})
     
-    # Articles (géré dynamiquement)
-    items = FieldList(FormField(PurchaseItemForm), min_entries=1, max_entries=50)
+    # ✅ CORRECTION : Plus de FieldList(FormField(PurchaseItemForm)) qui cause des problèmes
+    # Le traitement des items se fait manuellement dans la route
     
     # Actions
     submit = SubmitField('Enregistrer le bon d\'achat')
@@ -131,16 +131,6 @@ class PurchaseForm(FlaskForm):
         """Validation du nom fournisseur"""
         if len(field.data.strip()) < 2:
             raise ValidationError('Le nom du fournisseur doit contenir au moins 2 caractères.')
-    
-    def validate_items(self, field):
-        """Validation des lignes d'articles"""
-        valid_items = 0
-        for item in field.data:
-            if item.get('product_id') and item.get('quantity_ordered', 0) > 0 and item.get('unit_price', 0) > 0:
-                valid_items += 1
-        
-        if valid_items == 0:
-            raise ValidationError('Au moins un article avec quantité et prix doit être spécifié.')
 
 class PurchaseSearchForm(FlaskForm):
     """Formulaire de recherche dans les achats"""
@@ -176,7 +166,7 @@ class QuickPurchaseForm(FlaskForm):
     """Formulaire d'achat rapide pour un produit spécifique"""
     product = QuerySelectField('Produit', query_factory=purchasable_products_query, get_label='name', allow_blank=False)
     
-    # ✅ NOUVEAU : Unité pour achat rapide
+    # Unité pour achat rapide
     unit = QuerySelectField('Conditionnement', 
                            query_factory=active_units_query, 
                            get_label='name', 
