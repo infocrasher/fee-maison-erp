@@ -1,6 +1,8 @@
 """
 Formulaires pour la gestion des achats fournisseurs
+
 Module: app/purchases/forms.py
+
 Auteur: ERP Fée Maison
 """
 
@@ -31,13 +33,33 @@ def purchasable_products_query():
         ).order_by(Product.name)
     return []
 
+# ✅ NOUVEAU : Factory pour lister les unités actives
+def active_units_query():
+    """Factory pour récupérer les unités actives"""
+    if 'models' in sys.modules:
+        Unit = sys.modules['models'].Unit
+        return Unit.query.filter_by(is_active=True).order_by(Unit.display_order)
+    return []
+
 class PurchaseItemForm(FlaskForm):
-    """Formulaire pour une ligne d'article d'achat"""
+    """Formulaire pour une ligne d'article d'achat avec unités prédéfinies"""
     product_id = IntegerField('Produit ID', validators=[Optional()])
     product = QuerySelectField('Produit', query_factory=purchasable_products_query, get_label='name', allow_blank=True)
+    
+    # ✅ NOUVEAU : Sélection unité de conditionnement
+    unit = QuerySelectField('Conditionnement', 
+                           query_factory=active_units_query, 
+                           get_label='name', 
+                           allow_blank=True,
+                           validators=[Optional()])
+    
     quantity_ordered = FloatField('Quantité', validators=[Optional(), NumberRange(min=0.01)])
     unit_price = FloatField('Prix unitaire (DA)', validators=[Optional(), NumberRange(min=0.01)])
     discount_percentage = FloatField('Remise (%)', validators=[Optional(), NumberRange(min=0, max=100)], default=0.0)
+    
+    # ✅ NOUVEAU : Champs calculés automatiquement
+    total_base_quantity = HiddenField('Quantité totale en unité de base')
+    calculated_unit_cost = HiddenField('Coût unitaire en unité de base')
     
     stock_location = SelectField('Stock destination', choices=[
         ('ingredients_magasin', 'Stock Magasin (Par défaut)'),
@@ -60,7 +82,7 @@ class PurchaseForm(FlaskForm):
     supplier_email = StringField('Email', validators=[Optional(), Email(), Length(max=120)])
     supplier_address = TextAreaField('Adresse', validators=[Optional(), Length(max=500)])
     
-    # ✅ AJOUT : Champ manquant utilisé dans le template
+    # ✅ EXISTANT : Champ utilisé dans le template
     invoice_number = StringField('N° Facture', validators=[Optional(), Length(max=100)], 
                                 render_kw={'placeholder': 'F2025-001'})
     
@@ -150,6 +172,14 @@ class PurchaseSearchForm(FlaskForm):
 class QuickPurchaseForm(FlaskForm):
     """Formulaire d'achat rapide pour un produit spécifique"""
     product = QuerySelectField('Produit', query_factory=purchasable_products_query, get_label='name', allow_blank=False)
+    
+    # ✅ NOUVEAU : Unité pour achat rapide
+    unit = QuerySelectField('Conditionnement', 
+                           query_factory=active_units_query, 
+                           get_label='name', 
+                           allow_blank=True,
+                           validators=[Optional()])
+    
     quantity = FloatField('Quantité', validators=[DataRequired(), NumberRange(min=0.01)])
     unit_price = FloatField('Prix unitaire (DA)', validators=[DataRequired(), NumberRange(min=0.01)])
     
