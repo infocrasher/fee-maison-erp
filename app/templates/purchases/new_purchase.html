@@ -91,7 +91,6 @@
         color: white;
     }
     
-    /* ✅ NOUVEAU : Styles pour unités de conditionnement */
     .unit-helper {
         font-size: 0.8em;
         opacity: 0.9;
@@ -112,6 +111,34 @@
         margin-left: 5px;
     }
 </style>
+
+<!-- ✅ CORRECTION : Données Jinja2 converties en JSON proprement -->
+<script id="template-data" type="application/json">
+{
+    "available_units": [
+        {% for unit in available_units %}
+        {
+            "id": {{ unit.id }},
+            "name": "{{ unit.name }}",
+            "base_unit": "{{ unit.base_unit }}",
+            "conversion_factor": {{ unit.conversion_factor }},
+            "unit_type": "{{ unit.unit_type }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ],
+    "available_products": [
+        {% for product in available_products %}
+        {
+            "id": {{ product.id }},
+            "name": "{{ product.name }}",
+            "unit": "{{ product.unit or '' }}",
+            "cost_price": {{ product.cost_price or 0 }},
+            "stock_magasin": {{ product.stock_ingredients_magasin or 0 }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ]
+}
+</script>
 {% endblock %}
 
 {% block content %}
@@ -228,7 +255,7 @@
     </form>
 </div>
 
-<!-- ✅ NOUVEAU : Template pour ligne d'achat avec conditionnements -->
+<!-- Template pour ligne d'achat -->
 <template id="itemRowTemplate">
     <div class="item-row" data-item-index="">
         <div class="row align-items-center">
@@ -248,14 +275,7 @@
                 <label class="form-label">📦 Conditionnement</label>
                 <select class="form-control unit-select" name="items[][unit]">
                     <option value="">Unité standard</option>
-                    {% for unit in available_units %}
-                    <option value="{{ unit.id }}" 
-                            data-factor="{{ unit.conversion_factor }}" 
-                            data-base="{{ unit.base_unit }}"
-                            data-type="{{ unit.unit_type }}">
-                        {{ unit.name }}
-                    </option>
-                    {% endfor %}
+                    <!-- Options seront ajoutées dynamiquement -->
                 </select>
             </div>
             <div class="col-md-2">
@@ -290,7 +310,6 @@
             </div>
         </div>
         
-        <!-- ✅ NOUVEAU : Zone d'information de conversion -->
         <div class="conversion-info" style="display: none;">
             <strong>💡 Conversion automatique :</strong>
             <span class="conversion-text"></span>
@@ -301,14 +320,15 @@
 
 {% block scripts %}
 <script>
+// ✅ CORRECTION : Variables globales propres
 let itemIndex = 0;
 let availableProducts = [];
 let availableUnits = [];
+let templateData = {};
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Charger données disponibles
-    loadAvailableProducts();
-    loadAvailableUnits();
+    // ✅ CORRECTION : Charger données depuis JSON proprement
+    loadTemplateData();
     
     // Ajouter première ligne automatiquement
     addItemRow();
@@ -317,22 +337,22 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('addItemBtn').addEventListener('click', addItemRow);
 });
 
-// ✅ NOUVEAU : Charger unités disponibles depuis le template
-function loadAvailableUnits() {
-    availableUnits = [
-        {% for unit in available_units %}
-        {
-            id: {{ unit.id }},
-            name: '{{ unit.name }}',
-            base_unit: '{{ unit.base_unit }}',
-            conversion_factor: {{ unit.conversion_factor }},
-            unit_type: '{{ unit.unit_type }}'
-        }{% if not loop.last %},{% endif %}
-        {% endfor %}
-    ];
+// ✅ CORRECTION : Charger données sans mélange Jinja2/JS
+function loadTemplateData() {
+    try {
+        const dataScript = document.getElementById('template-data');
+        templateData = JSON.parse(dataScript.textContent);
+        availableUnits = templateData.available_units;
+        availableProducts = templateData.available_products;
+        console.log('Données chargées:', availableUnits.length, 'unités,', availableProducts.length, 'produits');
+    } catch (error) {
+        console.error('Erreur chargement données template:', error);
+        availableUnits = [];
+        availableProducts = [];
+    }
 }
 
-// Ajouter une ligne d'achat avec gestion des unités
+// ✅ CORRECTION : Ajouter ligne avec gestion correcte des événements
 function addItemRow() {
     const container = document.getElementById('itemsContainer');
     const template = document.getElementById('itemRowTemplate');
@@ -342,35 +362,24 @@ function addItemRow() {
     const itemRow = clone.querySelector('.item-row');
     itemRow.setAttribute('data-item-index', itemIndex);
     
-    // Configurer autocomplétion pour cette ligne
-    const searchInput = clone.querySelector('.product-search');
-    setupAutocomplete(searchInput, itemIndex);
-    
-    // ✅ NOUVEAU : Configurer gestion des unités
-    setupUnitHandling(itemRow, itemIndex);
-    
-    // Event listeners pour calculs
-    const quantityInput = clone.querySelector('.item-quantity');
-    const priceInput = clone.querySelector('.item-price');
-    
-    quantityInput.addEventListener('input', function() {
-        updateConversionDisplay(itemIndex);
-        calculateItemTotal(itemIndex);
-        calculateGrandTotal();
+    // ✅ CORRECTION : Ajouter options unités AVANT d'ajouter au DOM
+    const unitSelect = clone.querySelector('.unit-select');
+    availableUnits.forEach(unit => {
+        const option = document.createElement('option');
+        option.value = unit.id;
+        option.textContent = unit.name;
+        option.setAttribute('data-factor', unit.conversion_factor);
+        option.setAttribute('data-base', unit.base_unit);
+        option.setAttribute('data-type', unit.unit_type);
+        unitSelect.appendChild(option);
     });
     
-    priceInput.addEventListener('input', function() {
-        updateConversionDisplay(itemIndex);
-        calculateItemTotal(itemIndex);
-        calculateGrandTotal();
-    });
-    
-    // Event listener pour supprimer
-    clone.querySelector('.remove-item-btn').addEventListener('click', function() {
-        removeItemRow(itemIndex);
-    });
-    
+    // Ajouter au DOM
     container.appendChild(clone);
+    
+    // ✅ CORRECTION : Configurer événements APRÈS ajout au DOM
+    const addedRow = container.lastElementChild;
+    setupRowEvents(addedRow, itemIndex);
     
     // Masquer message vide
     document.getElementById('emptyItemsMessage').style.display = 'none';
@@ -378,139 +387,179 @@ function addItemRow() {
     itemIndex++;
 }
 
-// ✅ NOUVEAU : Gestion des unités et calculs automatiques
-function setupUnitHandling(itemRow, index) {
+// ✅ CORRECTION : Configuration événements simplifiée et robuste
+function setupRowEvents(itemRow, index) {
+    const searchInput = itemRow.querySelector('.product-search');
     const unitSelect = itemRow.querySelector('.unit-select');
     const quantityInput = itemRow.querySelector('.item-quantity');
     const priceInput = itemRow.querySelector('.item-price');
-    const quantityHelper = itemRow.querySelector('.quantity-helper');
-    const priceHelper = itemRow.querySelector('.price-helper');
-    const totalHelper = itemRow.querySelector('.total-helper');
-    const conversionInfo = itemRow.querySelector('.conversion-info');
-    const conversionText = itemRow.querySelector('.conversion-text');
+    const removeBtn = itemRow.querySelector('.remove-item-btn');
     
-    function updateHelpers() {
-        const selectedUnit = unitSelect.selectedOptions[0];
+    // Autocomplétion
+    setupAutocomplete(searchInput, index);
+    
+    // ✅ CORRECTION : Event listeners avec calcul de total immédiat
+    quantityInput.addEventListener('input', function() {
+        updateConversionDisplay(index);
+        calculateItemTotal(index);  // ✅ AJOUT : Calcul immédiat
+        calculateGrandTotal();
+    });
+    
+    priceInput.addEventListener('input', function() {
+        updateConversionDisplay(index);
+        calculateItemTotal(index);  // ✅ AJOUT : Calcul immédiat
+        calculateGrandTotal();
+    });
+    
+    unitSelect.addEventListener('change', function() {
+        updateConversionDisplay(index);
+        calculateItemTotal(index);  // ✅ AJOUT : Calcul immédiat
+        calculateGrandTotal();
+    });
+    
+    // Supprimer ligne
+    removeBtn.addEventListener('click', function() {
+        removeItemRow(index);
+    });
+}
+
+// ✅ CORRECTION : Calcul total ligne fonctionnel
+function calculateItemTotal(index) {
+    const row = document.querySelector(`[data-item-index="${index}"]`);
+    if (!row) return;
+    
+    const quantityInput = row.querySelector('.item-quantity');
+    const priceInput = row.querySelector('.item-price');
+    const totalElement = row.querySelector('.item-total');
+    
+    const quantity = parseFloat(quantityInput.value) || 0;
+    const price = parseFloat(priceInput.value) || 0;
+    const total = quantity * price;
+    
+    // ✅ CORRECTION : Affichage formaté du total
+    totalElement.textContent = total.toLocaleString('fr-FR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }) + ' DA';
+    
+    console.log(`Ligne ${index}: ${quantity} × ${price} = ${total} DA`);
+}
+
+// ✅ CORRECTION : Calcul grand total amélioré
+function calculateGrandTotal() {
+    let grandTotal = 0;
+    let itemCount = 0;
+    let conversionSummary = [];
+    
+    document.querySelectorAll('.item-row').forEach(function(row) {
+        const quantityInput = row.querySelector('.item-quantity');
+        const priceInput = row.querySelector('.item-price');
+        const unitSelect = row.querySelector('.unit-select');
+        
         const quantity = parseFloat(quantityInput.value) || 0;
         const price = parseFloat(priceInput.value) || 0;
         
-        if (selectedUnit && selectedUnit.value) {
-            const factor = parseFloat(selectedUnit.dataset.factor);
-            const baseUnit = selectedUnit.dataset.base;
-            const totalBase = quantity * factor;
+        if (quantity > 0 && price > 0) {
+            grandTotal += quantity * price;
+            itemCount++;
             
-            // Mise à jour des helpers
-            quantityHelper.textContent = `= ${totalBase}${baseUnit} total`;
-            priceHelper.textContent = `= ${(price / factor).toFixed(4)} DA/${baseUnit}`;
-            totalHelper.textContent = `${quantity} × ${selectedUnit.text}`;
-            
-            // Affichage conversion
-            conversionText.textContent = `${quantity} × ${selectedUnit.text} = ${totalBase}${baseUnit} ajoutés au stock`;
-            conversionInfo.style.display = 'block';
-        } else {
-            quantityHelper.textContent = '';
-            priceHelper.textContent = '';
-            totalHelper.textContent = '';
-            conversionInfo.style.display = 'none';
+            // Ajouter à résumé conversion
+            if (unitSelect.value) {
+                const selectedOption = unitSelect.selectedOptions[0];
+                const factor = parseFloat(selectedOption.getAttribute('data-factor'));
+                const baseUnit = selectedOption.getAttribute('data-base');
+                const totalBase = quantity * factor;
+                conversionSummary.push(`${totalBase}${baseUnit}`);
+            }
         }
+    });
+    
+    // ✅ CORRECTION : Mise à jour affichage total
+    document.getElementById('totalAmount').textContent = grandTotal.toLocaleString('fr-FR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }) + ' DA';
+    
+    document.getElementById('itemCount').textContent = itemCount + ' produit(s)';
+    
+    // Afficher résumé conversions
+    const summaryElement = document.getElementById('conversionSummary');
+    if (conversionSummary.length > 0) {
+        summaryElement.textContent = `📦 Impact stock : ${conversionSummary.join(' + ')}`;
+    } else {
+        summaryElement.textContent = '';
     }
     
-    unitSelect.addEventListener('change', updateHelpers);
-    quantityInput.addEventListener('input', updateHelpers);
-    priceInput.addEventListener('input', updateHelpers);
+    console.log('Grand Total:', grandTotal, 'DA');
 }
 
-// Charger produits disponibles (API réelle maintenant)
-function loadAvailableProducts() {
-    // ✅ CORRECTION : Utilisation de l'API réelle au lieu de données fantômes
-    fetch('/admin/purchases/api/products_search?q=')
-        .then(response => response.json())
-        .then(data => {
-            availableProducts = data;
-        })
-        .catch(error => {
-            console.log('Chargement via template variables de fallback');
-            // Fallback avec les vrais produits du template
-            availableProducts = [
-                {% for product in available_products %}
-                {
-                    id: {{ product.id }},
-                    name: '{{ product.name }}',
-                    unit: '{{ product.unit }}',
-                    cost_price: {{ product.cost_price or 0 }},
-                    stock_magasin: {{ product.stock_ingredients_magasin or 0 }}
-                }{% if not loop.last %},{% endif %}
-                {% endfor %}
-            ];
-        });
-}
-
-// Supprimer ligne d'achat
-function removeItemRow(index) {
+// Mise à jour affichage conversion
+function updateConversionDisplay(index) {
     const row = document.querySelector(`[data-item-index="${index}"]`);
-    if (row) {
-        row.remove();
-        calculateGrandTotal();
+    if (!row) return;
+    
+    const unitSelect = row.querySelector('.unit-select');
+    const quantityInput = row.querySelector('.item-quantity');
+    const priceInput = row.querySelector('.item-price');
+    const quantityHelper = row.querySelector('.quantity-helper');
+    const priceHelper = row.querySelector('.price-helper');
+    const totalHelper = row.querySelector('.total-helper');
+    const conversionInfo = row.querySelector('.conversion-info');
+    const conversionText = row.querySelector('.conversion-text');
+    
+    const quantity = parseFloat(quantityInput.value) || 0;
+    const price = parseFloat(priceInput.value) || 0;
+    
+    if (unitSelect.value && quantity > 0) {
+        const selectedOption = unitSelect.selectedOptions[0];
+        const factor = parseFloat(selectedOption.getAttribute('data-factor'));
+        const baseUnit = selectedOption.getAttribute('data-base');
+        const totalBase = quantity * factor;
         
-        // Afficher message si plus de lignes
-        const remainingRows = document.querySelectorAll('.item-row');
-        if (remainingRows.length === 0) {
-            document.getElementById('emptyItemsMessage').style.display = 'block';
+        // Mise à jour des helpers
+        quantityHelper.textContent = `= ${totalBase}${baseUnit} total`;
+        if (price > 0) {
+            priceHelper.textContent = `= ${(price / factor).toFixed(4)} DA/${baseUnit}`;
         }
+        totalHelper.textContent = `${quantity} × ${selectedOption.textContent}`;
+        
+        // Affichage conversion
+        conversionText.textContent = `${quantity} × ${selectedOption.textContent} = ${totalBase}${baseUnit} ajoutés au stock`;
+        conversionInfo.style.display = 'block';
+    } else {
+        quantityHelper.textContent = '';
+        priceHelper.textContent = '';
+        totalHelper.textContent = '';
+        conversionInfo.style.display = 'none';
     }
 }
 
-// Configuration autocomplétion (identique mais sans données fantômes)
+// Configuration autocomplétion (simplifiée)
 function setupAutocomplete(inputElement, index) {
     const suggestionsContainer = inputElement.parentNode.querySelector('.autocomplete-suggestions');
-    let currentSuggestionIndex = -1;
     
     inputElement.addEventListener('input', function() {
-        const query = this.value.trim();
+        const query = this.value.trim().toLowerCase();
         
         if (query.length >= 2) {
-            // ✅ NOUVEAU : Recherche via API en temps réel
-            fetch(`/admin/purchases/api/products_search?q=${encodeURIComponent(query)}`)
-                .then(response => response.json())
-                .then(products => {
-                    showSuggestions(products, suggestionsContainer, inputElement, index);
-                })
-                .catch(error => {
-                    // Fallback sur les produits chargés
-                    const filteredProducts = availableProducts.filter(product => 
-                        product.name.toLowerCase().includes(query.toLowerCase())
-                    );
-                    showSuggestions(filteredProducts, suggestionsContainer, inputElement, index);
-                });
+            const filteredProducts = availableProducts.filter(product => 
+                product.name.toLowerCase().includes(query)
+            );
+            showSuggestions(filteredProducts, suggestionsContainer, inputElement, index);
         } else {
             hideSuggestions(suggestionsContainer);
         }
     });
     
-    // Navigation clavier (identique)
-    inputElement.addEventListener('keydown', function(e) {
-        const suggestions = suggestionsContainer.querySelectorAll('.autocomplete-item');
-        
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            currentSuggestionIndex = Math.min(currentSuggestionIndex + 1, suggestions.length - 1);
-            updateActiveSuggestion(suggestions, currentSuggestionIndex);
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            currentSuggestionIndex = Math.max(currentSuggestionIndex - 1, -1);
-            updateActiveSuggestion(suggestions, currentSuggestionIndex);
-        } else if (e.key === 'Enter') {
-            e.preventDefault();
-            if (currentSuggestionIndex >= 0 && suggestions[currentSuggestionIndex]) {
-                selectProductFromSuggestion(suggestions[currentSuggestionIndex], inputElement, index);
-            }
-        } else if (e.key === 'Escape') {
+    // Cacher suggestions si clic ailleurs
+    document.addEventListener('click', function(e) {
+        if (!inputElement.contains(e.target)) {
             hideSuggestions(suggestionsContainer);
         }
     });
 }
 
-// Afficher suggestions autocomplétion
+// Afficher suggestions
 function showSuggestions(products, container, inputElement, index) {
     container.innerHTML = '';
     
@@ -539,13 +588,6 @@ function hideSuggestions(container) {
     container.style.display = 'none';
 }
 
-// Mettre à jour suggestion active
-function updateActiveSuggestion(suggestions, activeIndex) {
-    suggestions.forEach(function(item, index) {
-        item.classList.toggle('active', index === activeIndex);
-    });
-}
-
 // Sélectionner un produit
 function selectProduct(inputElement, index, productData) {
     inputElement.value = productData.name;
@@ -558,81 +600,18 @@ function selectProduct(inputElement, index, productData) {
     hideSuggestions(inputElement.parentNode.querySelector('.autocomplete-suggestions'));
 }
 
-// Sélectionner depuis suggestion (pour navigation clavier)
-function selectProductFromSuggestion(suggestionElement, inputElement, index) {
-    const productName = suggestionElement.querySelector('strong').textContent;
-    const product = availableProducts.find(p => p.name === productName);
-    if (product) {
-        selectProduct(inputElement, index, product);
-    }
-}
-
-// Mise à jour affichage conversion
-function updateConversionDisplay(index) {
+// Supprimer ligne d'achat
+function removeItemRow(index) {
     const row = document.querySelector(`[data-item-index="${index}"]`);
-    if (!row) return;
-    
-    const unitSelect = row.querySelector('.unit-select');
-    const quantity = parseFloat(row.querySelector('.item-quantity').value) || 0;
-    
-    if (unitSelect.value && quantity > 0) {
-        const selectedOption = unitSelect.selectedOptions[0];
-        const factor = parseFloat(selectedOption.dataset.factor);
-        const baseUnit = selectedOption.dataset.base;
-        const totalBase = quantity * factor;
+    if (row) {
+        row.remove();
+        calculateGrandTotal();
         
-        const conversionText = row.querySelector('.conversion-text');
-        conversionText.textContent = `${quantity} × ${selectedOption.text} = ${totalBase}${baseUnit} ajoutés au stock`;
-    }
-}
-
-// Calculer total d'une ligne
-function calculateItemTotal(index) {
-    const row = document.querySelector(`[data-item-index="${index}"]`);
-    if (!row) return;
-    
-    const quantity = parseFloat(row.querySelector('.item-quantity').value) || 0;
-    const price = parseFloat(row.querySelector('.item-price').value) || 0;
-    const total = quantity * price;
-    
-    row.querySelector('.item-total').textContent = total.toFixed(2) + ' DA';
-}
-
-// Calculer total général avec résumé conversions
-function calculateGrandTotal() {
-    let grandTotal = 0;
-    let itemCount = 0;
-    let conversionSummary = [];
-    
-    document.querySelectorAll('.item-row').forEach(function(row, index) {
-        const quantity = parseFloat(row.querySelector('.item-quantity').value) || 0;
-        const price = parseFloat(row.querySelector('.item-price').value) || 0;
-        const unitSelect = row.querySelector('.unit-select');
-        
-        if (quantity > 0 && price > 0) {
-            grandTotal += quantity * price;
-            itemCount++;
-            
-            // Ajouter à résumé conversion
-            if (unitSelect.value) {
-                const selectedOption = unitSelect.selectedOptions[0];
-                const factor = parseFloat(selectedOption.dataset.factor);
-                const baseUnit = selectedOption.dataset.base;
-                const totalBase = quantity * factor;
-                conversionSummary.push(`${totalBase}${baseUnit}`);
-            }
+        // Afficher message si plus de lignes
+        const remainingRows = document.querySelectorAll('.item-row');
+        if (remainingRows.length === 0) {
+            document.getElementById('emptyItemsMessage').style.display = 'block';
         }
-    });
-    
-    document.getElementById('totalAmount').textContent = grandTotal.toFixed(2) + ' DA';
-    document.getElementById('itemCount').textContent = itemCount + ' produit(s)';
-    
-    // Afficher résumé conversions
-    const summaryElement = document.getElementById('conversionSummary');
-    if (conversionSummary.length > 0) {
-        summaryElement.textContent = `📦 Impact stock : ${conversionSummary.join(' + ')}`;
-    } else {
-        summaryElement.textContent = '';
     }
 }
 
