@@ -188,7 +188,7 @@
                                 <small>Prix unitaire</small>
                             </div>
                             <div class="col-md-3 text-end">
-                                <h6 class="mb-0">{{ (item.quantity * (item.unit_price or 0)) }} DA</h6>
+                                <h6 class="mb-0">{{ item.line_total_with_discount|round(2) }} DA</h6>
                                 <small>Total ligne</small>
                             </div>
                         </div>
