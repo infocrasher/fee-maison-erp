@@ -498,3 +498,35 @@ class OrderItem(db.Model):
     
     def __repr__(self):
         return f'<OrderItem {self.product.name if self.product else "N/A"}: {self.quantity}x{self.unit_price}>'
+
+class Unit(db.Model):
+    """
+    Unités de conditionnement prédéfinies (25kg, 5L, 250g, etc.)
+    Permet de gérer les achats selon les conditionnements réels des fournisseurs
+    """
+    __tablename__ = 'units'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)  # "25kg", "5L"
+    base_unit = db.Column(db.String(10), nullable=False)         # "g", "ml"
+    conversion_factor = db.Column(db.Numeric(10, 3), nullable=False)  # 25000, 5000
+    unit_type = db.Column(db.String(20), nullable=False)         # "weight", "volume"
+    display_order = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<Unit {self.name}>'
+    
+    def to_base_unit(self, quantity):
+        """Convertit une quantité vers l'unité de base (grammes ou ml)"""
+        return float(quantity) * float(self.conversion_factor)
+    
+    def from_base_unit(self, base_quantity):
+        """Convertit depuis l'unité de base vers cette unité"""
+        return float(base_quantity) / float(self.conversion_factor)
+    
+    @property
+    def display_name(self):
+        """Nom d'affichage avec type d'unité"""
+        return f"{self.name} ({self.unit_type})"
