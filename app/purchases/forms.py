@@ -25,13 +25,16 @@ def all_products_query():
 
 # Factory pour lister les produits ingrédients et consommables
 def purchasable_products_query():
-    """Factory pour récupérer les produits achetables"""
-    if 'models' in sys.modules:
-        Product = sys.modules['models'].Product
+    """Factory pour récupérer les produits achetables - Version robuste"""
+    try:
+        # Import direct et sécurisé
+        from models import Product
         return Product.query.filter(
             Product.product_type.in_(['ingredient', 'consommable'])
-        ).order_by(Product.name)
-    return []
+        ).order_by(Product.name).all()
+    except Exception as e:
+        print(f"Erreur dans purchasable_products_query: {e}")
+        return []
 
 # ✅ NOUVEAU : Factory pour lister les unités actives
 def active_units_query():
