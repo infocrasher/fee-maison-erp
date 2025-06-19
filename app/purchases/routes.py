@@ -1,5 +1,5 @@
 """
-Routes pour la gestion des achats fournisseurs avec système d'unités
+Routes pour la gestion des achats fournisseurs avec système d'unités et paiement
 
 Module: app/purchases/routes.py
 
@@ -10,7 +10,7 @@ from flask import render_template, redirect, url_for, flash, request, jsonify, c
 from flask_login import login_required, current_user
 from extensions import db
 from .models import Purchase, PurchaseItem, PurchaseStatus, PurchaseUrgency
-from .forms import (PurchaseForm, PurchaseApprovalForm, PurchaseReceiptForm,
+from .forms import (PurchaseForm, MarkAsPaidForm, PurchaseApprovalForm, PurchaseReceiptForm,
                    PurchaseSearchForm, QuickPurchaseForm, PurchaseReceiptItemForm)
 from decorators import admin_required
 from sqlalchemy import and_, or_, desc, func
@@ -37,7 +37,7 @@ def get_main_models():
 @purchases.route('/')
 @login_required
 def list_purchases():
-    """Liste de tous les achats avec filtres"""
+    """Liste de tous les achats avec filtres et statut paiement"""
     Product, User, Unit = get_main_models()
     
     form = PurchaseSearchForm()
@@ -45,13 +45,20 @@ def list_purchases():
     # Construction de la requête de base
     query = Purchase.query
     
-    # Application des filtres si formulaire soumis
+    # ✅ NOUVEAU : Filtre par statut de paiement
+    payment_filter = request.args.get('payment_status', 'all')
+    if payment_filter == 'unpaid':
+        query = query.filter(Purchase.is_paid == False)
+    elif payment_filter == 'paid':
+        query = query.filter(Purchase.is_paid == True)
+    
+    # Filtres existants
     if form.validate_on_submit():
         if form.search_term.data:
             search = f"%{form.search_term.data}%"
             query = query.filter(or_(
                 Purchase.reference.ilike(search),
-                Purchase.supplier_name.ilike(search),
+                Purchase.supplier_name.ilike(search), 
                 Purchase.notes.ilike(search)
             ))
         
@@ -73,15 +80,14 @@ def list_purchases():
         page=page, per_page=per_page, error_out=False
     )
     
-    # Statistiques pour le dashboard
+    # ✅ NOUVEAU : Statistiques avec paiements
     stats = {
         'total_purchases': Purchase.query.count(),
         'pending_approval': Purchase.query.filter(
             Purchase.status.in_([PurchaseStatus.DRAFT, PurchaseStatus.REQUESTED])
         ).count(),
-        'in_progress': Purchase.query.filter(
-            Purchase.status.in_([PurchaseStatus.ORDERED, PurchaseStatus.PARTIALLY_RECEIVED])
-        ).count(),
+        'unpaid_purchases': Purchase.query.filter(Purchase.is_paid == False).count(),
+        'paid_purchases': Purchase.query.filter(Purchase.is_paid == True).count(),
         'overdue': len([p for p in Purchase.query.all() if p.is_overdue()])
     }
     
@@ -97,10 +103,13 @@ def list_purchases():
         stats=stats,
         total_purchases=stats['total_purchases'],
         pending_purchases=stats['pending_approval'],
-        total_amount_month=0,  # À calculer si nécessaire
+        unpaid_purchases=stats['unpaid_purchases'],    # ✅ NOUVEAU
+        paid_purchases=stats['paid_purchases'],        # ✅ NOUVEAU
+        total_amount_month=0,
         suppliers_count=len(suppliers_list),
         suppliers_list=suppliers_list,
-        pagination=purchases
+        pagination=purchases,
+        current_payment_filter=payment_filter         # ✅ NOUVEAU
     )
 
 @purchases.route('/new', methods=['GET', 'POST'])
@@ -128,7 +137,8 @@ def new_purchase():
             notes=form.notes.data,
             internal_notes=form.internal_notes.data,
             terms_conditions=form.terms_conditions.data,
-            requested_by_id=current_user.id
+            requested_by_id=current_user.id,
+            is_paid=False  # ✅ NOUVEAU : Non payé par défaut
         )
         
         # Statut selon l'action choisie
@@ -140,7 +150,7 @@ def new_purchase():
         db.session.add(purchase)
         db.session.flush()  # Pour obtenir l'ID
         
-        # ✅ CORRECTION : Traitement manuel des items depuis request.form
+        # Traitement manuel des items depuis request.form
         items_added = 0
         
         # Récupérer tous les champs items de request.form
@@ -250,7 +260,7 @@ def new_purchase():
 @purchases.route('/<int:id>')
 @login_required
 def view_purchase(id):
-    """Affichage détaillé d'un bon d'achat avec unités"""
+    """Affichage détaillé d'un bon d'achat avec unités et paiement"""
     purchase = Purchase.query.get_or_404(id)
     
     # Vérification des permissions
@@ -263,6 +273,49 @@ def view_purchase(id):
         title=f"Bon d'Achat {purchase.reference}",
         purchase=purchase
     )
+
+# ✅ NOUVELLES ROUTES : Gestion des paiements
+@purchases.route('/<int:id>/mark_paid', methods=['GET', 'POST'])
+@login_required  
+@admin_required
+def mark_as_paid(id):
+    """Marquer un bon d'achat comme payé"""
+    purchase = Purchase.query.get_or_404(id)
+    
+    if purchase.is_paid:
+        flash('Ce bon d\'achat est déjà marqué comme payé.', 'info')
+        return redirect(url_for('purchases.view_purchase', id=id))
+    
+    form = MarkAsPaidForm()
+    
+    if form.validate_on_submit():
+        purchase.is_paid = True
+        purchase.payment_date = form.payment_date.data
+        db.session.commit()
+        
+        flash(f'Bon d\'achat {purchase.reference} marqué comme payé le {form.payment_date.data.strftime("%d/%m/%Y")}.', 'success')
+        return redirect(url_for('purchases.view_purchase', id=id))
+    
+    return render_template(
+        'purchases/mark_paid.html',
+        purchase=purchase,
+        form=form,
+        title=f'Marquer comme Payé - {purchase.reference}'
+    )
+
+@purchases.route('/<int:id>/mark_unpaid', methods=['POST'])
+@login_required
+@admin_required  
+def mark_as_unpaid(id):
+    """Marquer un bon d'achat comme non payé"""
+    purchase = Purchase.query.get_or_404(id)
+    
+    purchase.is_paid = False
+    purchase.payment_date = None
+    db.session.commit()
+    
+    flash(f'Bon d\'achat {purchase.reference} marqué comme non payé.', 'success')
+    return redirect(url_for('purchases.view_purchase', id=id))
 
 @purchases.route('/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
