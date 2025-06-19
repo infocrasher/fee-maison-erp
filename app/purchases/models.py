@@ -7,7 +7,7 @@ Auteur: ERP Fée Maison
 """
 
 from extensions import db
-from datetime import datetime
+from datetime import datetime, date
 from enum import Enum
 import uuid
 
@@ -30,7 +30,7 @@ class PurchaseUrgency(Enum):
     URGENT = 'urgent'           # Urgente
 
 class Purchase(db.Model):
-    """Bon d'achat principal"""
+    """Bon d'achat principal avec gestion paiement simplifiée"""
     __tablename__ = 'purchases'
     
     # Identification
@@ -59,6 +59,10 @@ class Purchase(db.Model):
     expected_delivery_date = db.Column(db.DateTime)
     received_date = db.Column(db.DateTime)
     
+    # ✅ NOUVEAUX CHAMPS : Gestion paiement simplifiée
+    is_paid = db.Column(db.Boolean, default=False, nullable=False)  # Payé oui/non
+    payment_date = db.Column(db.Date, nullable=True)  # Date paiement si payé
+    
     # Montants
     subtotal_amount = db.Column(db.Numeric(10, 2), default=0.0)
     tax_amount = db.Column(db.Numeric(10, 2), default=0.0)
@@ -80,10 +84,6 @@ class Purchase(db.Model):
     requested_by = db.relationship('User', foreign_keys=[requested_by_id], backref='requested_purchases', lazy=True)
     approved_by = db.relationship('User', foreign_keys=[approved_by_id], backref='approved_purchases', lazy=True)
     received_by = db.relationship('User', foreign_keys=[received_by_id], backref='received_purchases', lazy=True)
-
-    # ✅ NOUVEAUX CHAMPS SIMPLES pour gestion paiement
-    is_paid = db.Column(db.Boolean, default=False, nullable=False)  # Payé oui/non
-    payment_date = db.Column(db.Date, nullable=True)  # Date paiement si payé
     
     def __init__(self, **kwargs):
         super(Purchase, self).__init__(**kwargs)
@@ -123,6 +123,23 @@ class Purchase(db.Model):
         return (self.expected_delivery_date < datetime.utcnow() and 
                 self.status not in [PurchaseStatus.RECEIVED, PurchaseStatus.INVOICED, PurchaseStatus.CANCELLED])
     
+    # ✅ NOUVELLES PROPRIÉTÉS : Gestion affichage paiement
+    @property
+    def payment_status_display(self):
+        """Affichage du statut de paiement"""
+        if self.is_paid:
+            if self.payment_date:
+                return f"✅ Payé le {self.payment_date.strftime('%d/%m/%Y')}"
+            else:
+                return "✅ Payé (date inconnue)"
+        else:
+            return "⏳ Non payé"
+    
+    @property 
+    def payment_badge_class(self):
+        """Classe CSS pour le badge de statut paiement"""
+        return "bg-success" if self.is_paid else "bg-warning"
+    
     @property
     def status_label(self):
         """Label français du statut"""
@@ -148,19 +165,6 @@ class Purchase(db.Model):
             PurchaseUrgency.URGENT: 'Urgente'
         }
         return urgency_labels.get(self.urgency, self.urgency.value)
-    
-    @property
-    def payment_status_display(self):
-        """Affichage du statut de paiement"""
-        if self.is_paid:
-            return f"✅ Payé le {self.payment_date.strftime('%d/%m/%Y') if self.payment_date else 'date inconnue'}"
-        else:
-            return "⏳ Non payé"
-    
-    @property 
-    def payment_badge_class(self):
-        """Classe CSS pour le badge de statut"""
-        return "bg-success" if self.is_paid else "bg-warning"
 
 class PurchaseItem(db.Model):
     """Ligne d'article dans un bon d'achat avec support des unités prédéfinies"""
@@ -176,7 +180,7 @@ class PurchaseItem(db.Model):
     unit_price = db.Column(db.Numeric(10, 2), nullable=False)        # Prix par unité de base
     discount_percentage = db.Column(db.Numeric(5, 2), default=0.0)
     
-    # ✅ NOUVEAUX CHAMPS pour gestion unités de conditionnement
+    # Champs pour gestion unités de conditionnement
     original_quantity = db.Column(db.Numeric(10, 3), nullable=True)     # 2 (pour 2 × 25kg)
     original_unit_id = db.Column(db.Integer, db.ForeignKey('units.id'), nullable=True)
     original_unit_price = db.Column(db.Numeric(10, 2), nullable=True)   # 1500 DA/sac de 25kg
@@ -197,8 +201,6 @@ class PurchaseItem(db.Model):
     # Relations
     purchase = db.relationship('Purchase', backref=db.backref('items', lazy=True, cascade='all, delete-orphan'))
     product = db.relationship('Product', backref='purchase_items', lazy=True)
-    
-    # ✅ NOUVELLE RELATION vers l'unité utilisée
     original_unit = db.relationship('Unit', backref='purchase_items', lazy=True)
     
     def __repr__(self):
@@ -224,7 +226,6 @@ class PurchaseItem(db.Model):
             return float(self.original_quantity) * float(self.original_unit_price)
         return self.line_total
     
-    # ✅ NOUVELLES PROPRIÉTÉS pour affichage avec unités
     @property
     def display_quantity(self):
         """Affichage lisible de la quantité avec unité originale"""
