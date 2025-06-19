@@ -4,29 +4,187 @@
 
 {% block head %}
 <style>
-    .product-row {
-        background: #f8f9fa;
-        border-radius: 8px;
-        padding: 15px;
-        margin-bottom: 15px;
-        border-left: 4px solid #667eea;
-    }
-    .stock-selector {
+    .form-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border: none;
-        border-radius: 6px;
+        border-radius: 15px;
         color: white;
-        padding: 5px 10px;
-        font-size: 0.85em;
+        padding: 30px;
+        margin-bottom: 20px;
     }
-    .calculation-display {
-        background: #e3f2fd;
+    .item-row {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 10px;
+        color: white;
+        transition: all 0.3s ease;
+    }
+    .item-row:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    
+    .action-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 25px;
+        color: white;
+        padding: 10px 20px;
+        transition: all 0.3s ease;
+    }
+    .action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        color: white;
+    }
+    .btn-add { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+    .btn-save { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+    .btn-remove { background: linear-gradient(135deg, #ff6b6b 0%, #ffa8a8 100%); }
+    
+    .autocomplete-container {
+        position: relative;
+    }
+    .autocomplete-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+    }
+    .autocomplete-item {
+        padding: 10px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background 0.2s ease;
+        color: #333;
+    }
+    .autocomplete-item:hover,
+    .autocomplete-item.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    .autocomplete-item:last-child {
+        border-bottom: none;
+    }
+    
+    .total-section {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        border-radius: 12px;
+        padding: 20px;
+        color: white;
+        text-align: center;
+    }
+    
+    .supplier-info {
+        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 20px;
+        color: white;
+    }
+    
+    .unit-helper {
+        font-size: 0.8em;
+        opacity: 0.9;
+        margin-top: 2px;
+    }
+    .conversion-info {
+        background: rgba(255,255,255,0.2);
         border-radius: 6px;
         padding: 8px;
-        font-size: 0.9em;
         margin-top: 5px;
+        font-size: 0.85em;
+    }
+    .unit-badge {
+        background: rgba(255,255,255,0.3);
+        border-radius: 12px;
+        padding: 2px 8px;
+        font-size: 0.75em;
+        margin-left: 5px;
+    }
+    
+    /* ✅ NOUVEAU CSS : Sélection Stock */
+    .stock-location-select {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        padding: 8px 12px;
+        font-size: 0.9em;
+        font-weight: 500;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+    .stock-location-select:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .stock-location-select option {
+        background: white;
+        color: #333;
+        padding: 8px;
+        font-weight: normal;
+    }
+    .stock-helper {
+        font-size: 0.75em;
+        opacity: 0.8;
+        margin-top: 3px;
+    }
+    .stock-badge {
+        background: rgba(255,255,255,0.2);
+        border-radius: 8px;
+        padding: 3px 8px;
+        font-size: 0.7em;
+        margin-top: 2px;
+        display: inline-block;
+    }
+    
+    /* Date d'achat automatique */
+    .date-info {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 8px;
+        padding: 12px;
+        color: white;
+        text-align: center;
+        margin-bottom: 15px;
     }
 </style>
+
+<!-- ✅ CORRECTION : Données Jinja2 converties en JSON proprement -->
+<script id="template-data" type="application/json">
+{
+    "available_units": [
+        {% for unit in available_units %}
+        {
+            "id": {{ unit.id }},
+            "name": "{{ unit.name }}",
+            "base_unit": "{{ unit.base_unit }}",
+            "conversion_factor": {{ unit.conversion_factor }},
+            "unit_type": "{{ unit.unit_type }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ],
+    "available_products": [
+        {% for product in available_products %}
+        {
+            "id": {{ product.id }},
+            "name": "{{ product.name }}",
+            "unit": "{{ product.unit or '' }}",
+            "cost_price": {{ product.cost_price or 0 }},
+            "stock_magasin": {{ product.stock_ingredients_magasin or 0 }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ]
+}
+</script>
 {% endblock %}
 
 {% block content %}
@@ -34,185 +192,221 @@
     <!-- En-tête -->
     <div class="row mb-4">
         <div class="col-12">
-            <h1 class="h3">📝 Nouveau Bon d'Achat</h1>
-            <p class="text-muted">Création d'un bon d'achat avec mise à jour automatique du stock</p>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-1">🛒 Nouveau Bon d'Achat Fournisseur</h1>
+                    <p class="text-muted">Création avec conditionnements réels et conversions automatiques</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-2"></i>Retour Liste
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 
-    <form method="POST" id="purchaseForm">
+    <!-- ✅ NOUVEAU : Date d'achat automatique -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="date-info">
+                <h6><i class="bi bi-calendar-check me-2"></i>Date d'Achat</h6>
+                <span id="currentDateTime">Aujourd'hui - Chargement...</span>
+                <small class="d-block mt-1">Cette date sera enregistrée automatiquement lors de la création</small>
+            </div>
+        </div>
+    </div>
+
+    <form id="purchaseForm" method="POST">
         {{ form.hidden_tag() }}
         
         <!-- Informations Fournisseur -->
         <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">🏢 Informations Fournisseur</div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            {{ form.supplier_name.label(class="form-label") }}
-                            {{ form.supplier_name(class="form-control") }}
+            <div class="col-md-8">
+                <div class="card form-card">
+                    <h5 class="mb-3"><i class="bi bi-building me-2"></i>Informations Fournisseur</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.supplier_name.label(class="form-label") }}
+                                {{ form.supplier_name(class="form-control", placeholder="Nom du fournisseur") }}
+                                {% if form.supplier_name.errors %}
+                                    <div class="text-warning mt-1">{{ form.supplier_name.errors[0] }}</div>
+                                {% endif %}
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            {{ form.supplier_contact.label(class="form-label") }}
-                            {{ form.supplier_contact(class="form-control") }}
-                        </div>
-                        <div class="mb-3">
-                            {{ form.supplier_phone.label(class="form-label") }}
-                            {{ form.supplier_phone(class="form-control") }}
-                        </div>
-                        <div class="mb-3">
-                            {{ form.supplier_email.label(class="form-label") }}
-                            {{ form.supplier_email(class="form-control") }}
-                        </div>
-                        <div class="mb-3">
-                            {{ form.supplier_address.label(class="form-label") }}
-                            {{ form.supplier_address(class="form-control", rows="3") }}
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.invoice_number.label(class="form-label") }}
+                                {{ form.invoice_number(class="form-control", placeholder="N° facture (optionnel)") }}
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">⚙️ Paramètres</div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label class="form-label">📅 Date d'achat</label>
-                            <input type="text" class="form-control" value="Aujourd'hui - {{ moment().format('DD/MM/YYYY à HH:mm') }}" readonly>
-                            <small class="text-muted">Date automatique lors de la création</small>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">📦 Stock par défaut</label>
+                                {{ form.default_stock_location(class="form-control stock-location-select", id="defaultStockLocation") }}
+                                <small class="stock-helper">Appliqué automatiquement, modifiable par produit</small>
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            {{ form.urgency.label(class="form-label") }}
-                            {{ form.urgency(class="form-select") }}
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">📦 Stock par défaut</label>
-                            {{ form.default_stock_location(class="form-select", id="defaultStockLocation") }}
-                            <small class="text-muted">Peut être modifié pour chaque produit</small>
-                        </div>
-                        <div class="mb-3">
-                            {{ form.payment_terms.label(class="form-label") }}
-                            {{ form.payment_terms(class="form-control") }}
-                        </div>
-                        <div class="mb-3">
-                            {{ form.notes.label(class="form-label") }}
-                            {{ form.notes(class="form-control", rows="3") }}
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.urgency.label(class="form-label") }}
+                                {{ form.urgency(class="form-control") }}
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Section Articles -->
-        <div class="card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">🛒 Articles Achetés</h5>
-                <button type="button" class="btn btn-success btn-sm" id="addItemBtn">
-                    <i class="bi bi-plus-circle"></i> Ajouter Article
-                </button>
-            </div>
-            <div class="card-body">
-                <div id="itemsContainer">
-                    <!-- Les lignes d'articles seront ajoutées ici dynamiquement -->
-                </div>
-                
-                <!-- Total -->
-                <div class="row mt-3">
-                    <div class="col-md-8"></div>
-                    <div class="col-md-4">
-                        <div class="card bg-light">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between">
-                                    <strong>Total Général :</strong>
-                                    <strong id="grandTotal">0.00 DA</strong>
-                                </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                {{ form.notes.label(class="form-label") }}
+                                {{ form.notes(class="form-control", rows="3", placeholder="Notes et remarques...") }}
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+            <div class="col-md-4">
+                <div class="supplier-info">
+                    <h6><i class="bi bi-magic me-2"></i>Innovation : Conditionnements Réels</h6>
+                    <small>
+                        📦 <strong>Produit :</strong> Unité de base (depuis table products)<br><br>
+                        🎯 <strong>Conditionnement :</strong> Comment vous achetez (25kg, 5L, 250g)<br><br>
+                        🔄 <strong>Conversion auto :</strong> 2 × 25kg = 50kg au stock<br><br>
+                        ✅ <strong>Double traçabilité :</strong> Achat original + conversion<br><br>
+                        🏪 <strong>Stock intelligent :</strong> Choisissez où stocker chaque produit
+                    </small>
+                </div>
+            </div>
         </div>
 
-        <!-- Boutons d'action -->
-        <div class="row">
+        <!-- Lignes d'Achat -->
+        <div class="row mb-4">
             <div class="col-12">
-                <div class="d-flex justify-content-between">
-                    <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-secondary">
-                        <i class="bi bi-arrow-left"></i> Retour Liste
-                    </a>
-                    <div>
-                        {{ form.submit(class="btn btn-primary btn-lg") }}
+                <div class="card form-card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5><i class="bi bi-cart me-2"></i>Lignes d'Achat avec Conditionnements</h5>
+                        <button type="button" class="action-btn btn-add" id="addItemBtn">
+                            <i class="bi bi-plus-circle me-2"></i>Ajouter Produit
+                        </button>
                     </div>
+                    
+                    <div id="itemsContainer">
+                        <!-- Les lignes d'achat seront ajoutées ici dynamiquement -->
+                    </div>
+                    
+                    <div class="alert alert-info mt-3" id="emptyItemsMessage">
+                        <i class="bi bi-info-circle me-2"></i>Cliquez sur "Ajouter Produit" pour commencer votre bon d'achat avec conditionnements intelligents
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total et Validation -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="d-flex gap-2">
+                    <button type="submit" class="action-btn btn-save" name="submit" value="save">
+                        <i class="bi bi-save me-2"></i>Enregistrer et Réceptionner
+                    </button>
+                    <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-outline-light">Annuler</a>
+                </div>
+                <small class="text-muted mt-2 d-block">
+                    💡 Le bon sera automatiquement marqué comme "Reçu" et le stock sera mis à jour
+                </small>
+            </div>
+            <div class="col-md-4">
+                <div class="total-section">
+                    <h5>💰 Total Bon d'Achat</h5>
+                    <h3 id="totalAmount">0,00 DA</h3>
+                    <small id="itemCount">0 produit(s)</small>
+                    <div id="conversionSummary" class="mt-2 unit-helper"></div>
                 </div>
             </div>
         </div>
     </form>
 </div>
 
-<!-- Template pour ligne d'article -->
+<!-- Template pour ligne d'achat avec sélection stock -->
 <template id="itemRowTemplate">
-    <div class="product-row" data-item-index="">
-        <div class="row align-items-end">
-            <div class="col-md-3">
-                <label class="form-label">Produit</label>
-                <select class="form-select product-select" name="items[][product_id]" required>
-                    <option value="">Choisir un produit...</option>
-                    {% for product in available_products %}
-                    <option value="{{ product.id }}" 
-                            data-name="{{ product.name }}" 
-                            data-unit="{{ product.unit }}"
-                            data-cost="{{ product.cost_price or 0 }}">
-                        {{ product.name }}
-                    </option>
-                    {% endfor %}
-                </select>
+    <div class="item-row" data-item-index="">
+        <div class="row align-items-center">
+            <div class="col-md-2">
+                <label class="form-label">🔍 Produit</label>
+                <div class="autocomplete-container">
+                    <input type="text" 
+                           class="form-control product-search" 
+                           placeholder="Tapez 2-3 lettres (ex: FA pour Farine)"
+                           autocomplete="off">
+                    <input type="hidden" class="product-id" name="items[][product_id]">
+                    <input type="hidden" class="item-id" name="items[][id]">
+                    <div class="autocomplete-suggestions"></div>
+                </div>
             </div>
             <div class="col-md-2">
-                <label class="form-label">Conditionnement</label>
-                <select class="form-select unit-select" name="items[][unit]">
-                    <option value="">Unité de base</option>
-                    {% for unit in available_units %}
-                    <option value="{{ unit.id }}" 
-                            data-name="{{ unit.name }}"
-                            data-factor="{{ unit.conversion_factor }}"
-                            data-base="{{ unit.base_unit }}">
-                        {{ unit.name }}
-                    </option>
-                    {% endfor %}
+                <label class="form-label">📦 Conditionnement</label>
+                <select class="form-control unit-select" name="items[][unit]">
+                    <option value="">Unité standard</option>
+                    <!-- Options seront ajoutées dynamiquement -->
                 </select>
             </div>
             <div class="col-md-1">
                 <label class="form-label">Quantité</label>
-                <input type="number" class="form-control quantity-input" 
+                <input type="number" 
+                       class="form-control item-quantity" 
                        name="items[][quantity_ordered]" 
-                       step="0.001" min="0" required>
+                       placeholder="0"
+                       min="1"
+                       step="1">
+                <small class="quantity-helper text-muted"></small>
             </div>
             <div class="col-md-2">
-                <label class="form-label">Prix unitaire (DA)</label>
-                <input type="number" class="form-control price-input" 
+                <label class="form-label">Prix Unitaire</label>
+                <input type="number" 
+                       class="form-control item-price" 
                        name="items[][unit_price]" 
-                       step="0.01" min="0" required>
+                       placeholder="0,00"
+                       min="0"
+                       step="0.01">
+                <small class="price-helper text-muted"></small>
             </div>
+            <!-- ✅ NOUVELLE COLONNE : Sélection Stock -->
             <div class="col-md-2">
-                <label class="form-label">📦 Stock Destination</label>
-                <select class="form-select stock-selector stock-location-select" name="items[][stock_location]" required>
+                <label class="form-label">🏪 Stock Destination</label>
+                <select class="form-control stock-location-select" name="items[][stock_location]" required>
                     <option value="ingredients_magasin">🏪 Stock Magasin</option>
                     <option value="ingredients_local">🏭 Stock Local</option>
                     <option value="comptoir">🛒 Stock Comptoir</option>
                     <option value="consommables">📦 Stock Consommables</option>
                 </select>
+                <small class="stock-helper">Où stocker ce produit</small>
             </div>
-            <div class="col-md-1">
+            <div class="col-md-2">
                 <label class="form-label">Total</label>
-                <input type="text" class="form-control line-total" readonly>
+                <div class="fw-bold item-total">0,00 DA</div>
+                <small class="total-helper text-muted"></small>
             </div>
-            <div class="col-md-1">
-                <button type="button" class="btn btn-danger btn-sm remove-item-btn">
+            <div class="col-md-1 text-end">
+                <button type="button" class="action-btn btn-remove remove-item-btn">
                     <i class="bi bi-trash"></i>
                 </button>
             </div>
         </div>
-        <div class="calculation-display mt-2" style="display: none;">
-            <small class="conversion-info"></small>
+        
+        <div class="conversion-info" style="display: none;">
+            <div class="row">
+                <div class="col-md-8">
+                    <strong>💡 Conversion automatique :</strong>
+                    <span class="conversion-text"></span>
+                </div>
+                <div class="col-md-4">
+                    <span class="stock-badge">
+                        <i class="bi bi-box me-1"></i>
+                        <span class="stock-destination-display">Stock sélectionné</span>
+                    </span>
+                </div>
+            </div>
         </div>
     </div>
 </template>
@@ -220,127 +414,415 @@
 
 {% block scripts %}
 <script>
+// ✅ CORRECTION : Variables globales propres
+let itemIndex = 0;
+let availableProducts = [];
+let availableUnits = [];
+let templateData = {};
+
 document.addEventListener('DOMContentLoaded', function() {
-    let itemIndex = 0;
-    const itemsContainer = document.getElementById('itemsContainer');
-    const addItemBtn = document.getElementById('addItemBtn');
-    const defaultStockLocation = document.getElementById('defaultStockLocation');
+    // ✅ CORRECTION : Charger données depuis JSON proprement
+    loadTemplateData();
     
-    // Ajouter automatiquement une première ligne
+    // ✅ NOUVEAU : Afficher date/heure actuelle
+    updateCurrentDateTime();
+    setInterval(updateCurrentDateTime, 1000); // Mise à jour chaque seconde
+    
+    // Ajouter première ligne automatiquement
     addItemRow();
     
-    addItemBtn.addEventListener('click', addItemRow);
+    // Event listener pour ajouter ligne
+    document.getElementById('addItemBtn').addEventListener('click', addItemRow);
     
-    function addItemRow() {
-        const template = document.getElementById('itemRowTemplate');
-        const clone = template.content.cloneNode(true);
-        
-        // Mettre à jour l'index
-        const row = clone.querySelector('.product-row');
-        row.setAttribute('data-item-index', itemIndex);
-        
-        // Définir le stock par défaut
-        const stockSelect = clone.querySelector('.stock-location-select');
-        stockSelect.value = defaultStockLocation.value;
-        
-        // Ajouter les event listeners
-        setupRowEventListeners(clone);
-        
-        itemsContainer.appendChild(clone);
-        itemIndex++;
+    // ✅ NOUVEAU : Event listener pour stock par défaut
+    const defaultStockLocation = document.getElementById('defaultStockLocation');
+    defaultStockLocation.addEventListener('change', updateAllStockDefaults);
+});
+
+// ✅ NOUVEAU : Affichage date/heure actuelle
+function updateCurrentDateTime() {
+    const now = new Date();
+    const options = {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    };
+    const formatted = now.toLocaleDateString('fr-FR', options) + ' à ' + now.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
+    document.getElementById('currentDateTime').textContent = formatted;
+}
+
+// ✅ CORRECTION : Charger données sans mélange Jinja2/JS
+function loadTemplateData() {
+    try {
+        const dataScript = document.getElementById('template-data');
+        templateData = JSON.parse(dataScript.textContent);
+        availableUnits = templateData.available_units;
+        availableProducts = templateData.available_products;
+        console.log('Données chargées:', availableUnits.length, 'unités,', availableProducts.length, 'produits');
+    } catch (error) {
+        console.error('Erreur chargement données template:', error);
+        availableUnits = [];
+        availableProducts = [];
     }
+}
+
+// ✅ CORRECTION : Ajouter ligne avec gestion correcte des événements
+function addItemRow() {
+    const container = document.getElementById('itemsContainer');
+    const template = document.getElementById('itemRowTemplate');
+    const clone = template.content.cloneNode(true);
     
-    function setupRowEventListeners(row) {
-        const productSelect = row.querySelector('.product-select');
+    // Mettre à jour l'index
+    const itemRow = clone.querySelector('.item-row');
+    itemRow.setAttribute('data-item-index', itemIndex);
+    
+    // ✅ CORRECTION : Ajouter options unités AVANT d'ajouter au DOM
+    const unitSelect = clone.querySelector('.unit-select');
+    availableUnits.forEach(unit => {
+        const option = document.createElement('option');
+        option.value = unit.id;
+        option.textContent = unit.name;
+        option.setAttribute('data-factor', unit.conversion_factor);
+        option.setAttribute('data-base', unit.base_unit);
+        option.setAttribute('data-type', unit.unit_type);
+        unitSelect.appendChild(option);
+    });
+    
+    // ✅ NOUVEAU : Définir stock par défaut
+    const stockSelect = clone.querySelector('.stock-location-select');
+    const defaultStock = document.getElementById('defaultStockLocation').value;
+    stockSelect.value = defaultStock;
+    
+    // Ajouter au DOM
+    container.appendChild(clone);
+    
+    // ✅ CORRECTION : Configurer événements APRÈS ajout au DOM
+    const addedRow = container.lastElementChild;
+    setupRowEvents(addedRow, itemIndex);
+    
+    // Masquer message vide
+    document.getElementById('emptyItemsMessage').style.display = 'none';
+    
+    itemIndex++;
+}
+
+// ✅ CORRECTION : Configuration événements simplifiée et robuste
+function setupRowEvents(itemRow, index) {
+    const searchInput = itemRow.querySelector('.product-search');
+    const unitSelect = itemRow.querySelector('.unit-select');
+    const quantityInput = itemRow.querySelector('.item-quantity');
+    const priceInput = itemRow.querySelector('.item-price');
+    const stockSelect = itemRow.querySelector('.stock-location-select'); // ✅ NOUVEAU
+    const removeBtn = itemRow.querySelector('.remove-item-btn');
+    
+    // Autocomplétion
+    setupAutocomplete(searchInput, index);
+    
+    // ✅ CORRECTION : Event listeners avec calcul de total immédiat
+    quantityInput.addEventListener('input', function() {
+        updateConversionDisplay(index);
+        calculateItemTotal(index);
+        calculateGrandTotal();
+    });
+    
+    priceInput.addEventListener('input', function() {
+        updateConversionDisplay(index);
+        calculateItemTotal(index);
+        calculateGrandTotal();
+    });
+    
+    unitSelect.addEventListener('change', function() {
+        updateConversionDisplay(index);
+        calculateItemTotal(index);
+        calculateGrandTotal();
+    });
+    
+    // ✅ NOUVEAU : Event listener pour sélection stock
+    stockSelect.addEventListener('change', function() {
+        updateStockDisplay(index);
+    });
+    
+    // Supprimer ligne
+    removeBtn.addEventListener('click', function() {
+        removeItemRow(index);
+    });
+    
+    // Initialiser l'affichage stock
+    updateStockDisplay(index);
+}
+
+// ✅ NOUVEAU : Mise à jour affichage stock sélectionné
+function updateStockDisplay(index) {
+    const row = document.querySelector(`[data-item-index="${index}"]`);
+    if (!row) return;
+    
+    const stockSelect = row.querySelector('.stock-location-select');
+    const stockDisplay = row.querySelector('.stock-destination-display');
+    
+    if (stockSelect && stockDisplay) {
+        const selectedOption = stockSelect.selectedOptions[0];
+        if (selectedOption) {
+            stockDisplay.textContent = selectedOption.textContent;
+        }
+    }
+}
+
+// ✅ NOUVEAU : Mise à jour stock par défaut pour toutes les lignes
+function updateAllStockDefaults() {
+    const defaultStock = document.getElementById('defaultStockLocation').value;
+    
+    document.querySelectorAll('.stock-location-select').forEach((select, index) => {
+        // Ne pas changer si l'utilisateur a déjà fait un choix différent
+        if (!select.dataset.userModified) {
+            select.value = defaultStock;
+            updateStockDisplay(index);
+        }
+    });
+}
+
+// ✅ CORRECTION : Calcul total ligne fonctionnel
+function calculateItemTotal(index) {
+    const row = document.querySelector(`[data-item-index="${index}"]`);
+    if (!row) return;
+    
+    const quantityInput = row.querySelector('.item-quantity');
+    const priceInput = row.querySelector('.item-price');
+    const totalElement = row.querySelector('.item-total');
+    
+    const quantity = parseFloat(quantityInput.value) || 0;
+    const price = parseFloat(priceInput.value) || 0;
+    const total = quantity * price;
+    
+    // ✅ CORRECTION : Affichage formaté du total
+    totalElement.textContent = total.toLocaleString('fr-FR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }) + ' DA';
+    
+    console.log(`Ligne ${index}: ${quantity} × ${price} = ${total} DA`);
+}
+
+// ✅ CORRECTION : Calcul grand total amélioré
+function calculateGrandTotal() {
+    let grandTotal = 0;
+    let itemCount = 0;
+    let conversionSummary = [];
+    let stockSummary = {};
+    
+    document.querySelectorAll('.item-row').forEach(function(row) {
+        const quantityInput = row.querySelector('.item-quantity');
+        const priceInput = row.querySelector('.item-price');
         const unitSelect = row.querySelector('.unit-select');
-        const quantityInput = row.querySelector('.quantity-input');
-        const priceInput = row.querySelector('.price-input');
-        const lineTotalInput = row.querySelector('.line-total');
-        const removeBtn = row.querySelector('.remove-item-btn');
-        const conversionInfo = row.querySelector('.conversion-info');
-        const calculationDisplay = row.querySelector('.calculation-display');
+        const stockSelect = row.querySelector('.stock-location-select'); // ✅ NOUVEAU
         
-        // Calcul automatique du total de ligne
-        function updateLineTotal() {
-            const quantity = parseFloat(quantityInput.value) || 0;
-            const price = parseFloat(priceInput.value) || 0;
-            const total = quantity * price;
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const price = parseFloat(priceInput.value) || 0;
+        
+        if (quantity > 0 && price > 0) {
+            grandTotal += quantity * price;
+            itemCount++;
             
-            lineTotalInput.value = total.toFixed(2) + ' DA';
-            updateGrandTotal();
-            
-            // Affichage des conversions d'unités
-            const selectedUnit = unitSelect.options[unitSelect.selectedIndex];
-            if (selectedUnit && selectedUnit.value && quantity > 0) {
-                const unitName = selectedUnit.dataset.name;
-                const factor = parseFloat(selectedUnit.dataset.factor);
-                const baseUnit = selectedUnit.dataset.base;
-                const baseQuantity = quantity * factor;
+            // Ajouter à résumé conversion avec stock
+            if (unitSelect.value) {
+                const selectedOption = unitSelect.selectedOptions[0];
+                const factor = parseFloat(selectedOption.getAttribute('data-factor'));
+                const baseUnit = selectedOption.getAttribute('data-base');
+                const totalBase = quantity * factor;
                 
-                conversionInfo.innerHTML = `
-                    <strong>Conversion :</strong> ${quantity} × ${unitName} = ${baseQuantity.toFixed(3)}${baseUnit}<br>
-                    <strong>Total :</strong> ${total.toFixed(2)} DA
-                `;
-                calculationDisplay.style.display = 'block';
-            } else {
-                calculationDisplay.style.display = 'none';
+                // ✅ NOUVEAU : Grouper par stock
+                const stockLocation = stockSelect.value;
+                const stockLabel = stockSelect.selectedOptions[0].textContent;
+                
+                if (!stockSummary[stockLocation]) {
+                    stockSummary[stockLocation] = {
+                        label: stockLabel,
+                        items: []
+                    };
+                }
+                
+                stockSummary[stockLocation].items.push(`${totalBase}${baseUnit}`);
             }
         }
+    });
+    
+    // ✅ CORRECTION : Mise à jour affichage total
+    document.getElementById('totalAmount').textContent = grandTotal.toLocaleString('fr-FR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }) + ' DA';
+    
+    document.getElementById('itemCount').textContent = itemCount + ' produit(s)';
+    
+    // ✅ NOUVEAU : Afficher résumé par stock
+    const summaryElement = document.getElementById('conversionSummary');
+    if (Object.keys(stockSummary).length > 0) {
+        let summaryText = '📦 Impact stock :<br>';
+        for (const [location, data] of Object.entries(stockSummary)) {
+            summaryText += `${data.label}: ${data.items.join(' + ')}<br>`;
+        }
+        summaryElement.innerHTML = summaryText;
+    } else {
+        summaryElement.innerHTML = '';
+    }
+    
+    console.log('Grand Total:', grandTotal, 'DA');
+}
+
+// Mise à jour affichage conversion
+function updateConversionDisplay(index) {
+    const row = document.querySelector(`[data-item-index="${index}"]`);
+    if (!row) return;
+    
+    const unitSelect = row.querySelector('.unit-select');
+    const quantityInput = row.querySelector('.item-quantity');
+    const priceInput = row.querySelector('.item-price');
+    const stockSelect = row.querySelector('.stock-location-select'); // ✅ NOUVEAU
+    const quantityHelper = row.querySelector('.quantity-helper');
+    const priceHelper = row.querySelector('.price-helper');
+    const totalHelper = row.querySelector('.total-helper');
+    const conversionInfo = row.querySelector('.conversion-info');
+    const conversionText = row.querySelector('.conversion-text');
+    
+    const quantity = parseFloat(quantityInput.value) || 0;
+    const price = parseFloat(priceInput.value) || 0;
+    
+    if (unitSelect.value && quantity > 0) {
+        const selectedOption = unitSelect.selectedOptions[0];
+        const factor = parseFloat(selectedOption.getAttribute('data-factor'));
+        const baseUnit = selectedOption.getAttribute('data-base');
+        const totalBase = quantity * factor;
         
-        // Event listeners
-        quantityInput.addEventListener('input', updateLineTotal);
-        priceInput.addEventListener('input', updateLineTotal);
-        unitSelect.addEventListener('change', updateLineTotal);
+        // Mise à jour des helpers
+        quantityHelper.textContent = `= ${totalBase}${baseUnit} total`;
+        if (price > 0) {
+            priceHelper.textContent = `= ${(price / factor).toFixed(4)} DA/${baseUnit}`;
+        }
+        totalHelper.textContent = `${quantity} × ${selectedOption.textContent}`;
         
-        removeBtn.addEventListener('click', function() {
-            if (itemsContainer.children.length > 1) {
-                row.querySelector('.product-row').remove();
-                updateGrandTotal();
-            } else {
-                alert('Au moins un article est requis.');
-            }
+        // ✅ NOUVEAU : Affichage conversion avec stock
+        const stockLabel = stockSelect.selectedOptions[0].textContent;
+        conversionText.textContent = `${quantity} × ${selectedOption.textContent} = ${totalBase}${baseUnit} ajoutés au ${stockLabel}`;
+        conversionInfo.style.display = 'block';
+    } else {
+        quantityHelper.textContent = '';
+        priceHelper.textContent = '';
+        totalHelper.textContent = '';
+        conversionInfo.style.display = 'none';
+    }
+}
+
+// Configuration autocomplétion (simplifiée)
+function setupAutocomplete(inputElement, index) {
+    const suggestionsContainer = inputElement.parentNode.querySelector('.autocomplete-suggestions');
+    
+    inputElement.addEventListener('input', function() {
+        const query = this.value.trim().toLowerCase();
+        
+        if (query.length >= 2) {
+            const filteredProducts = availableProducts.filter(product => 
+                product.name.toLowerCase().includes(query)
+            );
+            showSuggestions(filteredProducts, suggestionsContainer, inputElement, index);
+        } else {
+            hideSuggestions(suggestionsContainer);
+        }
+    });
+    
+    // Cacher suggestions si clic ailleurs
+    document.addEventListener('click', function(e) {
+        if (!inputElement.contains(e.target)) {
+            hideSuggestions(suggestionsContainer);
+        }
+    });
+}
+
+// Afficher suggestions
+function showSuggestions(products, container, inputElement, index) {
+    container.innerHTML = '';
+    
+    if (products.length === 0) {
+        container.innerHTML = '<div class="autocomplete-item">Aucun produit trouvé</div>';
+    } else {
+        products.forEach(function(product) {
+            const div = document.createElement('div');
+            div.className = 'autocomplete-item';
+            div.innerHTML = `<strong>${product.name}</strong><span class="unit-badge">${product.unit || 'unité'}</span><br>` +
+                           `<small class="text-muted">Stock magasin: ${product.stock_magasin || 0} ${product.unit || 'unités'}</small>`;
+            
+            div.addEventListener('click', function() {
+                selectProduct(inputElement, index, product);
+            });
+            
+            container.appendChild(div);
         });
     }
     
-    function updateGrandTotal() {
-        const lineTotals = document.querySelectorAll('.line-total');
-        let grandTotal = 0;
+    container.style.display = 'block';
+}
+
+// Masquer suggestions
+function hideSuggestions(container) {
+    container.style.display = 'none';
+}
+
+// Sélectionner un produit
+function selectProduct(inputElement, index, productData) {
+    inputElement.value = productData.name;
+    
+    // Mettre à jour le champ caché
+    const row = document.querySelector(`[data-item-index="${index}"]`);
+    const hiddenInput = row.querySelector('.product-id');
+    hiddenInput.value = productData.id;
+    
+    hideSuggestions(inputElement.parentNode.querySelector('.autocomplete-suggestions'));
+}
+
+// Supprimer ligne d'achat
+function removeItemRow(index) {
+    const row = document.querySelector(`[data-item-index="${index}"]`);
+    if (row) {
+        row.remove();
+        calculateGrandTotal();
         
-        lineTotals.forEach(input => {
-            const value = parseFloat(input.value.replace(' DA', '')) || 0;
-            grandTotal += value;
-        });
-        
-        document.getElementById('grandTotal').textContent = grandTotal.toFixed(2) + ' DA';
+        // Afficher message si plus de lignes
+        const remainingRows = document.querySelectorAll('.item-row');
+        if (remainingRows.length === 0) {
+            document.getElementById('emptyItemsMessage').style.display = 'block';
+        }
     }
+}
+
+// Validation formulaire
+document.getElementById('purchaseForm').addEventListener('submit', function(e) {
+    const rows = document.querySelectorAll('.item-row');
+    let hasValidItems = false;
     
-    // Event listener pour stock par défaut
-    defaultStockLocation.addEventListener('change', function() {
-        const stockSelects = document.querySelectorAll('.stock-location-select');
-        stockSelects.forEach(select => {
-            if (!select.value || select.value === select.dataset.originalDefault) {
-                select.value = defaultStockLocation.value;
-                select.dataset.originalDefault = defaultStockLocation.value;
-            }
-        });
-    });
-    
-    // Validation avant soumission
-    document.getElementById('purchaseForm').addEventListener('submit', function(e) {
-        const products = document.querySelectorAll('.product-select');
-        let hasValidItems = false;
+    rows.forEach(function(row) {
+        const productId = row.querySelector('.product-id').value;
+        const quantity = row.querySelector('.item-quantity').value;
+        const price = row.querySelector('.item-price').value;
+        const stockLocation = row.querySelector('.stock-location-select').value; // ✅ NOUVEAU
         
-        products.forEach(select => {
-            if (select.value) {
-                hasValidItems = true;
-            }
-        });
-        
-        if (!hasValidItems) {
-            e.preventDefault();
-            alert('Veuillez ajouter au moins un produit au bon d\'achat.');
+        if (productId && quantity && price && stockLocation) {
+            hasValidItems = true;
         }
     });
+    
+    if (!hasValidItems) {
+        e.preventDefault();
+        alert('Veuillez ajouter au moins un produit avec quantité, prix et destination stock');
+        return false;
+    }
+    
+    const supplierName = document.querySelector('input[name="supplier_name"]').value;
+    if (!supplierName.trim()) {
+        e.preventDefault();
+        alert('Veuillez renseigner le nom du fournisseur');
+        return false;
+    }
 });
 </script>
 {% endblock %}
