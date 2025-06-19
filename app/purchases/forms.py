@@ -7,11 +7,12 @@ Auteur: ERP Fée Maison
 """
 
 from flask_wtf import FlaskForm
-from wtforms import StringField, TextAreaField, FloatField, IntegerField, SelectField, SubmitField, HiddenField, FieldList, FormField
-from wtforms.fields import DateTimeLocalField
+from wtforms import StringField, TextAreaField, FloatField, IntegerField, SelectField, SubmitField, HiddenField
+from wtforms.fields import DateTimeLocalField, DateField
 from wtforms.validators import DataRequired, Optional, Length, NumberRange, Email, ValidationError
 from wtforms_sqlalchemy.fields import QuerySelectField
 from decimal import Decimal
+from datetime import datetime, date
 from .models import PurchaseStatus, PurchaseUrgency
 import sys
 
@@ -120,9 +121,6 @@ class PurchaseForm(FlaskForm):
     terms_conditions = TextAreaField('Conditions particulières', validators=[Optional(), Length(max=1000)],
                                     render_kw={"rows": 3, "placeholder": "Conditions spéciales..."})
     
-    # ✅ CORRECTION : Plus de FieldList(FormField(PurchaseItemForm)) qui cause des problèmes
-    # Le traitement des items se fait manuellement dans la route
-    
     # Actions
     submit = SubmitField('Enregistrer le bon d\'achat')
     submit_and_request = SubmitField('Enregistrer et Demander l\'approbation')
@@ -131,6 +129,17 @@ class PurchaseForm(FlaskForm):
         """Validation du nom fournisseur"""
         if len(field.data.strip()) < 2:
             raise ValidationError('Le nom du fournisseur doit contenir au moins 2 caractères.')
+
+# ✅ NOUVEAU : Formulaire pour marquer un achat comme payé
+class MarkAsPaidForm(FlaskForm):
+    """Formulaire simple pour marquer un achat comme payé"""
+    payment_date = DateField('Date de paiement', validators=[DataRequired()], default=date.today)
+    submit = SubmitField('Marquer comme Payé')
+    
+    def validate_payment_date(self, field):
+        """Validation de la date de paiement"""
+        if field.data > date.today():
+            raise ValidationError('La date de paiement ne peut pas être dans le futur.')
 
 class PurchaseSearchForm(FlaskForm):
     """Formulaire de recherche dans les achats"""
