@@ -364,6 +364,32 @@
 <script>
     window.csrfToken = document.querySelector('meta[name=csrf-token]').getAttribute('content');
 </script>
+
+<!-- ✅ NOUVEAUX FILTRES : Statut de paiement -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title">💰 Filtrer par Paiement</h6>
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('purchases.list_purchases', payment_status='all') }}" 
+                       class="btn btn-outline-primary {{ 'active' if current_payment_filter == 'all' else '' }}">
+                        📋 Tous ({{ total_purchases }})
+                    </a>
+                    <a href="{{ url_for('purchases.list_purchases', payment_status='unpaid') }}" 
+                       class="btn btn-outline-warning {{ 'active' if current_payment_filter == 'unpaid' else '' }}">
+                        ⏳ Non Payés ({{ unpaid_purchases }})
+                    </a>
+                    <a href="{{ url_for('purchases.list_purchases', payment_status='paid') }}" 
+                       class="btn btn-outline-success {{ 'active' if current_payment_filter == 'paid' else '' }}">
+                        ✅ Payés ({{ paid_purchases }})
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
