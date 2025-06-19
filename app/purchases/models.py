@@ -80,6 +80,10 @@ class Purchase(db.Model):
     requested_by = db.relationship('User', foreign_keys=[requested_by_id], backref='requested_purchases', lazy=True)
     approved_by = db.relationship('User', foreign_keys=[approved_by_id], backref='approved_purchases', lazy=True)
     received_by = db.relationship('User', foreign_keys=[received_by_id], backref='received_purchases', lazy=True)
+
+    # ✅ NOUVEAUX CHAMPS SIMPLES pour gestion paiement
+    is_paid = db.Column(db.Boolean, default=False, nullable=False)  # Payé oui/non
+    payment_date = db.Column(db.Date, nullable=True)  # Date paiement si payé
     
     def __init__(self, **kwargs):
         super(Purchase, self).__init__(**kwargs)
@@ -144,6 +148,19 @@ class Purchase(db.Model):
             PurchaseUrgency.URGENT: 'Urgente'
         }
         return urgency_labels.get(self.urgency, self.urgency.value)
+    
+    @property
+    def payment_status_display(self):
+        """Affichage du statut de paiement"""
+        if self.is_paid:
+            return f"✅ Payé le {self.payment_date.strftime('%d/%m/%Y') if self.payment_date else 'date inconnue'}"
+        else:
+            return "⏳ Non payé"
+    
+    @property 
+    def payment_badge_class(self):
+        """Classe CSS pour le badge de statut"""
+        return "bg-success" if self.is_paid else "bg-warning"
 
 class PurchaseItem(db.Model):
     """Ligne d'article dans un bon d'achat avec support des unités prédéfinies"""
