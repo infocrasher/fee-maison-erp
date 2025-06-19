@@ -333,6 +333,64 @@
         </div>
     </div>
 </div>
+
+<!-- ✅ NOUVELLE SECTION : Dates et Paiement -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">📅 Chronologie</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <strong>Créé le :</strong><br>
+                        <span class="text-muted">{{ purchase.requested_date.strftime('%d/%m/%Y à %H:%M') }}</span>
+                    </div>
+                    <div class="col-6">
+                        {% if purchase.expected_delivery_date %}
+                        <strong>Livraison prévue :</strong><br>
+                        <span class="text-muted">{{ purchase.expected_delivery_date.strftime('%d/%m/%Y') }}</span>
+                        {% else %}
+                        <small class="text-muted">Pas de date de livraison prévue</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">💰 Paiement</div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="badge {{ purchase.payment_badge_class }}">
+                            {{ purchase.payment_status_display }}
+                        </span>
+                        <br><small class="text-muted">Montant : {{ purchase.total_amount }} DA</small>
+                    </div>
+                    <div>
+                        {% if not purchase.is_paid %}
+                            <a href="{{ url_for('purchases.mark_as_paid', id=purchase.id) }}" 
+                               class="btn btn-success btn-sm">
+                                💳 Marquer Payé
+                            </a>
+                        {% else %}
+                            <form method="POST" action="{{ url_for('purchases.mark_as_unpaid', id=purchase.id) }}" 
+                                  style="display: inline;">
+                                {{ csrf_token() }}
+                                <button type="submit" class="btn btn-warning btn-sm"
+                                        onclick="return confirm('Marquer comme non payé ?')">
+                                    ↩️ Annuler Paiement
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
