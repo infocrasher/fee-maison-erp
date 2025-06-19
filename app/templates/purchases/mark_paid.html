@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Fée Maison{% endblock %}
+
+{% block head %}
+<style>
+    .payment-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 15px;
+        color: white;
+        padding: 30px;
+        margin-bottom: 20px;
+    }
+    .info-card {
+        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    .action-btn {
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        border: none;
+        border-radius: 25px;
+        color: white;
+        padding: 12px 25px;
+        transition: all 0.3s ease;
+    }
+    .action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        color: white;
+    }
+    .cancel-btn {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ffa8a8 100%);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-1">💳 Marquer comme Payé</h1>
+                    <p class="text-muted">Enregistrement du paiement du bon d'achat {{ purchase.reference }}</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('purchases.view_purchase', id=purchase.id) }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-2"></i>Retour Détail
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Informations du Bon d'Achat -->
+        <div class="col-md-6">
+            <div class="card info-card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">📋 Informations du Bon d'Achat</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Référence :</strong></div>
+                        <div class="col-sm-8">{{ purchase.reference }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Fournisseur :</strong></div>
+                        <div class="col-sm-8">{{ purchase.supplier_name }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Montant Total :</strong></div>
+                        <div class="col-sm-8"><span class="h5 text-success">{{ purchase.total_amount }} DA</span></div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Créé le :</strong></div>
+                        <div class="col-sm-8">{{ purchase.requested_date.strftime('%d/%m/%Y à %H:%M') }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Statut :</strong></div>
+                        <div class="col-sm-8">
+                            <span class="badge bg-info">{{ purchase.status_label }}</span>
+                        </div>
+                    </div>
+                    {% if purchase.items %}
+                    <div class="row">
+                        <div class="col-sm-4"><strong>Articles :</strong></div>
+                        <div class="col-sm-8">{{ purchase.items|length }} produit(s)</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Résumé Articles -->
+            {% if purchase.items %}
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">📦 Résumé des Articles</h6>
+                </div>
+                <div class="card-body">
+                    {% for item in purchase.items %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <strong>{{ item.product.name if item.product else 'Produit inconnu' }}</strong>
+                            {% if item.display_quantity != item.quantity_ordered %}
+                                <br><small class="text-muted">{{ item.display_quantity }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="text-end">
+                            <span class="fw-bold">{{ item.line_total_with_discount|round(2) }} DA</span>
+                        </div>
+                    </div>
+                    {% if not loop.last %}<hr class="my-2">{% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Formulaire de Paiement -->
+        <div class="col-md-6">
+            <div class="card payment-card">
+                <div class="card-header border-0">
+                    <h5 class="card-title mb-0">💰 Enregistrer le Paiement</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="mb-4">
+                            {{ form.payment_date.label(class="form-label fw-bold") }}
+                            {{ form.payment_date(class="form-control form-control-lg") }}
+                            {% if form.payment_date.errors %}
+                                <div class="text-warning mt-2">
+                                    {% for error in form.payment_date.errors %}
+                                        <small><i class="bi bi-exclamation-triangle me-1"></i>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-light opacity-75">
+                                <i class="bi bi-info-circle me-1"></i>Date à laquelle le paiement a été effectué
+                            </small>
+                        </div>
+
+                        <!-- Récapitulatif -->
+                        <div class="alert alert-light" role="alert">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>Montant à confirmer :</strong>
+                                </div>
+                                <div>
+                                    <span class="h4 mb-0">{{ purchase.total_amount }} DA</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            {{ form.submit(class="action-btn btn-lg") }}
+                            <a href="{{ url_for('purchases.view_purchase', id=purchase.id) }}" 
+                               class="action-btn cancel-btn btn-lg text-center text-decoration-none">
+                                Annuler
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Informations Importantes -->
+            <div class="alert alert-info">
+                <h6 class="alert-heading">
+                    <i class="bi bi-lightbulb me-2"></i>Information Importante
+                </h6>
+                <p class="mb-2">
+                    <strong>Une fois marqué comme payé :</strong>
+                </p>
+                <ul class="mb-0">
+                    <li>Le bon d'achat sera visible avec le badge "✅ Payé"</li>
+                    <li>La date de paiement sera enregistrée définitivement</li>
+                    <li>Vous pourrez annuler le statut payé si nécessaire</li>
+                    <li>Cette action est réservée aux administrateurs</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Focus automatique sur le champ date
+    const dateInput = document.querySelector('#payment_date');
+    if (dateInput) {
+        dateInput.focus();
+    }
+    
+    // Confirmation avant soumission
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const amount = '{{ purchase.total_amount }}';
+            const reference = '{{ purchase.reference }}';
+            
+            if (!confirm(`Confirmer le paiement de ${amount} DA pour le bon d'achat ${reference} ?`)) {
+                e.preventDefault();
+            }
+        });
+    }
+    
+    // Validation date côté client
+    const paymentDate = document.querySelector('#payment_date');
+    if (paymentDate) {
+        paymentDate.addEventListener('change', function() {
+            const selectedDate = new Date(this.value);
+            const today = new Date();
+            
+            if (selectedDate > today) {
+                alert('La date de paiement ne peut pas être dans le futur.');
+                this.value = new Date().toISOString().split('T')[0];
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
