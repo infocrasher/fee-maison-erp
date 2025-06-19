@@ -60,9 +60,9 @@ class Purchase(db.Model):
     received_date = db.Column(db.DateTime)
     
     # ✅ NOUVEAUX CHAMPS : Gestion paiement simplifiée
-    is_paid = db.Column(db.Boolean, default=False, nullable=False)  # Payé oui/non
+    is_paid = db.Column(db.Boolean, default=False, nullable=True)  # Nullable pour éviter l'erreur
     payment_date = db.Column(db.Date, nullable=True)  # Date paiement si payé
-    
+
     # Montants
     subtotal_amount = db.Column(db.Numeric(10, 2), default=0.0)
     tax_amount = db.Column(db.Numeric(10, 2), default=0.0)
