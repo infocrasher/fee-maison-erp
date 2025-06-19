@@ -1,494 +1,133 @@
 {% extends "base.html" %}
 
-{% block title %}Bon d'Achat #{{ purchase.id }} - Fée Maison{% endblock %}
-
-{% block head %}
-<style>
-    .purchase-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 15px;
-        color: white;
-        padding: 30px;
-        margin-bottom: 30px;
-    }
-    .info-card {
-        background: white;
-        border-radius: 12px;
-        padding: 25px;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 15px rgba(0,0,0,0.1);
-        border-left: 4px solid #667eea;
-    }
-    .item-card {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        border-radius: 10px;
-        padding: 15px;
-        margin-bottom: 10px;
-        color: white;
-        transition: all 0.3s ease;
-    }
-    .item-card:hover {
-        transform: translateX(5px);
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    }
-    
-    .action-btn {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        border-radius: 25px;
-        color: white;
-        padding: 10px 20px;
-        text-decoration: none;
-        transition: all 0.3s ease;
-        display: inline-block;
-        margin: 5px;
-    }
-    .action-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        color: white;
-        text-decoration: none;
-    }
-    .btn-edit { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
-    .btn-validate { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
-    .btn-export { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
-    .btn-cancel { background: linear-gradient(135deg, #ff6b6b 0%, #ffa8a8 100%); }
-    
-    .status-badge {
-        padding: 10px 20px;
-        border-radius: 25px;
-        font-size: 1em;
-        font-weight: 600;
-        text-transform: uppercase;
-        display: inline-block;
-    }
-    .status-pending { background: linear-gradient(135deg, #ffa502 0%, #ff6348 100%); color: white; }
-    .status-validated { background: linear-gradient(135deg, #2ed573 0%, #17c0eb 100%); color: white; }
-    .status-cancelled { background: linear-gradient(135deg, #ff4757 0%, #ff3742 100%); color: white; }
-    
-    .total-section {
-        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-        border-radius: 12px;
-        padding: 25px;
-        color: white;
-        text-align: center;
-    }
-    
-    .timeline-item {
-        border-left: 3px solid #667eea;
-        padding-left: 20px;
-        margin-bottom: 20px;
-        position: relative;
-    }
-    .timeline-item::before {
-        content: '';
-        position: absolute;
-        left: -6px;
-        top: 0;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        background: #667eea;
-    }
-    
-    .supplier-info {
-        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-        border-radius: 10px;
-        padding: 20px;
-        color: white;
-        margin-bottom: 20px;
-    }
-    
-    .stock-impact {
-        background: linear-gradient(135deg, #d299c2 0%, #fef9d7 100%);
-        border-radius: 10px;
-        padding: 15px;
-        margin-top: 15px;
-        color: #333;
-    }
-</style>
-{% endblock %}
+{% block title %}{{ title }} - Fée Maison{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <!-- En-tête avec informations principales -->
-    <div class="purchase-header">
-        <div class="row align-items-center">
-            <div class="col-md-6">
-                <h1 class="h2 mb-2">🛒 Bon d'Achat #{{ purchase.id }}</h1>
-                <p class="mb-1">Fournisseur: <strong>{{ purchase.supplier_name }}</strong></p>
-                <p class="mb-0">Date: <strong>{{ purchase.purchase_date.strftime('%d/%m/%Y à %H:%M') if purchase.purchase_date else 'Date non définie' }}</strong></p>
-            </div>
-            <div class="col-md-3">
-                <div class="text-center">
-                    <div class="status-badge status-{{ purchase.status }}">
-                        {% if purchase.status == 'pending' %}
-                            ⏳ En Attente
-                        {% elif purchase.status == 'validated' %}
-                            ✅ Validé
-                        {% elif purchase.status == 'cancelled' %}
-                            ❌ Annulé
-                        {% else %}
-                            📋 {{ purchase.status|title }}
-                        {% endif %}
-                    </div>
+    <!-- Informations Fournisseur et Dates -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">📋 Informations Fournisseur</div>
+                <div class="card-body">
+                    <p><strong>Référence :</strong> {{ purchase.reference }}</p>
+                    <p><strong>Fournisseur :</strong> {{ purchase.supplier_name }}</p>
+                    <p><strong>Contact :</strong> {{ purchase.supplier_contact or 'N/A' }}</p>
+                    <p><strong>Téléphone :</strong> {{ purchase.supplier_phone or 'N/A' }}</p>
+                    <p><strong>Email :</strong> {{ purchase.supplier_email or 'N/A' }}</p>
+                    <p><strong>Adresse :</strong> {{ purchase.supplier_address or 'N/A' }}</p>
+                    <p><strong>Date d'achat :</strong> {{ purchase.requested_date.strftime('%d/%m/%Y à %H:%M') }}</p>
                 </div>
             </div>
-            <div class="col-md-3 text-end">
-                <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-outline-light">
-                    <i class="bi bi-arrow-left me-2"></i>Retour Liste
-                </a>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">💰 Paiement</div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge {{ purchase.payment_badge_class }}">
+                                {{ purchase.payment_status_display }}
+                            </span>
+                            <br><small class="text-muted">Montant : {{ purchase.total_amount }} DA</small>
+                        </div>
+                        <div>
+                            {% if not purchase.is_paid %}
+                                <a href="{{ url_for('purchases.mark_as_paid', id=purchase.id) }}" 
+                                   class="btn btn-success btn-sm">
+                                    💳 Marquer Payé
+                                </a>
+                            {% else %}
+                                <form method="POST" action="{{ url_for('purchases.mark_as_unpaid', id=purchase.id) }}" 
+                                      style="display: inline;">
+                                    {{ csrf_token() }}
+                                    <button type="submit" class="btn btn-warning btn-sm"
+                                            onclick="return confirm('Marquer comme non payé ?')">
+                                        ↩️ Annuler Paiement
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="row">
-        <!-- Informations détaillées -->
-        <div class="col-lg-8">
-            <!-- Informations Fournisseur -->
-            <div class="supplier-info">
-                <h5><i class="bi bi-building me-2"></i>Informations Fournisseur</h5>
-                <div class="row mt-3">
-                    <div class="col-md-6">
-                        <strong>Nom :</strong> {{ purchase.supplier_name }}<br>
-                        {% if purchase.invoice_number %}
-                        <strong>N° Facture :</strong> {{ purchase.invoice_number }}<br>
-                        {% endif %}
-                    </div>
-                    <div class="col-md-6">
-                        <strong>Date Achat :</strong> {{ purchase.purchase_date.strftime('%d/%m/%Y') if purchase.purchase_date else 'Non définie' }}<br>
-                        <strong>Créé par :</strong> {{ purchase.created_by.username if purchase.created_by else 'Utilisateur inconnu' }}
-                    </div>
-                </div>
-                {% if purchase.notes %}
-                <div class="mt-3">
-                    <strong>Notes :</strong><br>
-                    <em>{{ purchase.notes }}</em>
-                </div>
-                {% endif %}
+    <!-- Tableau Articles avec Stock Location -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">📦 Articles Commandés</h5>
+        </div>
+        <div class="card-body">
+            {% if purchase.items %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Produit</th>
+                            <th>Quantité Commandée</th>
+                            <th>Prix Unitaire</th>
+                            <th>Stock Destination</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in purchase.items %}
+                        <tr>
+                            <td>
+                                <strong>{{ item.product.name if item.product else 'Produit supprimé' }}</strong>
+                                {% if item.description_override %}
+                                    <br><small class="text-muted">{{ item.description_override }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.original_quantity and item.original_unit %}
+                                    <strong>{{ item.original_quantity }} × {{ item.original_unit.name }}</strong>
+                                    <br><small class="text-muted">= {{ item.quantity_ordered }}{{ item.original_unit.base_unit }}</small>
+                                {% else %}
+                                    <strong>{{ item.quantity_ordered }}</strong>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.original_unit_price and item.original_unit %}
+                                    <strong>{{ item.original_unit_price }} DA/{{ item.original_unit.name }}</strong>
+                                    <br><small class="text-muted">{{ item.unit_price }} DA/{{ item.original_unit.base_unit if item.original_unit else 'unité' }}</small>
+                                {% else %}
+                                    <strong>{{ item.unit_price }} DA</strong>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.stock_location == 'ingredients_magasin' %}
+                                    <span class="badge bg-primary">🏪 Stock Magasin</span>
+                                {% elif item.stock_location == 'ingredients_local' %}
+                                    <span class="badge bg-success">🏭 Stock Local</span>
+                                {% elif item.stock_location == 'comptoir' %}
+                                    <span class="badge bg-warning">🛒 Stock Comptoir</span>
+                                {% elif item.stock_location == 'consommables' %}
+                                    <span class="badge bg-info">📦 Stock Consommables</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ item.stock_location }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ item.line_total_with_discount|round(2) }} DA</strong>
+                                {% if item.discount_percentage and item.discount_percentage > 0 %}
+                                    <br><small class="text-success">-{{ item.discount_percentage }}% remise</small>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
-
-            <!-- Liste des Produits -->
-            <div class="info-card">
-                <h5><i class="bi bi-cart me-2"></i>Détail des Produits Achetés</h5>
-                <div class="mt-3">
-                    {% for item in purchase.items %}
-                    <div class="item-card">
-                        <div class="row align-items-center">
-                            <div class="col-md-5">
-                                <h6 class="mb-1">{{ item.product.name if item.product else 'Produit supprimé' }}</h6>
-                                <small>{{ item.product.category.name if item.product and item.product.category else 'Catégorie inconnue' }}</small>
-                            </div>
-                            <div class="col-md-2 text-center">
-                                <strong>{{ item.quantity_ordered }}</strong><br>
-                                <small>{{ item.product.unit if item.product else 'unités' }}</small>
-                            </div>
-                            <div class="col-md-2 text-center">
-                                <strong>{{ item.unit_price or 0 }} DA</strong><br>
-                                <small>Prix unitaire</small>
-                            </div>
-                            <div class="col-md-3 text-end">
-                                <h6 class="mb-0">{{ item.line_total_with_discount|round(2) }} DA</h6>
-                                <small>Total ligne</small>
-                            </div>
-                        </div>
-                        
-                        <!-- Impact Stock (si validé) -->
-                        {% if purchase.status == 'validated' %}
-                        <div class="stock-impact">
-                            <small>
-                                <i class="bi bi-check-circle text-success me-1"></i>
-                                <strong>Stock mis à jour :</strong> +{{ item.quantity_ordered }} {{ item.product.unit if item.product else 'unités' }} 
-                                ajouté au stock ingrédients magasin
-                            </small>
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
-                    
-                    {% if not purchase.items %}
-                    <div class="text-center py-4 text-muted">
-                        <i class="bi bi-inbox display-4"></i>
-                        <p class="mt-2">Aucun produit dans ce bon d'achat</p>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Historique et Actions -->
-            {% if purchase.status == 'validated' or purchase.movements %}
-            <div class="info-card">
-                <h5><i class="bi bi-clock-history me-2"></i>Historique des Actions</h5>
-                <div class="mt-3">
-                    <div class="timeline-item">
-                        <strong>Bon d'achat créé</strong><br>
-                        <small class="text-muted">{{ purchase.purchase_date.strftime('%d/%m/%Y à %H:%M') if purchase.purchase_date else 'Date inconnue' }}</small>
-                    </div>
-                    
-                    {% if purchase.status == 'validated' %}
-                    <div class="timeline-item">
-                        <strong>Bon d'achat validé - Stock mis à jour</strong><br>
-                        <small class="text-muted">
-                            {{ purchase.updated_at.strftime('%d/%m/%Y à %H:%M') if purchase.updated_at else 'Date inconnue' }}
-                        </small>
-                    </div>
-                    {% endif %}
-                    
-                    {% if purchase.status == 'cancelled' %}
-                    <div class="timeline-item">
-                        <strong>Bon d'achat annulé</strong><br>
-                        <small class="text-muted">
-                            {{ purchase.updated_at.strftime('%d/%m/%Y à %H:%M') if purchase.updated_at else 'Date inconnue' }}
-                        </small>
-                    </div>
-                    {% endif %}
-                </div>
+            {% else %}
+            <div class="text-center py-4">
+                <i class="bi bi-cart-x" style="font-size: 3rem; color: #ccc;"></i>
+                <p class="text-muted mt-2">Aucun article dans ce bon d'achat</p>
             </div>
             {% endif %}
         </div>
-
-        <!-- Sidebar Actions et Total -->
-        <div class="col-lg-4">
-            <!-- Total -->
-            <div class="total-section">
-                <h5>💰 Total Bon d'Achat</h5>
-                <h2 class="my-3">{{ purchase.total_amount or 0 }} DA</h2>
-                <p class="mb-0">{{ purchase.items|length }} produit(s)</p>
-            </div>
-
-            <!-- Actions -->
-            <div class="info-card">
-                <h6><i class="bi bi-lightning me-2"></i>Actions Disponibles</h6>
-                <div class="d-grid gap-2 mt-3">
-                    {% if purchase.status == 'pending' %}
-                    <a href="{{ url_for('purchases.edit_purchase', purchase_id=purchase.id) }}" 
-                       class="action-btn btn-edit">
-                        <i class="bi bi-pencil me-2"></i>Modifier
-                    </a>
-                    <button class="action-btn btn-validate" 
-                            data-purchase-id="{{ purchase.id }}"
-                            onclick="validatePurchase(this.dataset.purchaseId)">
-                        <i class="bi bi-check-circle me-2"></i>Valider et Mettre à Jour Stock
-                    </button>
-                    <button class="action-btn btn-cancel" 
-                            data-purchase-id="{{ purchase.id }}"
-                            onclick="cancelPurchase(this.dataset.purchaseId)">
-                        <i class="bi bi-x-circle me-2"></i>Annuler
-                    </button>
-                    {% endif %}
-                    
-                    <button class="action-btn btn-export" 
-                            data-purchase-id="{{ purchase.id }}"
-                            onclick="exportPDF(this.dataset.purchaseId)">
-                        <i class="bi bi-file-pdf me-2"></i>Exporter PDF
-                    </button>
-                    
-                    <a href="{{ url_for('purchases.new_purchase') }}?duplicate={{ purchase.id }}" 
-                       class="action-btn">
-                        <i class="bi bi-copy me-2"></i>Dupliquer
-                    </a>
-                </div>
-            </div>
-
-            <!-- Informations Système -->
-            <div class="info-card">
-                <h6><i class="bi bi-info-circle me-2"></i>Informations Système</h6>
-                <div class="mt-3">
-                    <small class="text-muted">
-                        <strong>ID :</strong> {{ purchase.id }}<br>
-                        <strong>Créé le :</strong> {{ purchase.purchase_date.strftime('%d/%m/%Y à %H:%M') if purchase.purchase_date else 'Date inconnue' }}<br>
-                        {% if purchase.updated_at and purchase.updated_at != purchase.purchase_date %}
-                        <strong>Modifié le :</strong> {{ purchase.updated_at.strftime('%d/%m/%Y à %H:%M') }}<br>
-                        {% endif %}
-                        <strong>Statut :</strong> {{ purchase.status|title }}<br>
-                        {% if purchase.status == 'validated' %}
-                        <strong>Impact stock :</strong> ✅ Appliqué<br>
-                        {% elif purchase.status == 'pending' %}
-                        <strong>Impact stock :</strong> ⏳ En attente<br>
-                        {% else %}
-                        <strong>Impact stock :</strong> ❌ Aucun<br>
-                        {% endif %}
-                    </small>
-                </div>
-            </div>
-        </div>
     </div>
 </div>
-
-<!-- Modal de Confirmation -->
-<div class="modal fade" id="confirmationModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalTitle">Confirmation</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" id="modalBody">
-                Êtes-vous sûr de vouloir effectuer cette action ?
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-primary" id="confirmActionBtn">Confirmer</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- ✅ NOUVELLE SECTION : Dates et Paiement -->
-<div class="row mb-4">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">📅 Chronologie</div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-6">
-                        <strong>Créé le :</strong><br>
-                        <span class="text-muted">{{ purchase.requested_date.strftime('%d/%m/%Y à %H:%M') }}</span>
-                    </div>
-                    <div class="col-6">
-                        {% if purchase.expected_delivery_date %}
-                        <strong>Livraison prévue :</strong><br>
-                        <span class="text-muted">{{ purchase.expected_delivery_date.strftime('%d/%m/%Y') }}</span>
-                        {% else %}
-                        <small class="text-muted">Pas de date de livraison prévue</small>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">💰 Paiement</div>
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="badge {{ purchase.payment_badge_class }}">
-                            {{ purchase.payment_status_display }}
-                        </span>
-                        <br><small class="text-muted">Montant : {{ purchase.total_amount }} DA</small>
-                    </div>
-                    <div>
-                        {% if not purchase.is_paid %}
-                            <a href="{{ url_for('purchases.mark_as_paid', id=purchase.id) }}" 
-                               class="btn btn-success btn-sm">
-                                💳 Marquer Payé
-                            </a>
-                        {% else %}
-                            <form method="POST" action="{{ url_for('purchases.mark_as_unpaid', id=purchase.id) }}" 
-                                  style="display: inline;">
-                                {{ csrf_token() }}
-                                <button type="submit" class="btn btn-warning btn-sm"
-                                        onclick="return confirm('Marquer comme non payé ?')">
-                                    ↩️ Annuler Paiement
-                                </button>
-                            </form>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-{% endblock %}
-
-{% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Animation d'entrée pour les cartes
-    const cards = document.querySelectorAll('.item-card, .info-card');
-    cards.forEach(function(card, index) {
-        card.style.opacity = '0';
-        card.style.transform = 'translateY(20px)';
-        setTimeout(function() {
-            card.style.transition = 'all 0.4s ease';
-            card.style.opacity = '1';
-            card.style.transform = 'translateY(0)';
-        }, index * 100);
-    });
-});
-
-// Actions sur le bon d'achat
-function validatePurchase(purchaseId) {
-    showConfirmationModal(
-        'Valider le Bon d\'Achat',
-        'Êtes-vous sûr de vouloir valider ce bon d\'achat ?\n\nCette action va :\n• Marquer le bon comme validé\n• Mettre à jour automatiquement les stocks ingrédients magasin\n• Cette action est irréversible',
-        function() {
-            // Appel API pour validation
-            fetch('/api/purchases/' + purchaseId + '/validate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(function(response) {
-                if (response.ok) {
-                    window.location.reload();
-                } else {
-                    alert('Erreur lors de la validation du bon d\'achat');
-                }
-            })
-            .catch(function(error) {
-                console.error('Erreur:', error);
-                alert('Erreur de connexion lors de la validation');
-            });
-        }
-    );
-}
-
-function cancelPurchase(purchaseId) {
-    showConfirmationModal(
-        'Annuler le Bon d\'Achat',
-        'Êtes-vous sûr de vouloir annuler ce bon d\'achat ?\n\nCette action est irréversible et le bon ne pourra plus être modifié ou validé.',
-        function() {
-            // Simulation - remplacer par vraie API
-            alert('Bon d\'achat #' + purchaseId + ' annulé avec succès');
-            window.location.reload();
-        }
-    );
-}
-
-function exportPDF(purchaseId) {
-    // Ouvrir PDF dans nouvel onglet
-    window.open('/api/purchases/' + purchaseId + '/pdf', '_blank');
-}
-
-// Modal de confirmation réutilisable
-function showConfirmationModal(title, message, onConfirm) {
-    document.getElementById('modalTitle').textContent = title;
-    document.getElementById('modalBody').innerHTML = message.replace(/\n/g, '<br>');
-    
-    const confirmBtn = document.getElementById('confirmActionBtn');
-    
-    // Supprimer les anciens event listeners
-    const newConfirmBtn = confirmBtn.cloneNode(true);
-    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-    
-    // Ajouter le nouvel event listener
-    newConfirmBtn.addEventListener('click', function() {
-        bootstrap.Modal.getInstance(document.getElementById('confirmationModal')).hide();
-        onConfirm();
-    });
-    
-    // Afficher modal
-    new bootstrap.Modal(document.getElementById('confirmationModal')).show();
-}
-
-// Impression optimisée
-function printPurchase() {
-    window.print();
-}
-
-// Auto-refresh si statut pending (toutes les 30 secondes)
-document.addEventListener('DOMContentLoaded', function() {
-    // Vérifier si le statut est pending depuis le DOM
-    const statusBadge = document.querySelector('.status-pending');
-    if (statusBadge) {
-        setTimeout(function() {
-            window.location.reload();
-        }, 30000);
-    }
-});
-</script>
 {% endblock %}
