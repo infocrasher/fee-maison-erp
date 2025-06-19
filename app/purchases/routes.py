@@ -142,10 +142,7 @@ def new_purchase():
         )
         
         # Statut selon l'action choisie
-        if 'submit_and_request' in request.form:
-            purchase.status = PurchaseStatus.REQUESTED
-        else:
-            purchase.status = PurchaseStatus.DRAFT
+        purchase.status = PurchaseStatus.RECEIVED
         
         db.session.add(purchase)
         db.session.flush()  # Pour obtenir l'ID
