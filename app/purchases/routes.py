@@ -115,7 +115,7 @@ def list_purchases():
 @purchases.route('/new', methods=['GET', 'POST'])
 @login_required
 def new_purchase():
-    """Création d'un nouveau bon d'achat avec traitement manuel des items"""
+    """Création d'un nouveau bon d'achat avec traitement manuel des items et mise à jour stock automatique"""
     Product, User, Unit = get_main_models()
     
     form = PurchaseForm()
@@ -141,7 +141,7 @@ def new_purchase():
             is_paid=False  # ✅ NOUVEAU : Non payé par défaut
         )
         
-        # Statut selon l'action choisie
+        # ✅ WORKFLOW "ACHAT DIRECT" : Statut automatique RECEIVED
         purchase.status = PurchaseStatus.RECEIVED
         
         db.session.add(purchase)
@@ -225,9 +225,47 @@ def new_purchase():
         
         # Calcul des totaux
         purchase.calculate_totals()
+        
+        # ✅ NOUVELLE LOGIQUE : Mise à jour automatique du stock pour statut RECEIVED
+        if purchase.status == PurchaseStatus.RECEIVED:
+            stock_updates = []
+            for item in purchase.items:
+                if item.product:
+                    # Déterminer quel stock incrémenter selon stock_location
+                    if item.stock_location == 'ingredients_magasin':
+                        item.product.stock_ingredients_magasin += float(item.quantity_ordered)
+                        stock_location_display = "Stock Magasin"
+                    elif item.stock_location == 'ingredients_local':
+                        item.product.stock_ingredients_local += float(item.quantity_ordered)
+                        stock_location_display = "Stock Local"
+                    elif item.stock_location == 'comptoir':
+                        item.product.stock_comptoir += float(item.quantity_ordered)
+                        stock_location_display = "Stock Comptoir"
+                    elif item.stock_location == 'consommables':
+                        item.product.stock_consommables += float(item.quantity_ordered)
+                        stock_location_display = "Stock Consommables"
+                    else:
+                        # Fallback vers stock magasin si location inconnue
+                        item.product.stock_ingredients_magasin += float(item.quantity_ordered)
+                        stock_location_display = "Stock Magasin (par défaut)"
+                    
+                    # Affichage intelligent selon unité originale ou base
+                    if item.original_quantity and item.original_unit:
+                        display_quantity = f"{item.original_quantity} × {item.original_unit.name}"
+                    else:
+                        display_quantity = f"{item.quantity_ordered}"
+                    
+                    stock_updates.append(f"{item.product.name}: +{display_quantity} dans {stock_location_display}")
+            
+            # Messages de confirmation groupés
+            if stock_updates:
+                flash(f'Stocks mis à jour automatiquement :', 'success')
+                for update in stock_updates:
+                    flash(f'📦 {update}', 'info')
+        
         db.session.commit()
         
-        action_text = "créé et demandé pour approbation" if purchase.status == PurchaseStatus.REQUESTED else "créé en brouillon"
+        action_text = "créé et reçu" if purchase.status == PurchaseStatus.RECEIVED else "créé"
         flash(f'Bon d\'achat {purchase.reference} {action_text} avec {items_added} article(s).', 'success')
         
         return redirect(url_for('purchases.view_purchase', id=purchase.id))
@@ -327,14 +365,25 @@ def edit_purchase(id):
         flash('Vous n\'avez pas l\'autorisation de modifier ce bon d\'achat.', 'danger')
         return redirect(url_for('purchases.list_purchases'))
     
-    # Vérification du statut
-    if purchase.status not in [PurchaseStatus.DRAFT, PurchaseStatus.REQUESTED]:
+    # ✅ MODIFICATION : Permettre modification des bons RECEIVED (car pas d'approbation)
+    if purchase.status not in [PurchaseStatus.DRAFT, PurchaseStatus.REQUESTED, PurchaseStatus.RECEIVED]:
         flash('Ce bon d\'achat ne peut plus être modifié dans son état actuel.', 'warning')
         return redirect(url_for('purchases.view_purchase', id=id))
     
     form = PurchaseForm(obj=purchase)
     
     if request.method == 'POST' and form.validate_on_submit():
+        # Sauvegarder les anciens stocks pour reversion
+        old_stock_updates = []
+        if purchase.status == PurchaseStatus.RECEIVED:
+            for item in purchase.items:
+                if item.product:
+                    old_stock_updates.append({
+                        'product': item.product,
+                        'location': item.stock_location,
+                        'quantity': float(item.quantity_ordered)
+                    })
+        
         # Mise à jour des informations principales
         purchase.supplier_name = form.supplier_name.data
         purchase.supplier_contact = form.supplier_contact.data
@@ -351,9 +400,20 @@ def edit_purchase(id):
         purchase.internal_notes = form.internal_notes.data
         purchase.terms_conditions = form.terms_conditions.data
         
-        # Statut selon l'action choisie
-        if 'submit_and_request' in request.form:
-            purchase.status = PurchaseStatus.REQUESTED
+        # Reverser les anciens stocks avant modification
+        for old_update in old_stock_updates:
+            product = old_update['product']
+            location = old_update['location']
+            quantity = old_update['quantity']
+            
+            if location == 'ingredients_magasin':
+                product.stock_ingredients_magasin -= quantity
+            elif location == 'ingredients_local':
+                product.stock_ingredients_local -= quantity
+            elif location == 'comptoir':
+                product.stock_comptoir -= quantity
+            elif location == 'consommables':
+                product.stock_consommables -= quantity
         
         # Suppression des anciennes lignes
         PurchaseItem.query.filter_by(purchase_id=purchase.id).delete()
@@ -423,6 +483,20 @@ def edit_purchase(id):
             return render_template('purchases/edit_purchase.html', form=form, purchase=purchase, 
                                  title='Modifier Bon d\'Achat', available_products=available_products, 
                                  available_units=available_units)
+        
+        # ✅ NOUVELLE LOGIQUE : Mise à jour stock pour modification
+        if purchase.status == PurchaseStatus.RECEIVED:
+            for item in purchase.items:
+                if item.product:
+                    # Réappliquer les nouveaux stocks
+                    if item.stock_location == 'ingredients_magasin':
+                        item.product.stock_ingredients_magasin += float(item.quantity_ordered)
+                    elif item.stock_location == 'ingredients_local':
+                        item.product.stock_ingredients_local += float(item.quantity_ordered)
+                    elif item.stock_location == 'comptoir':
+                        item.product.stock_comptoir += float(item.quantity_ordered)
+                    elif item.stock_location == 'consommables':
+                        item.product.stock_consommables += float(item.quantity_ordered)
         
         # Recalcul des totaux
         purchase.calculate_totals()
