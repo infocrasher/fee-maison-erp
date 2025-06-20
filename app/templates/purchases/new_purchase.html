@@ -503,10 +503,10 @@ function setupRowEvents(itemRow, index) {
         calculateGrandTotal();
     });
     
-    priceInput.addEventListener('input', function() {
-        updateConversionDisplay(index);
-        calculateItemTotal(index);
-        calculateGrandTotal();
+    priceInput.addEventListener('blur', function() {
+    updateConversionDisplay(index);
+    calculateItemTotal(index);
+    calculateGrandTotal();
     });
     
     unitSelect.addEventListener('change', function() {
