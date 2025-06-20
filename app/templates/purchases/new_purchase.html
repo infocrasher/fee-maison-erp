@@ -428,9 +428,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Event listener pour ajouter ligne
     document.getElementById('addItemBtn').addEventListener('click', addItemRow);
     
-    // ✅ NOUVEAU : Event listener pour stock par défaut
-    const defaultStockLocation = document.getElementById('defaultStockLocation');
-    defaultStockLocation.addEventListener('change', updateAllStockDefaults);
+    
 });
 
 
@@ -472,11 +470,7 @@ function addItemRow() {
         unitSelect.appendChild(option);
     });
     
-    // ✅ NOUVEAU : Définir stock par défaut
-    const stockSelect = clone.querySelector('.stock-location-select');
-    const defaultStock = document.getElementById('defaultStockLocation').value;
-    stockSelect.value = defaultStock;
-    
+        
     // Ajouter au DOM
     container.appendChild(clone);
     
