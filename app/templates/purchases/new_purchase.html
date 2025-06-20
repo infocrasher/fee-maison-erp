@@ -547,7 +547,7 @@ function updateStockDisplay(index) {
 
 
 
-// ✅ CORRECTION : Calcul total ligne fonctionnel
+// ✅ CORRECTION : Calcul avec prix unitaire original
 function calculateItemTotal(index) {
     const row = document.querySelector(`[data-item-index="${index}"]`);
     if (!row) return;
@@ -558,15 +558,16 @@ function calculateItemTotal(index) {
     
     const quantity = parseFloat(quantityInput.value) || 0;
     const price = parseFloat(priceInput.value) || 0;
-    const total = quantity * price;
     
-    // ✅ CORRECTION : Affichage formaté du total
+    // ✅ UTILISER PRIX ORIGINAL × QUANTITÉ ORIGINALE
+    const total = quantity * price;  // 2 × 800 = 1600 DA
+    
     totalElement.textContent = total.toLocaleString('fr-FR', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     }) + ' DA';
     
-    console.log(`Ligne ${index}: ${quantity} × ${price} = ${total} DA`);
+    calculateGrandTotal();
 }
 
 // ✅ CORRECTION : Calcul grand total amélioré
