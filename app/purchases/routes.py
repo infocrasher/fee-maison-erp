@@ -121,6 +121,17 @@ def new_purchase():
     form = PurchaseForm()
     
     if request.method == 'POST' and form.validate_on_submit():
+        # ✅ CORRECTION 1 : Récupérer date d'achat manuelle
+        purchase_date_str = request.form.get('purchase_date')
+        if purchase_date_str:
+            try:
+                purchase_date = datetime.strptime(purchase_date_str, '%Y-%m-%d')
+            except ValueError:
+                purchase_date = datetime.now()  # Fallback si format incorrect
+                flash('Format de date incorrect, date actuelle utilisée.', 'warning')
+        else:
+            purchase_date = datetime.now()  # Fallback si pas de date
+        
         # Création du bon d'achat principal
         purchase = Purchase(
             supplier_name=form.supplier_name.data,
@@ -136,6 +147,7 @@ def new_purchase():
             notes=form.notes.data,
             internal_notes=form.internal_notes.data,
             terms_conditions=form.terms_conditions.data,
+            requested_date=purchase_date,  # ✅ UTILISER DATE SAISIE
             requested_by_id=current_user.id,
             is_paid=False  # ✅ NOUVEAU : Non payé par défaut
         )
@@ -360,6 +372,58 @@ def mark_as_unpaid(id):
     flash(f'Bon d\'achat {purchase.reference} marqué comme non payé.', 'success')
     return redirect(url_for('purchases.view_purchase', id=id))
 
+# ✅ CORRECTION 2 : Route d'annulation avec reversion stock
+@purchases.route('/<int:id>/cancel', methods=['POST'])
+@login_required
+@admin_required
+def cancel_purchase(id):
+    """Annuler un bon d'achat et reverser le stock"""
+    purchase = Purchase.query.get_or_404(id)
+    
+    if purchase.status == PurchaseStatus.CANCELLED:
+        flash('Ce bon d\'achat est déjà annulé.', 'info')
+        return redirect(url_for('purchases.view_purchase', id=id))
+    
+    # ✅ REVERSER LE STOCK si le bon était reçu
+    if purchase.status == PurchaseStatus.RECEIVED:
+        stock_reversions = []
+        for item in purchase.items:
+            if item.product:
+                # Reverser selon stock_location
+                if item.stock_location == 'ingredients_magasin':
+                    item.product.stock_ingredients_magasin -= float(item.quantity_ordered)
+                    stock_location_display = "Stock Magasin"
+                elif item.stock_location == 'ingredients_local':
+                    item.product.stock_ingredients_local -= float(item.quantity_ordered)
+                    stock_location_display = "Stock Local"
+                elif item.stock_location == 'comptoir':
+                    item.product.stock_comptoir -= float(item.quantity_ordered)
+                    stock_location_display = "Stock Comptoir"
+                elif item.stock_location == 'consommables':
+                    item.product.stock_consommables -= float(item.quantity_ordered)
+                    stock_location_display = "Stock Consommables"
+                
+                # Affichage intelligent selon unité originale ou base
+                if item.original_quantity and item.original_unit:
+                    display_quantity = f"{item.original_quantity} × {item.original_unit.name}"
+                else:
+                    display_quantity = f"{item.quantity_ordered}"
+                
+                stock_reversions.append(f"{item.product.name}: -{display_quantity} du {stock_location_display}")
+        
+        # Messages de confirmation reversion
+        if stock_reversions:
+            flash(f'Stocks reversés automatiquement :', 'warning')
+            for reversion in stock_reversions:
+                flash(f'📦 {reversion}', 'info')
+    
+    # Changer statut en annulé
+    purchase.status = PurchaseStatus.CANCELLED
+    db.session.commit()
+    
+    flash(f'Bon d\'achat {purchase.reference} annulé avec succès.', 'success')
+    return redirect(url_for('purchases.view_purchase', id=id))
+
 @purchases.route('/<int:id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_purchase(id):
@@ -381,6 +445,15 @@ def edit_purchase(id):
     form = PurchaseForm(obj=purchase)
     
     if request.method == 'POST' and form.validate_on_submit():
+        # ✅ CORRECTION 1 : Récupérer date d'achat manuelle pour modification
+        purchase_date_str = request.form.get('purchase_date')
+        if purchase_date_str:
+            try:
+                purchase_date = datetime.strptime(purchase_date_str, '%Y-%m-%d')
+                purchase.requested_date = purchase_date
+            except ValueError:
+                flash('Format de date incorrect, date non modifiée.', 'warning')
+        
         # Sauvegarder les anciens stocks pour reversion
         old_stock_updates = []
         if purchase.status == PurchaseStatus.RECEIVED:
