@@ -503,12 +503,19 @@ function setupRowEvents(itemRow, index) {
         calculateGrandTotal();
     });
     
-    priceInput.addEventListener('blur', function() {
+    let priceTimeout;
+    priceInput.addEventListener('input', function() {
     updateConversionDisplay(index);
-    calculateItemTotal(index);
-    calculateGrandTotal();
-    });
     
+    // Annuler le calcul précédent
+    clearTimeout(priceTimeout);
+    
+    // Nouveau calcul dans 500ms
+    priceTimeout = setTimeout(function() {
+        calculateItemTotal(index);
+        calculateGrandTotal();
+    }, 500);
+    });
     unitSelect.addEventListener('change', function() {
         updateConversionDisplay(index);
         calculateItemTotal(index);
