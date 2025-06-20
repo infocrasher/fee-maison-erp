@@ -155,7 +155,14 @@ def new_purchase():
         quantities = request.form.getlist('items[][quantity_ordered]')
         prices = request.form.getlist('items[][unit_price]')
         units = request.form.getlist('items[][unit]')
+        stock_locations = request.form.getlist('items[][stock_location]')
         
+        # ✅ DEBUG : Afficher les valeurs reçues
+        print("=== DEBUG STOCK LOCATIONS ===")
+        for i, location in enumerate(stock_locations):
+            print(f"Ligne {i}: stock_location = {location}")
+        print("==============================")
+
         # Traiter chaque ligne d'item
         for i in range(len(product_ids)):
             try:
