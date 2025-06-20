@@ -217,6 +217,21 @@
         </div>
     </div>
 
+    <!-- ✅ À AJOUTER -->
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px;">
+                <label class="form-label">📅 Date d'Achat</label>
+                <input type="date" 
+                       class="form-control" 
+                       name="purchase_date" 
+                       id="purchaseDate"
+                       required>
+                <small class="text-light mt-1">Date à laquelle l'achat a été effectué</small>
+            </div>
+        </div>
+    </div>
+
     <form id="purchaseForm" method="POST">
         {{ form.hidden_tag() }}
         
