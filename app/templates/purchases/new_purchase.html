@@ -551,18 +551,7 @@ function updateStockDisplay(index) {
     }
 }
 
-// ✅ NOUVEAU : Mise à jour stock par défaut pour toutes les lignes
-function updateAllStockDefaults() {
-    const defaultStock = document.getElementById('defaultStockLocation').value;
-    
-    document.querySelectorAll('.stock-location-select').forEach((select, index) => {
-        // Ne pas changer si l'utilisateur a déjà fait un choix différent
-        if (!select.dataset.userModified) {
-            select.value = defaultStock;
-            updateStockDisplay(index);
-        }
-    });
-}
+
 
 // ✅ CORRECTION : Calcul total ligne fonctionnel
 function calculateItemTotal(index) {
