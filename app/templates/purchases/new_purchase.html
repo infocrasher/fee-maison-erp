@@ -548,6 +548,7 @@ function updateStockDisplay(index) {
 
 
 // ✅ CORRECTION : Calcul avec prix unitaire original
+// ✅ CORRECTION : Ajouter au début de calculateItemTotal() (ligne 380)
 function calculateItemTotal(index) {
     const row = document.querySelector(`[data-item-index="${index}"]`);
     if (!row) return;
@@ -556,11 +557,13 @@ function calculateItemTotal(index) {
     const priceInput = row.querySelector('.item-price');
     const totalElement = row.querySelector('.item-total');
     
+    // ✅ FORCER VALEURS ORIGINALES SAISIES
     const quantity = parseFloat(quantityInput.value) || 0;
     const price = parseFloat(priceInput.value) || 0;
     
-    // ✅ UTILISER PRIX ORIGINAL × QUANTITÉ ORIGINALE
-    const total = quantity * price;  // 2 × 800 = 1600 DA
+    console.log(`Calcul ligne ${index}: ${quantity} × ${price} = ${quantity * price}`); // ✅ DEBUG
+    
+    const total = quantity * price;
     
     totalElement.textContent = total.toLocaleString('fr-FR', {
         minimumFractionDigits: 2,
