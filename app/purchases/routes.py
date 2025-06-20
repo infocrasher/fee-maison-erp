@@ -130,7 +130,6 @@ def new_purchase():
             supplier_address=form.supplier_address.data,
             expected_delivery_date=form.expected_delivery_date.data,
             urgency=PurchaseUrgency(form.urgency.data),
-            default_stock_location=form.default_stock_location.data,
             payment_terms=form.payment_terms.data,
             shipping_cost=form.shipping_cost.data or 0.0,
             tax_amount=form.tax_amount.data or 0.0,
@@ -150,19 +149,19 @@ def new_purchase():
         # Traitement manuel des items depuis request.form
         items_added = 0
         
-        # Récupérer tous les champs items de request.form
+        # ✅ CORRECTION : Récupérer TOUTES les listes y compris stock_location
         product_ids = request.form.getlist('items[][product_id]')
         quantities = request.form.getlist('items[][quantity_ordered]')
         prices = request.form.getlist('items[][unit_price]')
         units = request.form.getlist('items[][unit]')
-        stock_locations = request.form.getlist('items[][stock_location]')
+        stock_locations = request.form.getlist('items[][stock_location]')  # ✅ AJOUTÉ
         
-        # ✅ DEBUG : Afficher les valeurs reçues
+        # ✅ DEBUG : Vérifier les valeurs reçues
         print("=== DEBUG STOCK LOCATIONS ===")
         for i, location in enumerate(stock_locations):
             print(f"Ligne {i}: stock_location = {location}")
         print("==============================")
-
+        
         # Traiter chaque ligne d'item
         for i in range(len(product_ids)):
             try:
@@ -170,6 +169,8 @@ def new_purchase():
                 quantity = float(quantities[i]) if quantities[i] else 0
                 price = float(prices[i]) if prices[i] else 0
                 unit_id = int(units[i]) if units[i] else None
+                # ✅ CORRECTION : Récupérer stock_location pour chaque ligne
+                stock_location = stock_locations[i] if i < len(stock_locations) else 'ingredients_magasin'
                 
                 if product_id and quantity > 0 and price > 0:
                     # Gestion conversion d'unités
@@ -208,7 +209,7 @@ def new_purchase():
                         original_quantity=original_quantity,
                         original_unit_id=original_unit_id,
                         original_unit_price=original_unit_price,
-                        stock_location=purchase.default_stock_location,
+                        stock_location=stock_location,  # ✅ CORRECTION : Utiliser la valeur récupérée
                         description_override=description_with_unit
                     )
                     
@@ -238,7 +239,7 @@ def new_purchase():
             stock_updates = []
             for item in purchase.items:
                 if item.product:
-                    # Déterminer quel stock incrémenter selon stock_location
+                    # ✅ CORRECTION : Utiliser stock_location de chaque item
                     if item.stock_location == 'ingredients_magasin':
                         item.product.stock_ingredients_magasin += float(item.quantity_ordered)
                         stock_location_display = "Stock Magasin"
@@ -399,7 +400,6 @@ def edit_purchase(id):
         purchase.supplier_address = form.supplier_address.data
         purchase.expected_delivery_date = form.expected_delivery_date.data
         purchase.urgency = PurchaseUrgency(form.urgency.data)
-        purchase.default_stock_location = form.default_stock_location.data
         purchase.payment_terms = form.payment_terms.data
         purchase.shipping_cost = form.shipping_cost.data or 0.0
         purchase.tax_amount = form.tax_amount.data or 0.0
@@ -425,12 +425,13 @@ def edit_purchase(id):
         # Suppression des anciennes lignes
         PurchaseItem.query.filter_by(purchase_id=purchase.id).delete()
         
-        # Traitement manuel des nouvelles lignes (même logique que new_purchase)
+        # ✅ CORRECTION : Traitement manuel des nouvelles lignes avec stock_location
         items_added = 0
         product_ids = request.form.getlist('items[][product_id]')
         quantities = request.form.getlist('items[][quantity_ordered]')
         prices = request.form.getlist('items[][unit_price]')
         units = request.form.getlist('items[][unit]')
+        stock_locations = request.form.getlist('items[][stock_location]')  # ✅ AJOUTÉ
         
         for i in range(len(product_ids)):
             try:
@@ -438,6 +439,7 @@ def edit_purchase(id):
                 quantity = float(quantities[i]) if quantities[i] else 0
                 price = float(prices[i]) if prices[i] else 0
                 unit_id = int(units[i]) if units[i] else None
+                stock_location = stock_locations[i] if i < len(stock_locations) else 'ingredients_magasin'  # ✅ AJOUTÉ
                 
                 if product_id and quantity > 0 and price > 0:
                     # Conversion d'unités (même logique que new_purchase)
@@ -469,7 +471,7 @@ def edit_purchase(id):
                         original_quantity=original_quantity,
                         original_unit_id=original_unit_id,
                         original_unit_price=original_unit_price,
-                        stock_location=purchase.default_stock_location,
+                        stock_location=stock_location,  # ✅ CORRECTION : Utiliser stock_location
                         description_override=description_with_unit
                     )
                     
@@ -495,7 +497,7 @@ def edit_purchase(id):
         if purchase.status == PurchaseStatus.RECEIVED:
             for item in purchase.items:
                 if item.product:
-                    # Réappliquer les nouveaux stocks
+                    # Réappliquer les nouveaux stocks selon stock_location
                     if item.stock_location == 'ingredients_magasin':
                         item.product.stock_ingredients_magasin += float(item.quantity_ordered)
                     elif item.stock_location == 'ingredients_local':
