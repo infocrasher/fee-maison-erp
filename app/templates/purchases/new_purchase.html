@@ -24,7 +24,6 @@
         transform: translateY(-2px);
         box-shadow: 0 4px 15px rgba(0,0,0,0.2);
     }
-    
     .action-btn {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border: none;
@@ -41,77 +40,6 @@
     .btn-add { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
     .btn-save { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
     .btn-remove { background: linear-gradient(135deg, #ff6b6b 0%, #ffa8a8 100%); }
-    
-    .autocomplete-container {
-        position: relative;
-    }
-    .autocomplete-suggestions {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        background: white;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        max-height: 200px;
-        overflow-y: auto;
-        z-index: 1000;
-        display: none;
-    }
-    .autocomplete-item {
-        padding: 10px 15px;
-        cursor: pointer;
-        border-bottom: 1px solid #f0f0f0;
-        transition: background 0.2s ease;
-        color: #333;
-    }
-    .autocomplete-item:hover,
-    .autocomplete-item.active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-    }
-    .autocomplete-item:last-child {
-        border-bottom: none;
-    }
-    
-    .total-section {
-        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-        border-radius: 12px;
-        padding: 20px;
-        color: white;
-        text-align: center;
-    }
-    
-    .supplier-info {
-        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-        border-radius: 10px;
-        padding: 15px;
-        margin-bottom: 20px;
-        color: white;
-    }
-    
-    .unit-helper {
-        font-size: 0.8em;
-        opacity: 0.9;
-        margin-top: 2px;
-    }
-    .conversion-info {
-        background: rgba(255,255,255,0.2);
-        border-radius: 6px;
-        padding: 8px;
-        margin-top: 5px;
-        font-size: 0.85em;
-    }
-    .unit-badge {
-        background: rgba(255,255,255,0.3);
-        border-radius: 12px;
-        padding: 2px 8px;
-        font-size: 0.75em;
-        margin-left: 5px;
-    }
-    
-    /* ✅ NOUVEAU CSS : Sélection Stock */
     .stock-location-select {
         background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
         border: none;
@@ -122,10 +50,6 @@
         font-weight: 500;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         transition: all 0.3s ease;
-    }
-    .stock-location-select:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
     .stock-location-select option {
         background: white;
@@ -138,58 +62,11 @@
         opacity: 0.8;
         margin-top: 3px;
     }
-    .stock-badge {
-        background: rgba(255,255,255,0.2);
-        border-radius: 8px;
-        padding: 3px 8px;
-        font-size: 0.7em;
-        margin-top: 2px;
-        display: inline-block;
-    }
-    
-    /* Date d'achat automatique */
-    .date-info {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 8px;
-        padding: 12px;
-        color: white;
-        text-align: center;
-        margin-bottom: 15px;
-    }
 </style>
-
-<!-- ✅ CORRECTION : Données Jinja2 converties en JSON proprement -->
-<script id="template-data" type="application/json">
-{
-    "available_units": [
-        {% for unit in available_units %}
-        {
-            "id": {{ unit.id }},
-            "name": "{{ unit.name }}",
-            "base_unit": "{{ unit.base_unit }}",
-            "conversion_factor": {{ unit.conversion_factor }},
-            "unit_type": "{{ unit.unit_type }}"
-        }{% if not loop.last %},{% endif %}
-        {% endfor %}
-    ],
-    "available_products": [
-        {% for product in available_products %}
-        {
-            "id": {{ product.id }},
-            "name": "{{ product.name }}",
-            "unit": "{{ product.unit or '' }}",
-            "cost_price": {{ product.cost_price or 0 }},
-            "stock_magasin": {{ product.stock_ingredients_magasin or 0 }}
-        }{% if not loop.last %},{% endif %}
-        {% endfor %}
-    ]
-}
-</script>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <!-- En-tête -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
@@ -206,24 +83,23 @@
         </div>
     </div>
 
-    <!-- ✅ À AJOUTER -->
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px;">
-                <label class="form-label">📅 Date d'Achat</label>
-                <input type="date" 
-                       class="form-control" 
-                       name="purchase_date" 
-                       id="purchaseDate"
-                       required>
-                <small class="text-light mt-1">Date à laquelle l'achat a été effectué</small>
-            </div>
-        </div>
-    </div>
-
+    <!-- ✅ Champ date d'achat manuel -->
     <form id="purchaseForm" method="POST">
         {{ form.hidden_tag() }}
-        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px;">
+                    <label class="form-label">📅 Date d'Achat</label>
+                    <input type="date"
+                           class="form-control"
+                           name="purchase_date"
+                           id="purchaseDate"
+                           required>
+                    <small class="text-light mt-1">Date réelle de l'achat (modifiable)</small>
+                </div>
+            </div>
+        </div>
+
         <!-- Informations Fournisseur -->
         <div class="row mb-4">
             <div class="col-md-8">
@@ -253,9 +129,7 @@
                                 {{ form.urgency(class="form-control") }}
                             </div>
                         </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-12">
+                        <div class="col-md-6">
                             <div class="mb-3">
                                 {{ form.notes.label(class="form-label") }}
                                 {{ form.notes(class="form-control", rows="3", placeholder="Notes et remarques...") }}
@@ -265,20 +139,20 @@
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="supplier-info">
+                <div class="card form-card">
                     <h6><i class="bi bi-magic me-2"></i>Innovation : Conditionnements Réels</h6>
                     <small>
-                        📦 <strong>Produit :</strong> Unité de base (depuis table products)<br><br>
-                        🎯 <strong>Conditionnement :</strong> Comment vous achetez (25kg, 5L, 250g)<br><br>
-                        🔄 <strong>Conversion auto :</strong> 2 × 25kg = 50kg au stock<br><br>
-                        ✅ <strong>Double traçabilité :</strong> Achat original + conversion<br><br>
+                        📦 <strong>Produit :</strong> Unité de base (depuis table products)<br>
+                        🎯 <strong>Conditionnement :</strong> Comment vous achetez (25kg, 5L, 250g)<br>
+                        🔄 <strong>Conversion auto :</strong> 2 × 25kg = 50kg au stock<br>
+                        ✅ <strong>Double traçabilité :</strong> Achat original + conversion<br>
                         🏪 <strong>Stock intelligent :</strong> Choisissez où stocker chaque produit
                     </small>
                 </div>
             </div>
         </div>
 
-        <!-- Lignes d'Achat -->
+        <!-- Section produits (lignes d'achat) -->
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card form-card">
@@ -288,11 +162,9 @@
                             <i class="bi bi-plus-circle me-2"></i>Ajouter Produit
                         </button>
                     </div>
-                    
                     <div id="itemsContainer">
                         <!-- Les lignes d'achat seront ajoutées ici dynamiquement -->
                     </div>
-                    
                     <div class="alert alert-info mt-3" id="emptyItemsMessage">
                         <i class="bi bi-info-circle me-2"></i>Cliquez sur "Ajouter Produit" pour commencer votre bon d'achat avec conditionnements intelligents
                     </div>
@@ -314,11 +186,11 @@
                 </small>
             </div>
             <div class="col-md-4">
-                <div class="total-section">
+                <div class="card form-card">
                     <h5>💰 Total Bon d'Achat</h5>
                     <h3 id="totalAmount">0,00 DA</h3>
                     <small id="itemCount">0 produit(s)</small>
-                    <div id="conversionSummary" class="mt-2 unit-helper"></div>
+                    <div id="conversionSummary" class="mt-2"></div>
                 </div>
             </div>
         </div>
@@ -331,44 +203,28 @@
         <div class="row align-items-center">
             <div class="col-md-2">
                 <label class="form-label">🔍 Produit</label>
-                <div class="autocomplete-container">
-                    <input type="text" 
-                           class="form-control product-search" 
-                           placeholder="Tapez 2-3 lettres (ex: FA pour Farine)"
-                           autocomplete="off">
-                    <input type="hidden" class="product-id" name="items[][product_id]">
-                    <input type="hidden" class="item-id" name="items[][id]">
-                    <div class="autocomplete-suggestions"></div>
-                </div>
+                <input type="text" class="form-control product-search" placeholder="Tapez 2-3 lettres (ex: FA pour Farine)" autocomplete="off">
+                <input type="hidden" class="product-id" name="items[][product_id]">
+                <input type="hidden" class="item-id" name="items[][id]">
             </div>
             <div class="col-md-2">
                 <label class="form-label">📦 Conditionnement</label>
                 <select class="form-control unit-select" name="items[][unit]">
                     <option value="">Unité standard</option>
-                    <!-- Options seront ajoutées dynamiquement -->
+                    {% for unit in available_units %}
+                    <option value="{{ unit.id }}" data-factor="{{ unit.conversion_factor }}" data-base="{{ unit.base_unit }}">{{ unit.name }}</option>
+                    {% endfor %}
                 </select>
             </div>
             <div class="col-md-1">
                 <label class="form-label">Quantité</label>
-                <input type="number" 
-                       class="form-control item-quantity" 
-                       name="items[][quantity_ordered]" 
-                       placeholder="0"
-                       min="1"
-                       step="1">
-                <small class="quantity-helper text-muted"></small>
+                <input type="number" class="form-control item-quantity" name="items[][quantity_ordered]" placeholder="0" min="1" step="1">
             </div>
             <div class="col-md-2">
                 <label class="form-label">Prix Unitaire</label>
-                <input type="number" 
-                       class="form-control item-price" 
-                       name="items[][unit_price]" 
-                       placeholder="0,00"
-                       min="0"
-                       step="0.01">
-                <small class="price-helper text-muted"></small>
+                <input type="number" class="form-control item-price" name="items[][unit_price]" placeholder="0,00" min="0" step="0.01">
             </div>
-            <!-- ✅ NOUVELLE COLONNE : Sélection Stock -->
+            <!-- ✅ Sélection Stock par produit -->
             <div class="col-md-2">
                 <label class="form-label">🏪 Stock Destination</label>
                 <select class="form-control stock-location-select" name="items[][stock_location]" required>
@@ -390,414 +246,10 @@
                 </button>
             </div>
         </div>
-        
-        <div class="conversion-info" style="display: none;">
-            <div class="row">
-                <div class="col-md-8">
-                    <strong>💡 Conversion automatique :</strong>
-                    <span class="conversion-text"></span>
-                </div>
-                <div class="col-md-4">
-                    <span class="stock-badge">
-                        <i class="bi bi-box me-1"></i>
-                        <span class="stock-destination-display">Stock sélectionné</span>
-                    </span>
-                </div>
-            </div>
-        </div>
     </div>
 </template>
 {% endblock %}
 
 {% block scripts %}
-<script>
-// ✅ CORRECTION : Variables globales propres
-let itemIndex = 0;
-let availableProducts = [];
-let availableUnits = [];
-let templateData = {};
-
-document.addEventListener('DOMContentLoaded', function() {
-    // ✅ CORRECTION : Charger données depuis JSON proprement
-    loadTemplateData();
-    
-      
-    // Ajouter première ligne automatiquement
-    addItemRow();
-    
-    // Event listener pour ajouter ligne
-    document.getElementById('addItemBtn').addEventListener('click', addItemRow);
-    
-    
-});
-
-
-
-// ✅ CORRECTION : Charger données sans mélange Jinja2/JS
-function loadTemplateData() {
-    try {
-        const dataScript = document.getElementById('template-data');
-        templateData = JSON.parse(dataScript.textContent);
-        availableUnits = templateData.available_units;
-        availableProducts = templateData.available_products;
-        console.log('Données chargées:', availableUnits.length, 'unités,', availableProducts.length, 'produits');
-    } catch (error) {
-        console.error('Erreur chargement données template:', error);
-        availableUnits = [];
-        availableProducts = [];
-    }
-}
-
-// ✅ CORRECTION : Ajouter ligne avec gestion correcte des événements
-function addItemRow() {
-    const container = document.getElementById('itemsContainer');
-    const template = document.getElementById('itemRowTemplate');
-    const clone = template.content.cloneNode(true);
-    
-    // Mettre à jour l'index
-    const itemRow = clone.querySelector('.item-row');
-    itemRow.setAttribute('data-item-index', itemIndex);
-    
-    // ✅ CORRECTION : Ajouter options unités AVANT d'ajouter au DOM
-    const unitSelect = clone.querySelector('.unit-select');
-    availableUnits.forEach(unit => {
-        const option = document.createElement('option');
-        option.value = unit.id;
-        option.textContent = unit.name;
-        option.setAttribute('data-factor', unit.conversion_factor);
-        option.setAttribute('data-base', unit.base_unit);
-        option.setAttribute('data-type', unit.unit_type);
-        unitSelect.appendChild(option);
-    });
-    
-        
-    // Ajouter au DOM
-    container.appendChild(clone);
-    
-    // ✅ CORRECTION : Configurer événements APRÈS ajout au DOM
-    const addedRow = container.lastElementChild;
-    setupRowEvents(addedRow, itemIndex);
-    
-    // Masquer message vide
-    document.getElementById('emptyItemsMessage').style.display = 'none';
-    
-    itemIndex++;
-}
-
-// ✅ CORRECTION : Configuration événements simplifiée et robuste
-function setupRowEvents(itemRow, index) {
-    const searchInput = itemRow.querySelector('.product-search');
-    const unitSelect = itemRow.querySelector('.unit-select');
-    const quantityInput = itemRow.querySelector('.item-quantity');
-    const priceInput = itemRow.querySelector('.item-price');
-    const stockSelect = itemRow.querySelector('.stock-location-select'); // ✅ NOUVEAU
-    const removeBtn = itemRow.querySelector('.remove-item-btn');
-    
-    // Autocomplétion
-    setupAutocomplete(searchInput, index);
-    
-    // ✅ CORRECTION : Event listeners avec calcul de total immédiat
-    quantityInput.addEventListener('input', function() {
-        updateConversionDisplay(index);
-        calculateItemTotal(index);
-        calculateGrandTotal();
-    });
-    
-    let priceTimeout;
-    priceInput.addEventListener('input', function() {
-    updateConversionDisplay(index);
-    
-    // Annuler le calcul précédent
-    clearTimeout(priceTimeout);
-    
-    // Nouveau calcul dans 500ms
-    priceTimeout = setTimeout(function() {
-        calculateItemTotal(index);
-        calculateGrandTotal();
-    }, 500);
-    });
-    unitSelect.addEventListener('change', function() {
-        updateConversionDisplay(index);
-        calculateItemTotal(index);
-        calculateGrandTotal();
-    });
-    
-    // ✅ NOUVEAU : Event listener pour sélection stock
-    stockSelect.addEventListener('change', function() {
-        updateStockDisplay(index);
-    });
-    
-    // Supprimer ligne
-    removeBtn.addEventListener('click', function() {
-        removeItemRow(index);
-    });
-    
-    // Initialiser l'affichage stock
-    updateStockDisplay(index);
-}
-
-// ✅ NOUVEAU : Mise à jour affichage stock sélectionné
-function updateStockDisplay(index) {
-    const row = document.querySelector(`[data-item-index="${index}"]`);
-    if (!row) return;
-    
-    const stockSelect = row.querySelector('.stock-location-select');
-    const stockDisplay = row.querySelector('.stock-destination-display');
-    
-    if (stockSelect && stockDisplay) {
-        const selectedOption = stockSelect.selectedOptions[0];
-        if (selectedOption) {
-            stockDisplay.textContent = selectedOption.textContent;
-        }
-    }
-}
-
-
-
-// ✅ CORRECTION : Calcul avec prix unitaire original
-// ✅ CORRECTION : Ajouter au début de calculateItemTotal() (ligne 380)
-function calculateItemTotal(index) {
-    const row = document.querySelector(`[data-item-index="${index}"]`);
-    if (!row) return;
-    
-    const quantityInput = row.querySelector('.item-quantity');
-    const priceInput = row.querySelector('.item-price');
-    const totalElement = row.querySelector('.item-total');
-    
-    // ✅ FORCER VALEURS ORIGINALES SAISIES
-    const quantity = parseFloat(quantityInput.value) || 0;
-    const price = parseFloat(priceInput.value) || 0;
-    
-    console.log(`Calcul ligne ${index}: ${quantity} × ${price} = ${quantity * price}`); // ✅ DEBUG
-    
-    const total = quantity * price;
-    
-    totalElement.textContent = total.toLocaleString('fr-FR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    }) + ' DA';
-    
-    calculateGrandTotal();
-}
-
-// ✅ CORRECTION : Calcul grand total amélioré
-function calculateGrandTotal() {
-    let grandTotal = 0;
-    let itemCount = 0;
-    let conversionSummary = [];
-    let stockSummary = {};
-    
-    document.querySelectorAll('.item-row').forEach(function(row) {
-        const quantityInput = row.querySelector('.item-quantity');
-        const priceInput = row.querySelector('.item-price');
-        const unitSelect = row.querySelector('.unit-select');
-        const stockSelect = row.querySelector('.stock-location-select'); // ✅ NOUVEAU
-        
-        const quantity = parseFloat(quantityInput.value) || 0;
-        const price = parseFloat(priceInput.value) || 0;
-        
-        if (quantity > 0 && price > 0) {
-            grandTotal += quantity * price;
-            itemCount++;
-            
-            // Ajouter à résumé conversion avec stock
-            if (unitSelect.value) {
-                const selectedOption = unitSelect.selectedOptions[0];
-                const factor = parseFloat(selectedOption.getAttribute('data-factor'));
-                const baseUnit = selectedOption.getAttribute('data-base');
-                const totalBase = quantity * factor;
-                
-                // ✅ NOUVEAU : Grouper par stock
-                const stockLocation = stockSelect.value;
-                const stockLabel = stockSelect.selectedOptions[0].textContent;
-                
-                if (!stockSummary[stockLocation]) {
-                    stockSummary[stockLocation] = {
-                        label: stockLabel,
-                        items: []
-                    };
-                }
-                
-                stockSummary[stockLocation].items.push(`${totalBase}${baseUnit}`);
-            }
-        }
-    });
-    
-    // ✅ CORRECTION : Mise à jour affichage total
-    document.getElementById('totalAmount').textContent = grandTotal.toLocaleString('fr-FR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    }) + ' DA';
-    
-    document.getElementById('itemCount').textContent = itemCount + ' produit(s)';
-    
-    // ✅ NOUVEAU : Afficher résumé par stock
-    const summaryElement = document.getElementById('conversionSummary');
-    if (Object.keys(stockSummary).length > 0) {
-        let summaryText = '📦 Impact stock :<br>';
-        for (const [location, data] of Object.entries(stockSummary)) {
-            summaryText += `${data.label}: ${data.items.join(' + ')}<br>`;
-        }
-        summaryElement.innerHTML = summaryText;
-    } else {
-        summaryElement.innerHTML = '';
-    }
-    
-    console.log('Grand Total:', grandTotal, 'DA');
-}
-
-// Mise à jour affichage conversion
-function updateConversionDisplay(index) {
-    const row = document.querySelector(`[data-item-index="${index}"]`);
-    if (!row) return;
-    
-    const unitSelect = row.querySelector('.unit-select');
-    const quantityInput = row.querySelector('.item-quantity');
-    const priceInput = row.querySelector('.item-price');
-    const stockSelect = row.querySelector('.stock-location-select'); // ✅ NOUVEAU
-    const quantityHelper = row.querySelector('.quantity-helper');
-    const priceHelper = row.querySelector('.price-helper');
-    const totalHelper = row.querySelector('.total-helper');
-    const conversionInfo = row.querySelector('.conversion-info');
-    const conversionText = row.querySelector('.conversion-text');
-    
-    const quantity = parseFloat(quantityInput.value) || 0;
-    const price = parseFloat(priceInput.value) || 0;
-    
-    if (unitSelect.value && quantity > 0) {
-        const selectedOption = unitSelect.selectedOptions[0];
-        const factor = parseFloat(selectedOption.getAttribute('data-factor'));
-        const baseUnit = selectedOption.getAttribute('data-base');
-        const totalBase = quantity * factor;
-        
-        // Mise à jour des helpers
-        quantityHelper.textContent = `= ${totalBase}${baseUnit} total`;
-        if (price > 0) {
-            priceHelper.textContent = `= ${(price / factor).toFixed(4)} DA/${baseUnit}`;
-        }
-        totalHelper.textContent = `${quantity} × ${selectedOption.textContent}`;
-        
-        // ✅ NOUVEAU : Affichage conversion avec stock
-        const stockLabel = stockSelect.selectedOptions[0].textContent;
-        conversionText.textContent = `${quantity} × ${selectedOption.textContent} = ${totalBase}${baseUnit} ajoutés au ${stockLabel}`;
-        conversionInfo.style.display = 'block';
-    } else {
-        quantityHelper.textContent = '';
-        priceHelper.textContent = '';
-        totalHelper.textContent = '';
-        conversionInfo.style.display = 'none';
-    }
-}
-
-// Configuration autocomplétion (simplifiée)
-function setupAutocomplete(inputElement, index) {
-    const suggestionsContainer = inputElement.parentNode.querySelector('.autocomplete-suggestions');
-    
-    inputElement.addEventListener('input', function() {
-        const query = this.value.trim().toLowerCase();
-        
-        if (query.length >= 2) {
-            const filteredProducts = availableProducts.filter(product => 
-                product.name.toLowerCase().includes(query)
-            );
-            showSuggestions(filteredProducts, suggestionsContainer, inputElement, index);
-        } else {
-            hideSuggestions(suggestionsContainer);
-        }
-    });
-    
-    // Cacher suggestions si clic ailleurs
-    document.addEventListener('click', function(e) {
-        if (!inputElement.contains(e.target)) {
-            hideSuggestions(suggestionsContainer);
-        }
-    });
-}
-
-// Afficher suggestions
-function showSuggestions(products, container, inputElement, index) {
-    container.innerHTML = '';
-    
-    if (products.length === 0) {
-        container.innerHTML = '<div class="autocomplete-item">Aucun produit trouvé</div>';
-    } else {
-        products.forEach(function(product) {
-            const div = document.createElement('div');
-            div.className = 'autocomplete-item';
-            div.innerHTML = `<strong>${product.name}</strong><span class="unit-badge">${product.unit || 'unité'}</span><br>` +
-                           `<small class="text-muted">Stock magasin: ${product.stock_magasin || 0} ${product.unit || 'unités'}</small>`;
-            
-            div.addEventListener('click', function() {
-                selectProduct(inputElement, index, product);
-            });
-            
-            container.appendChild(div);
-        });
-    }
-    
-    container.style.display = 'block';
-}
-
-// Masquer suggestions
-function hideSuggestions(container) {
-    container.style.display = 'none';
-}
-
-// Sélectionner un produit
-function selectProduct(inputElement, index, productData) {
-    inputElement.value = productData.name;
-    
-    // Mettre à jour le champ caché
-    const row = document.querySelector(`[data-item-index="${index}"]`);
-    const hiddenInput = row.querySelector('.product-id');
-    hiddenInput.value = productData.id;
-    
-    hideSuggestions(inputElement.parentNode.querySelector('.autocomplete-suggestions'));
-}
-
-// Supprimer ligne d'achat
-function removeItemRow(index) {
-    const row = document.querySelector(`[data-item-index="${index}"]`);
-    if (row) {
-        row.remove();
-        calculateGrandTotal();
-        
-        // Afficher message si plus de lignes
-        const remainingRows = document.querySelectorAll('.item-row');
-        if (remainingRows.length === 0) {
-            document.getElementById('emptyItemsMessage').style.display = 'block';
-        }
-    }
-}
-
-// Validation formulaire
-document.getElementById('purchaseForm').addEventListener('submit', function(e) {
-    const rows = document.querySelectorAll('.item-row');
-    let hasValidItems = false;
-    
-    rows.forEach(function(row) {
-        const productId = row.querySelector('.product-id').value;
-        const quantity = row.querySelector('.item-quantity').value;
-        const price = row.querySelector('.item-price').value;
-        const stockLocation = row.querySelector('.stock-location-select').value; // ✅ NOUVEAU
-        
-        if (productId && quantity && price && stockLocation) {
-            hasValidItems = true;
-        }
-    });
-    
-    if (!hasValidItems) {
-        e.preventDefault();
-        alert('Veuillez ajouter au moins un produit avec quantité, prix et destination stock');
-        return false;
-    }
-    
-    const supplierName = document.querySelector('input[name="supplier_name"]').value;
-    if (!supplierName.trim()) {
-        e.preventDefault();
-        alert('Veuillez renseigner le nom du fournisseur');
-        return false;
-    }
-});
-</script>
+<!-- Ici tu ajoutes le JS de gestion des lignes, calculs, etc. -->
 {% endblock %}
