@@ -292,6 +292,8 @@ ERP complet et autonome pour Fée Maison avec toutes les fonctionnalités métie
     - Marquer un bon d'achat comme payé
 - `POST` /admin/purchases/<int:id>/mark_unpaid (endpoint: `purchases.mark_as_unpaid`, blueprint: `purchases`)
     - Marquer un bon d'achat comme non payé
+- `POST` /admin/purchases/<int:id>/cancel (endpoint: `purchases.cancel_purchase`, blueprint: `purchases`)
+    - Annuler un bon d'achat et reverser le stock
 - `GET,POST` /admin/purchases/<int:id>/edit (endpoint: `purchases.edit_purchase`, blueprint: `purchases`)
     - Modification d'un bon d'achat avec support des unités
 - `GET` /admin/purchases/api/products_search (endpoint: `purchases.api_products_search`, blueprint: `purchases`)
