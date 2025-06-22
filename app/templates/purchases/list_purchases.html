@@ -1,348 +1,459 @@
-{% extends "base.html" %}
+{% extends "base.html" %} {% block title %}{{ title }} - Fée Maison{% endblock %} {% block head %} {% endblock %} {% block content %}
 
-{% block title %}{{ title }} - Fée Maison{% endblock %}
-
-{% block head %}
-<style>
-    .card-stats {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        border-radius: 15px;
-        color: white;
-        padding: 20px;
-        margin-bottom: 20px;
-    }
-    .filter-card {
-        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-        border-radius: 10px;
-        margin-bottom: 20px;
-    }
-    .table-card {
-        background: white;
-        border-radius: 15px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        overflow: hidden;
-    }
-    .action-btn {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        border-radius: 25px;
-        color: white;
-        padding: 10px 20px;
-        transition: all 0.3s ease;
-    }
-    .action-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        color: white;
-    }
-    .status-badge {
-        font-size: 0.8em;
-        margin-bottom: 2px;
-    }
-    .payment-badge {
-        font-size: 0.75em;
-    }
-</style>
-{% endblock %}
-
-{% block content %}
-<div class="container-fluid">
-    <!-- En-tête -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="h3 mb-1">🛒 Gestion des Achats Fournisseurs</h1>
-                    <p class="text-muted">Suivi des bons d'achat avec système de paiement intégré</p>
-                </div>
-                <div>
-                    <a href="{{ url_for('purchases.new_purchase') }}" class="action-btn">
-                        <i class="bi bi-plus-circle me-2"></i>Nouveau Bon d'Achat
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Statistiques -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card card-stats text-center">
-                <h4>{{ total_purchases }}</h4>
-                <small>Total Bons d'Achat</small>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card card-stats text-center">
-                <h4>{{ pending_purchases }}</h4>
-                <small>En Attente d'Approbation</small>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card card-stats text-center">
-                <h4>{{ unpaid_purchases }}</h4>
-                <small>Non Payés</small>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card card-stats text-center">
-                <h4>{{ paid_purchases }}</h4>
-                <small>Payés</small>
-            </div>
-        </div>
-    </div>
-
-    <!-- ✅ NOUVEAUX FILTRES : Statut de paiement -->
-    <div class="row mb-3">
-        <div class="col-12">
-            <div class="card filter-card">
-                <div class="card-body">
-                    <h6 class="card-title">💰 Filtrer par Paiement</h6>
-                    <div class="btn-group" role="group">
-                        <a href="{{ url_for('purchases.list_purchases', payment_status='all') }}" 
-                           class="btn btn-outline-primary {{ 'active' if current_payment_filter == 'all' else '' }}">
-                            📋 Tous ({{ total_purchases }})
-                        </a>
-                        <a href="{{ url_for('purchases.list_purchases', payment_status='unpaid') }}" 
-                           class="btn btn-outline-warning {{ 'active' if current_payment_filter == 'unpaid' else '' }}">
-                            ⏳ Non Payés ({{ unpaid_purchases }})
-                        </a>
-                        <a href="{{ url_for('purchases.list_purchases', payment_status='paid') }}" 
-                           class="btn btn-outline-success {{ 'active' if current_payment_filter == 'paid' else '' }}">
-                            ✅ Payés ({{ paid_purchases }})
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Formulaire de recherche -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-body">
-                    <form method="POST" class="row g-3">
-                        {{ form.hidden_tag() }}
-                        <div class="col-md-3">
-                            {{ form.search_term.label(class="form-label") }}
-                            {{ form.search_term(class="form-control") }}
-                        </div>
-                        <div class="col-md-2">
-                            {{ form.status_filter.label(class="form-label") }}
-                            {{ form.status_filter(class="form-select") }}
-                        </div>
-                        <div class="col-md-2">
-                            {{ form.urgency_filter.label(class="form-label") }}
-                            {{ form.urgency_filter(class="form-select") }}
-                        </div>
-                        <div class="col-md-3">
-                            {{ form.supplier_filter.label(class="form-label") }}
-                            {{ form.supplier_filter(class="form-control") }}
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label">&nbsp;</label>
-                            <div>
-                                {{ form.submit(class="btn btn-primary") }}
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Tableau des achats -->
+<div class="container-fluid px-4">
     <div class="row">
         <div class="col-12">
-            {% if purchases.items %}
-            <div class="table-card">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Référence</th>
-                                <th>Fournisseur</th>
-                                <th>Date Création</th>
-                                <th>Statut</th>
-                                <th>Paiement</th>
-                                <th>Montant</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for purchase in purchases.items %}
-                            <tr>
-                                <td>
-                                    <strong>{{ purchase.reference }}</strong>
-                                    {% if purchase.urgency.value != 'normal' %}
-                                        <br><small class="text-danger">{{ purchase.urgency_label }}</small>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {{ purchase.supplier_name }}
-                                    {% if purchase.supplier_phone %}
-                                        <br><small class="text-muted">{{ purchase.supplier_phone }}</small>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {{ purchase.requested_date.strftime('%d/%m/%Y') }}
-                                    <br><small class="text-muted">{{ purchase.requested_date.strftime('%H:%M') }}</small>
-                                </td>
-                                <td>
-                                    <!-- ✅ STATUT DU BON D'ACHAT -->
-                                    <span class="badge bg-info status-badge">{{ purchase.status_label }}</span>
-                                </td>
-                                <td>
-                                    <!-- ✅ STATUT DE PAIEMENT -->
-                                    <span class="badge {{ purchase.payment_badge_class }} payment-badge">
-                                        {% if purchase.is_paid %}
-                                            ✅ Payé
-                                            {% if purchase.payment_date %}
-                                                <br><small>{{ purchase.payment_date.strftime('%d/%m/%Y') }}</small>
-                                            {% endif %}
-                                        {% else %}
-                                            ⏳ Non payé
-                                        {% endif %}
-                                    </span>
-                                </td>
-                                <td>
-                                    <strong>{{ purchase.total_amount }} DA</strong>
-                                    {% if purchase.items %}
-                                        <br><small class="text-muted">{{ purchase.items|length }} article(s)</small>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <div class="btn-group btn-group-sm" role="group">
-                                        <a href="{{ url_for('purchases.view_purchase', id=purchase.id) }}" 
-                                           class="btn btn-outline-primary" title="Voir détails">
-                                            <i class="bi bi-eye"></i>
-                                        </a>
-                                        {% if purchase.can_be_modified() %}
-                                            <a href="{{ url_for('purchases.edit_purchase', id=purchase.id) }}" 
-                                               class="btn btn-outline-warning" title="Modifier">
-                                                <i class="bi bi-pencil"></i>
-                                            </a>
-                                        {% endif %}
-                                        {% if current_user.is_admin %}
-                                            {% if not purchase.is_paid %}
-                                                <a href="{{ url_for('purchases.mark_as_paid', id=purchase.id) }}" 
-                                                   class="btn btn-outline-success" title="Marquer payé">
-                                                    <i class="bi bi-credit-card"></i>
-                                                </a>
-                                            {% endif %}
-                                        {% endif %}
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+            <!-- En-tête avec titre et bouton -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-shopping-cart text-primary me-2"></i>
+                        Liste des Bons d'Achat
+                    </h1>
+                    <p class="text-muted mb-0">Suivi des bons d'achat avec système de paiement intégré</p>
                 </div>
-                
-                <!-- Pagination -->
-                {% if pagination.pages > 1 %}
-                <div class="card-footer">
-                    <nav aria-label="Navigation des achats">
-                        <ul class="pagination justify-content-center mb-0">
-                            {% if pagination.has_prev %}
-                                <li class="page-item">
-                                    <a class="page-link" href="{{ url_for('purchases.list_purchases', page=pagination.prev_num, payment_status=current_payment_filter) }}">
-                                        Précédent
+                <a href="{{ url_for('purchases.new_purchase') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i>
+                    Nouveau Bon d'Achat
+                </a>
+            </div>
+
+            <!-- Filtres avancés -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="fas fa-filter me-1"></i>
+                            Filtres
+                        </h6>
+                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#filtersCollapse">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="collapse show" id="filtersCollapse">
+                    <div class="card-body">
+                        <form method="GET" class="row g-3">
+                            <div class="col-md-3">
+                                <label for="status" class="form-label">Statut</label>
+                                <select class="form-select" id="status" name="status">
+                                    <option value="">Tous les statuts</option>
+                                    <option value="pending" {% if current_status_filter == 'pending' %}selected{% endif %}>En attente</option>
+                                    <option value="validated" {% if current_status_filter == 'validated' %}selected{% endif %}>Validé</option>
+                                    <option value="cancelled" {% if current_status_filter == 'cancelled' %}selected{% endif %}>Annulé</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="payment_status" class="form-label">Paiement</label>
+                                <select class="form-select" id="payment_status" name="payment_status">
+                                    <option value="">Tous</option>
+                                    <option value="paid" {% if current_payment_filter == 'paid' %}selected{% endif %}>Payé</option>
+                                    <option value="unpaid" {% if current_payment_filter == 'unpaid' %}selected{% endif %}>Non payé</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="supplier" class="form-label">Fournisseur</label>
+                                <input type="text" class="form-control" id="supplier" name="supplier" 
+                                       value="{{ current_supplier_filter }}" placeholder="Nom du fournisseur">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="urgency" class="form-label">Urgence</label>
+                                <select class="form-select" id="urgency" name="urgency">
+                                    <option value="">Toutes</option>
+                                    <option value="low" {% if current_urgency_filter == 'low' %}selected{% endif %}>Faible</option>
+                                    <option value="normal" {% if current_urgency_filter == 'normal' %}selected{% endif %}>Normale</option>
+                                    <option value="high" {% if current_urgency_filter == 'high' %}selected{% endif %}>Élevée</option>
+                                    <option value="urgent" {% if current_urgency_filter == 'urgent' %}selected{% endif %}>Urgente</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="date_range" class="form-label">Période</label>
+                                <div class="input-group">
+                                    <input type="date" class="form-control" id="date_from" name="date_from" 
+                                           value="{{ current_date_from }}">
+                                    <span class="input-group-text">à</span>
+                                    <input type="date" class="form-control" id="date_to" name="date_to" 
+                                           value="{{ current_date_to }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end">
+                                <div class="btn-group w-100" role="group">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-search me-1"></i>
+                                        Filtrer
+                                    </button>
+                                    <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-times me-1"></i>
+                                        Reset
                                     </a>
-                                </li>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistiques rapides -->
+            <div class="row mb-4">
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-primary shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                        Total Bons d'Achat</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_purchases }}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-shopping-cart fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-success shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                        Montant Total</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_amount }} DA</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-warning shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                        Non Payés</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ unpaid_count }}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-info shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                        En Attente</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_count }}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-clock fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table des bons d'achat -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="fas fa-list me-1"></i>
+                            Bons d'Achat
+                            {% if current_payment_filter %}
+                                - {{ 'Payés' if current_payment_filter == 'paid' else 'Non payés' }}
                             {% endif %}
-                            
-                            {% for page_num in pagination.iter_pages() %}
-                                {% if page_num %}
-                                    {% if page_num != pagination.page %}
-                                        <li class="page-item">
-                                            <a class="page-link" href="{{ url_for('purchases.list_purchases', page=page_num, payment_status=current_payment_filter) }}">
-                                                {{ page_num }}
+                        </h6>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-download me-1"></i>
+                                Exporter
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-file-excel me-1"></i> Excel</a></li>
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-file-pdf me-1"></i> PDF</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if purchases %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover" id="dataTable" width="100%" cellspacing="0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Référence</th>
+                                        <th>Fournisseur</th>
+                                        <th>Date d'Achat</th>
+                                        <th>Statut</th>
+                                        <th>Paiement</th>
+                                        <th>Montant</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for purchase in purchases %}
+                                    <tr class="{% if purchase.urgency.value == 'urgent' %}table-danger{% elif purchase.urgency.value == 'high' %}table-warning{% endif %}">
+                                        <td>
+                                            <a href="{{ url_for('purchases.view_purchase', id=purchase.id) }}" 
+                                               class="text-decoration-none fw-bold">
+                                                {{ purchase.reference }}
                                             </a>
-                                        </li>
-                                    {% else %}
-                                        <li class="page-item active">
-                                            <span class="page-link">{{ page_num }}</span>
-                                        </li>
-                                    {% endif %}
-                                {% else %}
-                                    <li class="page-item disabled">
-                                        <span class="page-link">...</span>
+                                            {% if purchase.urgency.value != 'normal' %}
+                                                <span class="badge bg-{{ 'danger' if purchase.urgency.value == 'urgent' else 'warning' if purchase.urgency.value == 'high' else 'info' }} ms-1">
+                                                    {{ purchase.urgency_label }}
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <strong>{{ purchase.supplier_name }}</strong>
+                                                {% if purchase.supplier_phone %}
+                                                    <br><small class="text-muted">
+                                                        <i class="fas fa-phone fa-xs me-1"></i>
+                                                        {{ purchase.supplier_phone }}
+                                                    </small>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <strong>{{ purchase.requested_date.strftime('%d/%m/%Y') }}</strong>
+                                                <br><small class="text-muted">{{ purchase.requested_date.strftime('%H:%M') }}</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if purchase.status == 'validated' else 'warning' if purchase.status == 'pending' else 'danger' }}">
+                                                {{ purchase.status_label }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if purchase.is_paid %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check me-1"></i>
+                                                    Payé
+                                                </span>
+                                                {% if purchase.payment_date %}
+                                                    <br><small class="text-muted">{{ purchase.payment_date.strftime('%d/%m/%Y') }}</small>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="badge bg-warning text-dark">
+                                                    <i class="fas fa-clock me-1"></i>
+                                                    Non payé
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <strong>{{ purchase.total_amount }} DA</strong>
+                                                {% if purchase.items %}
+                                                    <br><small class="text-muted">{{ purchase.items|length }} article(s)</small>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('purchases.view_purchase', id=purchase.id) }}" 
+                                                   class="btn btn-sm btn-outline-info" title="Voir les détails">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                {% if purchase.status != 'cancelled' %}
+                                                    <a href="{{ url_for('purchases.edit_purchase', id=purchase.id) }}" 
+                                                       class="btn btn-sm btn-outline-primary" title="Modifier">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a href="{{ url_for('purchases.cancel_purchase', id=purchase.id) }}" 
+                                                       class="btn btn-sm btn-outline-danger" title="Annuler"
+                                                       onclick="return confirm('Êtes-vous sûr de vouloir annuler ce bon d\'achat ? Cette action est irréversible.')">
+                                                        <i class="fas fa-times"></i>
+                                                    </a>
+                                                {% endif %}
+                                                {% if not purchase.is_paid and purchase.status != 'cancelled' %}
+                                                    <a href="{{ url_for('purchases.mark_paid', id=purchase.id) }}" 
+                                                       class="btn btn-sm btn-outline-success" title="Marquer comme payé">
+                                                        <i class="fas fa-check"></i>
+                                                    </a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        {% if pagination %}
+                        <nav aria-label="Navigation des pages">
+                            <ul class="pagination justify-content-center">
+                                {% if pagination.has_prev %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('purchases.list_purchases', page=pagination.prev_num, **request.args) }}">
+                                            <i class="fas fa-chevron-left"></i>
+                                        </a>
                                     </li>
                                 {% endif %}
-                            {% endfor %}
-                            
-                            {% if pagination.has_next %}
-                                <li class="page-item">
-                                    <a class="page-link" href="{{ url_for('purchases.list_purchases', page=pagination.next_num, payment_status=current_payment_filter) }}">
-                                        Suivant
-                                    </a>
-                                </li>
-                            {% endif %}
-                        </ul>
-                    </nav>
-                </div>
-                {% endif %}
-            </div>
-            
-            {% else %}
-            <!-- Message si aucun achat -->
-            <div class="card text-center">
-                <div class="card-body py-5">
-                    <div class="mb-4">
-                        <i class="bi bi-cart-x" style="font-size: 4rem; color: #ccc;"></i>
-                    </div>
-                    <h4 class="text-muted mb-3">Aucun bon d'achat trouvé</h4>
-                    
-                    {% if current_payment_filter != 'all' %}
-                        <p class="text-muted mb-4">
-                            Aucun bon d'achat {{ 'payé' if current_payment_filter == 'paid' else 'non payé' }} trouvé.
-                            <a href="{{ url_for('purchases.list_purchases', payment_status='all') }}" class="text-primary">
-                                Voir tous les achats
-                            </a>
-                        </p>
+                                
+                                {% for page_num in pagination.iter_pages() %}
+                                    {% if page_num %}
+                                        {% if page_num != pagination.page %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="{{ url_for('purchases.list_purchases', page=page_num, **request.args) }}">{{ page_num }}</a>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ page_num }}</span>
+                                            </li>
+                                        {% endif %}
+                                    {% else %}
+                                        <li class="page-item disabled">
+                                            <span class="page-link">…</span>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if pagination.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('purchases.list_purchases', page=pagination.next_num, **request.args) }}">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+                        
                     {% else %}
-                        <p class="text-muted mb-4">
-                            Commencez par créer votre premier bon d'achat avec notre système d'unités de conditionnement intégré.
-                        </p>
+                        <div class="text-center py-5">
+                            <div class="mb-4">
+                                <i class="fas fa-shopping-cart fa-3x text-gray-300"></i>
+                            </div>
+                            {% if current_payment_filter %}
+                                <h5 class="text-muted">Aucun bon d'achat {{ 'payé' if current_payment_filter == 'paid' else 'non payé' }} trouvé.</h5>
+                                <p class="text-muted">Essayez de modifier vos filtres ou</p>
+                                <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-outline-primary">
+                                    <i class="fas fa-list me-1"></i>
+                                    Voir tous les achats
+                                </a>
+                            {% else %}
+                                <h5 class="text-muted">Aucun bon d'achat trouvé</h5>
+                                <p class="text-muted">Commencez par créer votre premier bon d'achat avec notre système d'unités de conditionnement intégré.</p>
+                                <a href="{{ url_for('purchases.new_purchase') }}" class="btn btn-primary">
+                                    <i class="fas fa-plus me-1"></i>
+                                    Créer le Premier Bon d'Achat
+                                </a>
+                            {% endif %}
+                        </div>
                     {% endif %}
-                    
-                    <a href="{{ url_for('purchases.new_purchase') }}" class="action-btn">
-                        <i class="bi bi-plus-circle me-2"></i>Créer le Premier Bon d'Achat
-                    </a>
                 </div>
             </div>
-            {% endif %}
         </div>
     </div>
 </div>
+
+<!-- Modal de confirmation pour les actions en masse -->
+<div class="modal fade" id="bulkActionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmer l'action</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Êtes-vous sûr de vouloir effectuer cette action sur les éléments sélectionnés ?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="confirmBulkAction">Confirmer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Effet hover sur les lignes du tableau
-    const rows = document.querySelectorAll('tbody tr');
-    rows.forEach(row => {
-        row.addEventListener('mouseenter', function() {
-            this.style.backgroundColor = 'rgba(102, 126, 234, 0.1)';
-        });
-        row.addEventListener('mouseleave', function() {
-            this.style.backgroundColor = '';
-        });
+$(document).ready(function() {
+    // Configuration DataTable
+    $('#dataTable').DataTable({
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/French.json"
+        },
+        "order": [[ 2, "desc" ]], // Tri par date décroissante
+        "pageLength": 25,
+        "responsive": true,
+        "columnDefs": [
+            { "orderable": false, "targets": -1 } // Désactiver le tri sur la colonne Actions
+        ]
     });
-    
-    // Confirmation pour les actions de paiement
-    const paymentButtons = document.querySelectorAll('[title="Marquer payé"]');
-    paymentButtons.forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            if (!confirm('Marquer ce bon d\'achat comme payé ?')) {
-                e.preventDefault();
-            }
-        });
+
+    // Gestion des tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Auto-refresh toutes les 5 minutes
+    setTimeout(function() {
+        location.reload();
+    }, 300000);
+
+    // Confirmation des suppressions
+    $('.btn-outline-danger').on('click', function(e) {
+        if (!confirm('Êtes-vous sûr de vouloir annuler ce bon d\'achat ? Cette action est irréversible.')) {
+            e.preventDefault();
+        }
+    });
+
+    // Gestion des actions en masse
+    $('#selectAll').change(function() {
+        $('.purchase-checkbox').prop('checked', this.checked);
+        updateBulkActions();
+    });
+
+    $('.purchase-checkbox').change(function() {
+        updateBulkActions();
+    });
+
+    function updateBulkActions() {
+        var checkedCount = $('.purchase-checkbox:checked').length;
+        if (checkedCount > 0) {
+            $('#bulkActions').show();
+            $('#selectedCount').text(checkedCount);
+        } else {
+            $('#bulkActions').hide();
+        }
+    }
+
+    // Raccourcis clavier
+    $(document).keydown(function(e) {
+        // Ctrl+N pour nouveau bon d'achat
+        if (e.ctrlKey && e.keyCode === 78) {
+            e.preventDefault();
+            window.location.href = "{{ url_for('purchases.new_purchase') }}";
+        }
+        // F5 pour actualiser
+        if (e.keyCode === 116) {
+            e.preventDefault();
+            location.reload();
+        }
     });
 });
+
+// Fonction pour exporter les données
+function exportData(format) {
+    var params = new URLSearchParams(window.location.search);
+    params.append('export', format);
+    window.location.href = '{{ url_for("purchases.list_purchases") }}?' + params.toString();
+}
 </script>
 {% endblock %}
