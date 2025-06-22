@@ -116,10 +116,7 @@
             <div class="col-md-8">
                 <h1 class="h2 mb-2">✏️ Modifier Bon d'Achat #{{ purchase.reference }}</h1>
                 <p class="mb-1">Fournisseur: <strong>{{ purchase.supplier_name }}</strong></p>
-                <!-- ### DEBUT DE LA CORRECTION ### -->
-                <!-- Remplacement de 'purchase.purchase_date' par 'purchase.requested_date' qui est le nom correct du champ -->
-                <p class="mb-0">Créé le: <strong>{{ purchase.requested_date.strftime('%d/%m/%Y à %H:%M') if purchase.requested_date else 'Date inconnue' }}</strong></p>
-                <!-- ### FIN DE LA CORRECTION ### -->
+                <p class="mb-0">Date d'Achat: <strong>{{ purchase.requested_date.strftime('%d/%m/%Y à %H:%M') if purchase.requested_date else 'Date inconnue' }}</strong></p>
             </div>
             <div class="col-md-4 text-end">
                 <a href="{{ url_for('purchases.view_purchase', id=purchase.id) }}" class="btn btn-outline-light me-2">
@@ -155,8 +152,6 @@
                 <div class="form-card">
                     <h5 class="mb-3"><i class="bi bi-building me-2"></i>Informations Générales</h5>
                     <div class="row">
-                        <!-- ### DEBUT DE LA CORRECTION ### -->
-                        <!-- Ajout du champ de date manquant pour permettre sa modification -->
                         <div class="col-md-6">
                             <div class="mb-3">
                                 {{ form.requested_date.label(class="form-label") }}
@@ -166,7 +161,6 @@
                                 {% endif %}
                             </div>
                         </div>
-                        <!-- ### FIN DE LA CORRECTION ### -->
                         <div class="col-md-6">
                             <div class="mb-3">
                                 {{ form.supplier_name.label(class="form-label") }}
@@ -279,10 +273,10 @@
                 <label class="form-label">Quantité</label>
                 <input type="number" 
                        class="form-control item-quantity" 
-                       name="items[][quantity]" 
+                       name="items[][quantity_ordered]" 
                        placeholder="0"
-                       min="1"
-                       step="1">
+                       min="0.001"
+                       step="any">
             </div>
             <div class="col-md-2">
                 <label class="form-label">Prix Unitaire</label>
@@ -291,7 +285,7 @@
                        name="items[][unit_price]" 
                        placeholder="0,00"
                        min="0"
-                       step="0.01">
+                       step="any">
             </div>
             <div class="col-md-2">
                 <label class="form-label">Total</label>
@@ -307,7 +301,7 @@
 </template>
 
 <div id="purchaseData" style="display: none;"
-     data-existing-items="{{ [item.to_dict for item in purchase.items]|tojson|e }}"
+     data-existing-items="{{ purchase.items|map(attribute='to_dict')|list|tojson|e }}"
      data-purchase-id="{{ purchase.id }}">
 </div>
 
@@ -362,7 +356,7 @@ function loadExistingItems() {
         });
         document.getElementById('emptyItemsMessage').style.display = 'none';
     } else {
-        addItemRow(); // Ajouter une ligne vide si aucune n'existe
+        addItemRow(); 
     }
 }
 
@@ -375,15 +369,14 @@ function addItemRow(existingItem = null) {
     itemRow.setAttribute('data-item-index', itemIndex);
     
     if (existingItem) {
-        const product = availableProducts.find(p => p.id === existingItem.product_id);
-        clone.querySelector('.product-search').value = product ? product.name : 'Produit inconnu';
+        clone.querySelector('.product-search').value = existingItem.product_name || 'Produit inconnu';
         clone.querySelector('.product-id').value = existingItem.product_id || '';
         clone.querySelector('.item-id').value = existingItem.id || '';
         clone.querySelector('.item-quantity').value = existingItem.original_quantity || existingItem.quantity_ordered || '';
         clone.querySelector('.item-price').value = existingItem.original_unit_price || existingItem.unit_price || '';
     }
     
-    setupRowEvents(clone, itemIndex);
+    setupRowEvents(clone.firstElementChild, itemIndex);
     container.appendChild(clone);
     
     if(existingItem) {
@@ -410,10 +403,10 @@ function setupRowEvents(itemRow, index) {
     priceInput.addEventListener('input', updateTotal);
     
     removeBtn.addEventListener('click', () => {
-        const rowToRemove = document.querySelector(`[data-item-index="${index}"]`);
-        if (rowToRemove) {
-            rowToRemove.remove();
-            calculateGrandTotal();
+        itemRow.remove();
+        calculateGrandTotal();
+        if (document.querySelectorAll('.item-row').length === 0) {
+            document.getElementById('emptyItemsMessage').style.display = 'block';
         }
     });
 }
@@ -426,7 +419,7 @@ function calculateItemTotal(index) {
     const price = parseFloat(row.querySelector('.item-price').value) || 0;
     const total = quantity * price;
     
-    row.querySelector('.item-total').textContent = total.toFixed(2) + ' DA';
+    row.querySelector('.item-total').textContent = total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' DA';
 }
 
 function calculateGrandTotal() {
@@ -443,7 +436,7 @@ function calculateGrandTotal() {
         }
     });
     
-    document.getElementById('totalAmount').textContent = grandTotal.toFixed(2) + ' DA';
+    document.getElementById('totalAmount').textContent = grandTotal.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' DA';
     document.getElementById('itemCount').textContent = itemCount + ' produit(s)';
 }
 
@@ -502,10 +495,19 @@ function selectProduct(inputElement, index, productData) {
 }
 
 document.getElementById('editPurchaseForm').addEventListener('submit', function(e) {
-    const rows = document.querySelectorAll('.item-row');
-    if (rows.length === 0) {
+    let hasValidItems = false;
+    document.querySelectorAll('.item-row').forEach(row => {
+        const productId = row.querySelector('.product-id').value;
+        const quantity = row.querySelector('.item-quantity').value;
+        const price = row.querySelector('.item-price').value;
+        if (productId && quantity > 0 && price > 0) {
+            hasValidItems = true;
+        }
+    });
+
+    if (!hasValidItems) {
         e.preventDefault();
-        alert('Veuillez ajouter au moins un produit.');
+        alert('Veuillez ajouter au moins un produit valide avec une quantité et un prix.');
         return false;
     }
 });
