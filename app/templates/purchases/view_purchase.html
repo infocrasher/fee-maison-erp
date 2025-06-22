@@ -30,7 +30,7 @@
                         </a>
                     {% endif %}
                     {% if not purchase.is_paid and purchase.status != 'cancelled' %}
-                        <a href="{{ url_for('purchases.mark_paid', id=purchase.id) }}" class="btn btn-success">
+                        <a href="{{ url_for('purchases.mark_as_paid', id=purchase.id) }}" class="btn btn-success">
                             <i class="fas fa-check me-1"></i>
                             Marquer payé
                         </a>
