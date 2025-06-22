@@ -306,7 +306,7 @@
 </div>
 
 <div id="productsData" style="display: none;"
-    data-available-products="{{ available_products|tojson|e }}">
+     data-available-products="{{ available_products|map(attribute='to_dict')|list|tojson|e }}">
 </div>
 {% endblock %}
 
