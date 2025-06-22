@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Modifier Bon d'Achat #{{ purchase.id }} - Fée Maison{% endblock %}
+{% block title %}Modifier Bon d'Achat #{{ purchase.reference }} - Fée Maison{% endblock %}
 
 {% block head %}
 <style>
@@ -114,12 +114,15 @@
     <div class="form-header">
         <div class="row align-items-center">
             <div class="col-md-8">
-                <h1 class="h2 mb-2">✏️ Modifier Bon d'Achat #{{ purchase.id }}</h1>
+                <h1 class="h2 mb-2">✏️ Modifier Bon d'Achat #{{ purchase.reference }}</h1>
                 <p class="mb-1">Fournisseur: <strong>{{ purchase.supplier_name }}</strong></p>
+                <!-- ### DEBUT DE LA CORRECTION ### -->
+                <!-- Remplacement de 'purchase.purchase_date' par 'purchase.requested_date' qui est le nom correct du champ -->
                 <p class="mb-0">Créé le: <strong>{{ purchase.requested_date.strftime('%d/%m/%Y à %H:%M') if purchase.requested_date else 'Date inconnue' }}</strong></p>
+                <!-- ### FIN DE LA CORRECTION ### -->
             </div>
             <div class="col-md-4 text-end">
-                <a href="{{ url_for('purchases.view_purchase', purchase_id=purchase.id) }}" class="btn btn-outline-light me-2">
+                <a href="{{ url_for('purchases.view_purchase', id=purchase.id) }}" class="btn btn-outline-light me-2">
                     <i class="bi bi-eye me-2"></i>Voir Détail
                 </a>
                 <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-outline-light">
@@ -130,14 +133,14 @@
     </div>
 
     <!-- Avertissement -->
-    {% if purchase.status != 'pending' %}
+    {% if purchase.status.value != 'draft' and purchase.status.value != 'requested' %}
     <div class="warning-card">
         <h6><i class="bi bi-exclamation-triangle me-2"></i>⚠️ Attention</h6>
-        <p class="mb-0">Ce bon d'achat a le statut "<strong>{{ purchase.status|title }}</strong>". 
-        {% if purchase.status == 'validated' %}
-        Il a déjà été validé et a impacté les stocks. Les modifications pourraient nécessiter des ajustements manuels.
-        {% elif purchase.status == 'cancelled' %}
-        Il a été annulé. La modification le remettra en statut "En attente".
+        <p class="mb-0">Ce bon d'achat a le statut "<strong>{{ purchase.status_label }}</strong>". 
+        {% if purchase.status.value == 'received' %}
+        Il a déjà impacté les stocks. Les modifications mettront à jour les stocks en conséquence.
+        {% elif purchase.status.value == 'cancelled' %}
+        Il a été annulé. La modification le remettra en statut "Brouillon".
         {% endif %}
         </p>
     </div>
@@ -150,21 +153,41 @@
         <div class="row mb-4">
             <div class="col-md-8">
                 <div class="form-card">
-                    <h5 class="mb-3"><i class="bi bi-building me-2"></i>Informations Fournisseur</h5>
+                    <h5 class="mb-3"><i class="bi bi-building me-2"></i>Informations Générales</h5>
                     <div class="row">
+                        <!-- ### DEBUT DE LA CORRECTION ### -->
+                        <!-- Ajout du champ de date manquant pour permettre sa modification -->
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.requested_date.label(class="form-label") }}
+                                {{ form.requested_date(class="form-control") }}
+                                {% if form.requested_date.errors %}
+                                    <div class="text-danger mt-1">{{ form.requested_date.errors[0] }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <!-- ### FIN DE LA CORRECTION ### -->
                         <div class="col-md-6">
                             <div class="mb-3">
                                 {{ form.supplier_name.label(class="form-label") }}
-                                {{ form.supplier_name(class="form-control", value=purchase.supplier_name) }}
+                                {{ form.supplier_name(class="form-control") }}
                                 {% if form.supplier_name.errors %}
                                     <div class="text-danger mt-1">{{ form.supplier_name.errors[0] }}</div>
                                 {% endif %}
                             </div>
                         </div>
+                    </div>
+                    <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
                                 {{ form.invoice_number.label(class="form-label") }}
-                                {{ form.invoice_number(class="form-control", value=purchase.invoice_number or '') }}
+                                {{ form.invoice_number(class="form-control") }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                           <div class="mb-3">
+                                {{ form.urgency.label(class="form-label") }}
+                                {{ form.urgency(class="form-select") }}
                             </div>
                         </div>
                     </div>
@@ -172,7 +195,7 @@
                         <div class="col-md-12">
                             <div class="mb-3">
                                 {{ form.notes.label(class="form-label") }}
-                                <textarea class="form-control" name="notes" rows="3">{{ purchase.notes or '' }}</textarea>
+                                {{ form.notes(class="form-control", rows="3") }}
                             </div>
                         </div>
                     </div>
@@ -182,11 +205,11 @@
                 <div class="changes-summary">
                     <h6><i class="bi bi-clock-history me-2"></i>Historique</h6>
                     <small>
-                        <strong>Créé :</strong> {{ purchase.purchase_date.strftime('%d/%m/%Y à %H:%M') if purchase.purchase_date else 'Date inconnue' }}<br>
-                        {% if purchase.updated_at and purchase.updated_at != purchase.purchase_date %}
+                        <strong>Créé :</strong> {{ purchase.created_at.strftime('%d/%m/%Y à %H:%M') }}<br>
+                        {% if purchase.updated_at and purchase.updated_at != purchase.created_at %}
                         <strong>Modifié :</strong> {{ purchase.updated_at.strftime('%d/%m/%Y à %H:%M') }}<br>
                         {% endif %}
-                        <strong>Statut :</strong> {{ purchase.status|title }}<br>
+                        <strong>Statut :</strong> {{ purchase.status_label }}<br>
                         <strong>Lignes :</strong> {{ purchase.items|length }} produit(s)
                     </small>
                 </div>
@@ -222,18 +245,13 @@
                     <button type="submit" class="action-btn btn-save" name="action" value="save">
                         <i class="bi bi-check-circle me-2"></i>Enregistrer Modifications
                     </button>
-                    {% if purchase.status == 'pending' %}
-                    <button type="submit" class="action-btn btn-save" name="action" value="save_and_validate">
-                        <i class="bi bi-check2-all me-2"></i>Enregistrer et Valider
-                    </button>
-                    {% endif %}
-                    <a href="{{ url_for('purchases.view_purchase', purchase_id=purchase.id) }}" class="btn btn-outline-secondary">Annuler</a>
+                    <a href="{{ url_for('purchases.view_purchase', id=purchase.id) }}" class="btn btn-outline-secondary">Annuler</a>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="total-section">
                     <h5>💰 Total Bon d'Achat</h5>
-                    <h3 id="totalAmount">{{ purchase.total_amount or 0 }} DA</h3>
+                    <h3 id="totalAmount">{{ purchase.total_amount|round(2) or 0.00 }} DA</h3>
                     <small id="itemCount">{{ purchase.items|length }} produit(s)</small>
                 </div>
             </div>
@@ -288,270 +306,120 @@
     </div>
 </template>
 
-<!-- ✅ CORRECTION: Données pour JavaScript via éléments HTML -->
 <div id="purchaseData" style="display: none;"
      data-existing-items="{{ purchase.items|tojson|e }}"
      data-purchase-id="{{ purchase.id }}">
 </div>
 
-<div id="productsData" style="display: none;">
-    {% for product in available_products %}
-    <div class="product-data"
-         data-id="{{ product.id }}"
-         data-name="{{ product.name|e }}"
-         data-category="{{ product.category.name|e if product.category else 'Sans catégorie' }}"
-         data-unit="{{ product.unit|e or 'unités' }}"
-         data-stock="{{ product.stock_ingredients_magasin or 0 }}">
-    </div>
-    {% endfor %}
+<div id="productsData" style="display: none;"
+    data-available-products="{{ available_products|tojson|e }}">
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Variables globales
 let itemIndex = 0;
 let existingItems = [];
 let availableProducts = [];
 
 document.addEventListener('DOMContentLoaded', function() {
-    // ✅ CORRECTION: Charger données depuis les attributs data
-    loadDataFromDOM();
-    
-    // Charger les lignes existantes
+    loadDataFromJSON();
     loadExistingItems();
     
-    // Event listener pour ajouter ligne
     document.getElementById('addItemBtn').addEventListener('click', function() {
         addItemRow();
     });
     
-    // Calculer total initial
     calculateGrandTotal();
 });
 
-// ✅ CORRECTION: Charger données depuis le DOM
-function loadDataFromDOM() {
-    // Charger données existantes
+function loadDataFromJSON() {
     const purchaseDataElement = document.getElementById('purchaseData');
     if (purchaseDataElement) {
-        const existingItemsData = purchaseDataElement.dataset.existingItems;
-        if (existingItemsData) {
-            try {
-                existingItems = JSON.parse(existingItemsData);
-            } catch (e) {
-                console.error('Erreur parsing existing items:', e);
-                existingItems = [];
-            }
+        try {
+            existingItems = JSON.parse(purchaseDataElement.dataset.existingItems);
+        } catch (e) {
+            console.error('Erreur parsing existing items:', e);
+            existingItems = [];
         }
     }
     
-    // Charger produits disponibles
-    const productElements = document.querySelectorAll('.product-data');
-    availableProducts = Array.from(productElements).map(function(element) {
-        return {
-            id: parseInt(element.dataset.id),
-            name: element.dataset.name,
-            category: element.dataset.category,
-            unit: element.dataset.unit,
-            current_stock: parseInt(element.dataset.stock)
-        };
-    });
+    const productsDataElement = document.getElementById('productsData');
+    if (productsDataElement) {
+        try {
+            availableProducts = JSON.parse(productsDataElement.dataset.availableProducts);
+        } catch (e) {
+            console.error('Erreur parsing available products:', e);
+            availableProducts = [];
+        }
+    }
 }
 
-// Charger les lignes existantes du bon d'achat
 function loadExistingItems() {
     if (existingItems && existingItems.length > 0) {
         existingItems.forEach(function(item) {
             addItemRow(item);
         });
+        document.getElementById('emptyItemsMessage').style.display = 'none';
     } else {
-        // Ajouter au moins une ligne vide
-        addItemRow();
+        addItemRow(); // Ajouter une ligne vide si aucune n'existe
     }
 }
 
-// Ajouter une ligne d'achat
-function addItemRow(existingItem) {
+function addItemRow(existingItem = null) {
     const container = document.getElementById('itemsContainer');
     const template = document.getElementById('itemRowTemplate');
     const clone = template.content.cloneNode(true);
     
-    // Mettre à jour l'index
     const itemRow = clone.querySelector('.item-row');
     itemRow.setAttribute('data-item-index', itemIndex);
     
-    // Remplir avec données existantes si fourni
     if (existingItem) {
-        // Remplir les champs
-        const productSearch = clone.querySelector('.product-search');
-        const productId = clone.querySelector('.product-id');
-        const itemId = clone.querySelector('.item-id');
-        const quantity = clone.querySelector('.item-quantity');
-        const price = clone.querySelector('.item-price');
-        
-        productSearch.value = existingItem.product ? existingItem.product.name : 'Produit supprimé';
-        productId.value = existingItem.product_id || '';
-        itemId.value = existingItem.id || '';
-        quantity.value = existingItem.quantity || '';
-        price.value = existingItem.unit_price || '';
+        const product = availableProducts.find(p => p.id === existingItem.product_id);
+        clone.querySelector('.product-search').value = product ? product.name : 'Produit inconnu';
+        clone.querySelector('.product-id').value = existingItem.product_id || '';
+        clone.querySelector('.item-id').value = existingItem.id || '';
+        clone.querySelector('.item-quantity').value = existingItem.original_quantity || existingItem.quantity_ordered || '';
+        clone.querySelector('.item-price').value = existingItem.original_unit_price || existingItem.unit_price || '';
     }
     
-    // Configurer autocomplétion pour cette ligne
-    const searchInput = clone.querySelector('.product-search');
-    setupAutocomplete(searchInput, itemIndex);
-    
-    // Event listeners pour calculs
-    const quantityInput = clone.querySelector('.item-quantity');
-    const priceInput = clone.querySelector('.item-price');
-    
-    quantityInput.addEventListener('input', function() {
-        calculateItemTotal(itemIndex);
-        calculateGrandTotal();
-    });
-    
-    priceInput.addEventListener('input', function() {
-        calculateItemTotal(itemIndex);
-        calculateGrandTotal();
-    });
-    
-    // Event listener pour supprimer
-    clone.querySelector('.remove-item-btn').addEventListener('click', function() {
-        removeItemRow(itemIndex);
-    });
-    
+    setupRowEvents(clone, itemIndex);
     container.appendChild(clone);
     
-    // Calculer total initial pour cette ligne
-    if (existingItem) {
-        setTimeout(function() {
-            calculateItemTotal(itemIndex);
-        }, 100);
+    if(existingItem) {
+        calculateItemTotal(itemIndex);
     }
-    
-    // Masquer message vide
-    document.getElementById('emptyItemsMessage').style.display = 'none';
-    
+
     itemIndex++;
 }
 
-// Supprimer ligne d'achat
-function removeItemRow(index) {
-    const row = document.querySelector('[data-item-index="' + index + '"]');
-    if (row) {
-        row.remove();
+function setupRowEvents(itemRow, index) {
+    const searchInput = itemRow.querySelector('.product-search');
+    const quantityInput = itemRow.querySelector('.item-quantity');
+    const priceInput = itemRow.querySelector('.item-price');
+    const removeBtn = itemRow.querySelector('.remove-item-btn');
+
+    setupAutocomplete(searchInput, index);
+    
+    const updateTotal = () => {
+        calculateItemTotal(index);
         calculateGrandTotal();
-        
-        // Afficher message si plus de lignes
-        const remainingRows = document.querySelectorAll('.item-row');
-        if (remainingRows.length === 0) {
-            document.getElementById('emptyItemsMessage').style.display = 'block';
-        }
-    }
-}
+    };
 
-// Configuration autocomplétion
-function setupAutocomplete(inputElement, index) {
-    const suggestionsContainer = inputElement.parentNode.querySelector('.autocomplete-suggestions');
-    let currentSuggestionIndex = -1;
+    quantityInput.addEventListener('input', updateTotal);
+    priceInput.addEventListener('input', updateTotal);
     
-    inputElement.addEventListener('input', function() {
-        const query = this.value.trim();
-        
-        if (query.length >= 2) {
-            showSuggestions(query, suggestionsContainer, inputElement, index);
-        } else {
-            hideSuggestions(suggestionsContainer);
-        }
-    });
-    
-    // Navigation clavier
-    inputElement.addEventListener('keydown', function(e) {
-        const suggestions = suggestionsContainer.querySelectorAll('.autocomplete-item');
-        
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            currentSuggestionIndex = Math.min(currentSuggestionIndex + 1, suggestions.length - 1);
-            updateActiveSuggestion(suggestions, currentSuggestionIndex);
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            currentSuggestionIndex = Math.max(currentSuggestionIndex - 1, -1);
-            updateActiveSuggestion(suggestions, currentSuggestionIndex);
-        } else if (e.key === 'Enter') {
-            e.preventDefault();
-            if (currentSuggestionIndex >= 0 && suggestions[currentSuggestionIndex]) {
-                selectProduct(suggestions[currentSuggestionIndex], inputElement, index);
-            }
-        } else if (e.key === 'Escape') {
-            hideSuggestions(suggestionsContainer);
+    removeBtn.addEventListener('click', () => {
+        const rowToRemove = document.querySelector(`[data-item-index="${index}"]`);
+        if (rowToRemove) {
+            rowToRemove.remove();
+            calculateGrandTotal();
         }
     });
 }
 
-// Afficher suggestions autocomplétion
-function showSuggestions(query, container, inputElement, index) {
-    const filteredProducts = availableProducts.filter(function(product) {
-        return product.name.toLowerCase().includes(query.toLowerCase());
-    });
-    
-    container.innerHTML = '';
-    
-    if (filteredProducts.length === 0) {
-        container.innerHTML = '<div class="autocomplete-item">Aucun ingrédient trouvé</div>';
-    } else {
-        filteredProducts.forEach(function(product) {
-            const div = document.createElement('div');
-            div.className = 'autocomplete-item';
-            div.innerHTML = '<strong>' + product.name + '</strong><br>' +
-                           '<small class="text-muted">' + product.category + ' - Stock: ' + product.current_stock + ' ' + product.unit + '</small>';
-            
-            div.addEventListener('click', function() {
-                selectProduct(this, inputElement, index, product);
-            });
-            
-            container.appendChild(div);
-        });
-    }
-    
-    container.style.display = 'block';
-}
-
-// Masquer suggestions
-function hideSuggestions(container) {
-    container.style.display = 'none';
-}
-
-// Mettre à jour suggestion active
-function updateActiveSuggestion(suggestions, activeIndex) {
-    suggestions.forEach(function(item, index) {
-        item.classList.toggle('active', index === activeIndex);
-    });
-}
-
-// Sélectionner un produit
-function selectProduct(element, inputElement, index, productData) {
-    if (!productData) {
-        // Extraire depuis l'élément si pas de données
-        const text = element.textContent;
-        productData = {
-            id: Date.now(),
-            name: text.split('\n')[0]
-        };
-    }
-    
-    inputElement.value = productData.name;
-    
-    // Mettre à jour le champ caché
-    const row = document.querySelector('[data-item-index="' + index + '"]');
-    const hiddenInput = row.querySelector('.product-id');
-    hiddenInput.value = productData.id;
-    
-    hideSuggestions(inputElement.parentNode.querySelector('.autocomplete-suggestions'));
-}
-
-// Calculer total d'une ligne
 function calculateItemTotal(index) {
-    const row = document.querySelector('[data-item-index="' + index + '"]');
+    const row = document.querySelector(`[data-item-index="${index}"]`);
     if (!row) return;
     
     const quantity = parseFloat(row.querySelector('.item-quantity').value) || 0;
@@ -561,12 +429,11 @@ function calculateItemTotal(index) {
     row.querySelector('.item-total').textContent = total.toFixed(2) + ' DA';
 }
 
-// Calculer total général
 function calculateGrandTotal() {
     let grandTotal = 0;
     let itemCount = 0;
     
-    document.querySelectorAll('.item-row').forEach(function(row) {
+    document.querySelectorAll('.item-row').forEach(row => {
         const quantity = parseFloat(row.querySelector('.item-quantity').value) || 0;
         const price = parseFloat(row.querySelector('.item-price').value) || 0;
         
@@ -580,33 +447,68 @@ function calculateGrandTotal() {
     document.getElementById('itemCount').textContent = itemCount + ' produit(s)';
 }
 
-// Validation formulaire
-document.getElementById('editPurchaseForm').addEventListener('submit', function(e) {
-    const rows = document.querySelectorAll('.item-row');
-    let hasValidItems = false;
+function setupAutocomplete(inputElement, index) {
+    const suggestionsContainer = inputElement.parentNode.querySelector('.autocomplete-suggestions');
     
-    rows.forEach(function(row) {
-        const productId = row.querySelector('.product-id').value;
-        const quantity = row.querySelector('.item-quantity').value;
-        const price = row.querySelector('.item-price').value;
+    inputElement.addEventListener('input', function() {
+        const query = this.value.trim().toLowerCase();
         
-        if (productId && quantity && price) {
-            hasValidItems = true;
+        if (query.length >= 2) {
+            const filteredProducts = availableProducts.filter(p => p.name.toLowerCase().includes(query));
+            showSuggestions(filteredProducts, suggestionsContainer, inputElement, index);
+        } else {
+            hideSuggestions(suggestionsContainer);
         }
     });
+
+    document.addEventListener('click', (e) => {
+        if (!inputElement.contains(e.target)) {
+            hideSuggestions(suggestionsContainer);
+        }
+    });
+}
+
+function showSuggestions(products, container, inputElement, index) {
+    container.innerHTML = '';
     
-    if (!hasValidItems) {
-        e.preventDefault();
-        alert('Veuillez ajouter au moins un produit avec quantité et prix');
-        return false;
+    if (products.length === 0) {
+        container.innerHTML = '<div class="autocomplete-item">Aucun produit trouvé</div>';
+    } else {
+        products.forEach(product => {
+            const div = document.createElement('div');
+            div.className = 'autocomplete-item';
+            div.innerHTML = `<strong>${product.name}</strong>`;
+            
+            div.addEventListener('click', () => {
+                selectProduct(inputElement, index, product);
+            });
+            
+            container.appendChild(div);
+        });
     }
     
-    const supplierName = document.querySelector('input[name="supplier_name"]').value;
-    if (!supplierName.trim()) {
+    container.style.display = 'block';
+}
+
+function hideSuggestions(container) {
+    container.style.display = 'none';
+}
+
+function selectProduct(inputElement, index, productData) {
+    inputElement.value = productData.name;
+    const row = document.querySelector(`[data-item-index="${index}"]`);
+    row.querySelector('.product-id').value = productData.id;
+    hideSuggestions(inputElement.parentNode.querySelector('.autocomplete-suggestions'));
+}
+
+document.getElementById('editPurchaseForm').addEventListener('submit', function(e) {
+    const rows = document.querySelectorAll('.item-row');
+    if (rows.length === 0) {
         e.preventDefault();
-        alert('Veuillez renseigner le nom du fournisseur');
+        alert('Veuillez ajouter au moins un produit.');
         return false;
     }
 });
+
 </script>
 {% endblock %}
