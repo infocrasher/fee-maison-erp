@@ -271,3 +271,21 @@ class PurchaseItem(db.Model):
                 'price_base': f"{self.unit_price} DA/{self.original_unit.base_unit}"
             }
         return None
+
+    @property
+    def to_dict(self):
+        """Retourne une représentation dictionnaire de l'objet, sérialisable en JSON."""
+        return {
+            'id': self.id,
+            'purchase_id': self.purchase_id,
+            'product_id': self.product_id,
+            'product_name': self.product.name if self.product else 'Produit inconnu',
+            'quantity_ordered': float(self.quantity_ordered),
+            'unit_price': float(self.unit_price),
+            'discount_percentage': float(self.discount_percentage),
+            'original_quantity': float(self.original_quantity) if self.original_quantity else None,
+            'original_unit_id': self.original_unit_id,
+            'original_unit_price': float(self.original_unit_price) if self.original_unit_price else None,
+            'stock_location': self.stock_location,
+            'description_override': self.description_override,
+        }
