@@ -116,7 +116,7 @@
             <div class="col-md-8">
                 <h1 class="h2 mb-2">✏️ Modifier Bon d'Achat #{{ purchase.id }}</h1>
                 <p class="mb-1">Fournisseur: <strong>{{ purchase.supplier_name }}</strong></p>
-                <p class="mb-0">Créé le: <strong>{{ purchase.purchase_date.strftime('%d/%m/%Y à %H:%M') if purchase.purchase_date else 'Date inconnue' }}</strong></p>
+                <p class="mb-0">Créé le: <strong>{{ purchase.requested_date.strftime('%d/%m/%Y à %H:%M') if purchase.requested_date else 'Date inconnue' }}</strong></p>
             </div>
             <div class="col-md-4 text-end">
                 <a href="{{ url_for('purchases.view_purchase', purchase_id=purchase.id) }}" class="btn btn-outline-light me-2">
