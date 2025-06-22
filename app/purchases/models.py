@@ -54,7 +54,7 @@ class Purchase(db.Model):
     received_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     
     # Dates importantes
-    requested_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    requested_date = db.Column(db.DateTime, nullable=False)
     approved_date = db.Column(db.DateTime)
     expected_delivery_date = db.Column(db.DateTime)
     received_date = db.Column(db.DateTime)
