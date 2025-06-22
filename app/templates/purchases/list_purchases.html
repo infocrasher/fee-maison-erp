@@ -224,6 +224,13 @@
                                                class="btn btn-outline-warning" title="Modifier">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
+                                            <!-- ### DEBUT DE LA MODIFICATION ### -->
+                                            <a href="{{ url_for('purchases.cancel_purchase', id=purchase.id) }}"
+                                               class="btn btn-outline-danger" title="Annuler"
+                                               onclick="return confirm('Êtes-vous sûr de vouloir annuler ce bon d\'achat ? L\'action est irréversible.')">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                            <!-- ### FIN DE LA MODIFICATION ### -->
                                         {% endif %}
                                         {% if current_user.is_admin %}
                                             {% if not purchase.is_paid %}
