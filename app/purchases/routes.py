@@ -18,7 +18,7 @@ from decorators import admin_required
 from sqlalchemy import and_, or_, desc, func
 from datetime import datetime, timedelta
 import json
-import pytz # ### DEBUT DE LA MODIFICATION ### (Importation de pytz)
+import pytz
 
 # Import du blueprint depuis __init__.py
 from . import bp as purchases
@@ -74,7 +74,7 @@ def list_purchases():
     # Pagination et tri
     page = request.args.get('page', 1, type=int)
     per_page = current_app.config.get('PURCHASES_PER_PAGE', 20)
-    purchases = query.order_by(desc(Purchase.requested_date)).paginate(
+    purchases = query.order_by(desc(Purchase.created_at)).paginate(
         page=page, per_page=per_page, error_out=False
     )
 
@@ -123,12 +123,11 @@ def new_purchase():
 
     if form.validate_on_submit():
         
-        # ### DEBUT DE LA MODIFICATION ###
-        # Correction du problème de fuseau horaire
+        # Gestion du fuseau horaire (conservée comme demandé)
+        # Cette logique est correcte à condition que le template envoie bien le champ 'requested_date'
         local_tz = pytz.timezone('Europe/Paris') # ou votre fuseau horaire
         naive_date = form.requested_date.data
         aware_date = local_tz.localize(naive_date)
-        # ### FIN DE LA MODIFICATION ###
 
         # Création du bon d'achat principal
         purchase = Purchase(
@@ -145,7 +144,7 @@ def new_purchase():
             notes=form.notes.data,
             internal_notes=form.internal_notes.data,
             terms_conditions=form.terms_conditions.data,
-            requested_date=aware_date, # ### DEBUT DE LA MODIFICATION ### (Utilisation de la date localisée)
+            requested_date=aware_date, 
             requested_by_id=current_user.id,
             is_paid=False 
         )
@@ -183,7 +182,7 @@ def new_purchase():
                     if unit_id:
                         try:
                             unit = Unit.query.get(unit_id)
-                            if unit:
+                            if unit and unit.conversion_factor > 0:
                                 final_quantity = unit.to_base_unit(quantity)
                                 final_unit_price = price / float(unit.conversion_factor)
                                 original_quantity = quantity
@@ -393,14 +392,13 @@ def edit_purchase(id):
         return redirect(url_for('purchases.view_purchase', id=id))
 
     form = PurchaseForm(obj=purchase)
-    if request.method == 'POST' and form.validate_on_submit():
-        purchase_date_str = request.form.get('purchase_date')
-        if purchase_date_str:
-            try:
-                purchase_date = datetime.strptime(purchase_date_str, '%Y-%m-%d')
-                purchase.requested_date = purchase_date
-            except ValueError:
-                flash('Format de date incorrect, date non modifiée.', 'warning')
+    
+    if form.validate_on_submit():
+        # ### DEBUT DE LA CORRECTION ###
+        # Mise à jour de la date à partir des données du formulaire.
+        # Le bloc défectueux 'request.form.get('purchase_date')' a été supprimé.
+        purchase.requested_date = form.requested_date.data
+        # ### FIN DE LA CORRECTION ###
 
         old_stock_updates = []
         if purchase.status == PurchaseStatus.RECEIVED:
@@ -466,7 +464,7 @@ def edit_purchase(id):
                     if unit_id:
                         try:
                             unit = Unit.query.get(unit_id)
-                            if unit:
+                            if unit and unit.conversion_factor > 0:
                                 final_quantity = unit.to_base_unit(quantity)
                                 final_unit_price = price / float(unit.conversion_factor)
                                 original_quantity = quantity
