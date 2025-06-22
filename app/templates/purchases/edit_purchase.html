@@ -307,7 +307,7 @@
 </template>
 
 <div id="purchaseData" style="display: none;"
-     data-existing-items="{{ purchase.items|tojson|e }}"
+     data-existing-items="{{ [item.to_dict for item in purchase.items]|tojson|e }}"
      data-purchase-id="{{ purchase.id }}">
 </div>
 
