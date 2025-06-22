@@ -85,6 +85,20 @@ class Product(db.Model):
     
     # Relations
     order_items = db.relationship('OrderItem', backref='product', lazy='dynamic')
+
+    # ### DEBUT DE LA CORRECTION ###
+    @property
+    def to_dict(self):
+        """Retourne une représentation dictionnaire de l'objet, sérialisable en JSON."""
+        return {
+            'id': self.id,
+            'name': self.name,
+            'product_type': self.product_type,
+            'unit': self.unit,
+            'cost_price': float(self.cost_price) if self.cost_price is not None else 0.0,
+            'stock_ingredients_magasin': float(self.stock_ingredients_magasin) if self.stock_ingredients_magasin is not None else 0.0,
+        }
+    # ### FIN DE LA CORRECTION ###
     
     # === NOUVELLES MÉTHODES UTILITAIRES ===
     
