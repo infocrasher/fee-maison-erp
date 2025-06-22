@@ -18,6 +18,7 @@ from decorators import admin_required
 from sqlalchemy import and_, or_, desc, func
 from datetime import datetime, timedelta
 import json
+import pytz # ### DEBUT DE LA MODIFICATION ### (Importation de pytz)
 
 # Import du blueprint depuis __init__.py
 from . import bp as purchases
@@ -115,16 +116,20 @@ def new_purchase():
     """Création d'un nouveau bon d'achat avec traitement manuel des items et mise à jour stock automatique"""
     Product, User, Unit = get_main_models()
 
-    # ### DEBUT DE LA MODIFICATION ###
-    # Correction: Instancier le formulaire avec request.form pour les requêtes POST
-    # afin que les données soumises soient lues et validées.
     if request.method == 'POST':
         form = PurchaseForm(request.form)
     else:
         form = PurchaseForm()
-    # ### FIN DE LA MODIFICATION ###
 
     if form.validate_on_submit():
+        
+        # ### DEBUT DE LA MODIFICATION ###
+        # Correction du problème de fuseau horaire
+        local_tz = pytz.timezone('Europe/Paris') # ou votre fuseau horaire
+        naive_date = form.requested_date.data
+        aware_date = local_tz.localize(naive_date)
+        # ### FIN DE LA MODIFICATION ###
+
         # Création du bon d'achat principal
         purchase = Purchase(
             supplier_name=form.supplier_name.data,
@@ -140,7 +145,7 @@ def new_purchase():
             notes=form.notes.data,
             internal_notes=form.internal_notes.data,
             terms_conditions=form.terms_conditions.data,
-            requested_date=form.requested_date.data,
+            requested_date=aware_date, # ### DEBUT DE LA MODIFICATION ### (Utilisation de la date localisée)
             requested_by_id=current_user.id,
             is_paid=False 
         )
