@@ -114,14 +114,17 @@ def list_purchases():
 def new_purchase():
     """Création d'un nouveau bon d'achat avec traitement manuel des items et mise à jour stock automatique"""
     Product, User, Unit = get_main_models()
-    form = PurchaseForm()
 
-    if request.method == 'POST' and form.validate_on_submit():
-        # ### DEBUT DE LA MODIFICATION ###
-        # Le bloc de récupération manuelle de la date a été supprimé car il était la source du bug.
-        # Nous utilisons maintenant directement `form.requested_date.data`.
-        # ### FIN DE LA MODIFICATION ###
+    # ### DEBUT DE LA MODIFICATION ###
+    # Correction: Instancier le formulaire avec request.form pour les requêtes POST
+    # afin que les données soumises soient lues et validées.
+    if request.method == 'POST':
+        form = PurchaseForm(request.form)
+    else:
+        form = PurchaseForm()
+    # ### FIN DE LA MODIFICATION ###
 
+    if form.validate_on_submit():
         # Création du bon d'achat principal
         purchase = Purchase(
             supplier_name=form.supplier_name.data,
@@ -137,12 +140,9 @@ def new_purchase():
             notes=form.notes.data,
             internal_notes=form.internal_notes.data,
             terms_conditions=form.terms_conditions.data,
-            # ### DEBUT DE LA MODIFICATION ###
-            # Correction: Utilisation de la date validée par le formulaire au lieu d'une date parsée manuellement.
             requested_date=form.requested_date.data,
-            # ### FIN DE LA MODIFICATION ###
             requested_by_id=current_user.id,
-            is_paid=False # ✅ NOUVEAU : Non payé par défaut
+            is_paid=False 
         )
 
         # ✅ WORKFLOW "ACHAT DIRECT" : Statut automatique RECEIVED
@@ -152,18 +152,11 @@ def new_purchase():
 
         # Traitement manuel des items depuis request.form
         items_added = 0
-        # ✅ CORRECTION : Récupérer TOUTES les listes y compris stock_location
         product_ids = request.form.getlist('items[][product_id]')
         quantities = request.form.getlist('items[][quantity_ordered]')
         prices = request.form.getlist('items[][unit_price]')
         units = request.form.getlist('items[][unit]')
-        stock_locations = request.form.getlist('items[][stock_location]') # ✅ AJOUTÉ
-
-        # ✅ DEBUG : Vérifier les valeurs reçues
-        print("=== DEBUG STOCK LOCATIONS ===")
-        for i, location in enumerate(stock_locations):
-            print(f"Ligne {i}: stock_location = {location}")
-        print("==============================")
+        stock_locations = request.form.getlist('items[][stock_location]')
         
         # Traiter chaque ligne d'item
         for i in range(len(product_ids)):
@@ -172,11 +165,9 @@ def new_purchase():
                 quantity = float(quantities[i]) if quantities[i] else 0
                 price = float(prices[i]) if prices[i] else 0
                 unit_id = int(units[i]) if units[i] else None
-                # ✅ CORRECTION : Récupérer stock_location pour chaque ligne
                 stock_location = stock_locations[i] if i < len(stock_locations) else 'ingredients_magasin'
 
                 if product_id and quantity > 0 and price > 0:
-                    # Gestion conversion d'unités
                     final_quantity = quantity
                     final_unit_price = price
                     original_quantity = None
@@ -184,22 +175,18 @@ def new_purchase():
                     original_unit_price = None
                     description_with_unit = f"{quantity} unités"
                     
-                    # Si une unité de conditionnement est sélectionnée
                     if unit_id:
                         try:
                             unit = Unit.query.get(unit_id)
                             if unit:
-                                # Calcul quantité en unité de base
                                 final_quantity = unit.to_base_unit(quantity)
                                 final_unit_price = price / float(unit.conversion_factor)
-                                # Sauvegarde des valeurs originales
                                 original_quantity = quantity
                                 original_unit_id = unit.id
                                 original_unit_price = price
                                 description_with_unit = f"{quantity} × {unit.name}"
                                 flash(f'Conversion : {quantity} × {unit.name} = {final_quantity}{unit.base_unit}', 'info')
                         except (ValueError, TypeError):
-                            # En cas d'erreur, on garde les valeurs originales
                             pass
 
                     purchase_item = PurchaseItem(
@@ -210,7 +197,7 @@ def new_purchase():
                         original_quantity=original_quantity,
                         original_unit_id=original_unit_id,
                         original_unit_price=original_unit_price,
-                        stock_location=stock_location, # ✅ CORRECTION : Utiliser la valeur récupérée
+                        stock_location=stock_location,
                         description_override=description_with_unit
                     )
 
@@ -223,7 +210,6 @@ def new_purchase():
         
         if items_added == 0:
             flash('Aucun article valide n\'a été ajouté au bon d\'achat.', 'danger')
-            # Variables pour le template
             available_products = Product.query.filter(
                 Product.product_type.in_(['ingredient', 'consommable'])
             ).all()
@@ -234,12 +220,10 @@ def new_purchase():
         # Calcul des totaux
         purchase.calculate_totals()
         
-        # ✅ NOUVELLE LOGIQUE : Mise à jour automatique du stock pour statut RECEIVED
         if purchase.status == PurchaseStatus.RECEIVED:
             stock_updates = []
             for item in purchase.items:
                 if item.product:
-                    # ✅ CORRECTION : Utiliser stock_location de chaque item
                     if item.stock_location == 'ingredients_magasin':
                         item.product.stock_ingredients_magasin += float(item.quantity_ordered)
                         stock_location_display = "Stock Magasin"
@@ -253,18 +237,15 @@ def new_purchase():
                         item.product.stock_consommables += float(item.quantity_ordered)
                         stock_location_display = "Stock Consommables"
                     else:
-                        # Fallback vers stock magasin si location inconnue
                         item.product.stock_ingredients_magasin += float(item.quantity_ordered)
                         stock_location_display = "Stock Magasin (par défaut)"
 
-                    # Affichage intelligent selon unité originale ou base
                     if item.original_quantity and item.original_unit:
                         display_quantity = f"{item.original_quantity} × {item.original_unit.name}"
                     else:
                         display_quantity = f"{item.quantity_ordered}"
                     stock_updates.append(f"{item.product.name}: +{display_quantity} dans {stock_location_display}")
 
-            # Messages de confirmation groupés
             if stock_updates:
                 flash(f'Stocks mis à jour automatiquement :', 'success')
                 for update in stock_updates:
@@ -276,7 +257,6 @@ def new_purchase():
         flash(f'Bon d\'achat {purchase.reference} {action_text} avec {items_added} article(s).', 'success')
         return redirect(url_for('purchases.view_purchase', id=purchase.id))
 
-    # Debug des erreurs de validation
     elif request.method == 'POST':
         flash('Erreur de validation du formulaire. Vérifiez les champs.', 'danger')
         if form.errors:
@@ -303,7 +283,6 @@ def new_purchase():
 def view_purchase(id):
     """Affichage détaillé d'un bon d'achat avec unités et paiement"""
     purchase = Purchase.query.get_or_404(id)
-    # Vérification des permissions
     if not current_user.is_admin and purchase.requested_by_id != current_user.id:
         flash('Vous n\'avez pas l\'autorisation de voir ce bon d\'achat.', 'danger')
         return redirect(url_for('purchases.list_purchases'))
@@ -313,7 +292,6 @@ def view_purchase(id):
         purchase=purchase
     )
 
-# ✅ NOUVELLES ROUTES : Gestion des paiements
 @purchases.route('/<int:id>/mark_paid', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -351,7 +329,6 @@ def mark_as_unpaid(id):
     flash(f'Bon d\'achat {purchase.reference} marqué comme non payé.', 'success')
     return redirect(url_for('purchases.view_purchase', id=id))
 
-# ✅ CORRECTION 2 : Route d'annulation avec reversion stock
 @purchases.route('/<int:id>/cancel', methods=['POST'])
 @login_required
 @admin_required
@@ -362,12 +339,10 @@ def cancel_purchase(id):
         flash('Ce bon d\'achat est déjà annulé.', 'info')
         return redirect(url_for('purchases.view_purchase', id=id))
 
-    # ✅ REVERSER LE STOCK si le bon était reçu
     if purchase.status == PurchaseStatus.RECEIVED:
         stock_reversions = []
         for item in purchase.items:
             if item.product:
-                # Reverser selon stock_location
                 if item.stock_location == 'ingredients_magasin':
                     item.product.stock_ingredients_magasin -= float(item.quantity_ordered)
                     stock_location_display = "Stock Magasin"
@@ -381,20 +356,17 @@ def cancel_purchase(id):
                     item.product.stock_consommables -= float(item.quantity_ordered)
                     stock_location_display = "Stock Consommables"
                 
-                # Affichage intelligent selon unité originale ou base
                 if item.original_quantity and item.original_unit:
                     display_quantity = f"{item.original_quantity} × {item.original_unit.name}"
                 else:
                     display_quantity = f"{item.quantity_ordered}"
                 stock_reversions.append(f"{item.product.name}: -{display_quantity} du {stock_location_display}")
 
-        # Messages de confirmation reversion
         if stock_reversions:
             flash(f'Stocks reversés automatiquement :', 'warning')
             for reversion in stock_reversions:
                 flash(f'📦 {reversion}', 'info')
 
-    # Changer statut en annulé
     purchase.status = PurchaseStatus.CANCELLED
     db.session.commit()
     flash(f'Bon d\'achat {purchase.reference} annulé avec succès.', 'success')
@@ -407,19 +379,16 @@ def edit_purchase(id):
     Product, User, Unit = get_main_models()
     purchase = Purchase.query.get_or_404(id)
 
-    # Vérification des permissions
     if not current_user.is_admin and purchase.requested_by_id != current_user.id:
         flash('Vous n\'avez pas l\'autorisation de modifier ce bon d\'achat.', 'danger')
         return redirect(url_for('purchases.list_purchases'))
 
-    # ✅ MODIFICATION : Permettre modification des bons RECEIVED (car pas d'approbation)
     if purchase.status not in [PurchaseStatus.DRAFT, PurchaseStatus.REQUESTED, PurchaseStatus.RECEIVED]:
         flash('Ce bon d\'achat ne peut plus être modifié dans son état actuel.', 'warning')
         return redirect(url_for('purchases.view_purchase', id=id))
 
     form = PurchaseForm(obj=purchase)
     if request.method == 'POST' and form.validate_on_submit():
-        # ✅ CORRECTION 1 : Récupérer date d'achat manuelle pour modification
         purchase_date_str = request.form.get('purchase_date')
         if purchase_date_str:
             try:
@@ -428,7 +397,6 @@ def edit_purchase(id):
             except ValueError:
                 flash('Format de date incorrect, date non modifiée.', 'warning')
 
-        # Sauvegarder les anciens stocks pour reversion
         old_stock_updates = []
         if purchase.status == PurchaseStatus.RECEIVED:
             for item in purchase.items:
@@ -439,7 +407,6 @@ def edit_purchase(id):
                         'quantity': float(item.quantity_ordered)
                     })
         
-        # Mise à jour des informations principales
         purchase.supplier_name = form.supplier_name.data
         purchase.supplier_contact = form.supplier_contact.data
         purchase.supplier_phone = form.supplier_phone.data
@@ -454,7 +421,6 @@ def edit_purchase(id):
         purchase.internal_notes = form.internal_notes.data
         purchase.terms_conditions = form.terms_conditions.data
 
-        # Reverser les anciens stocks avant modification
         for old_update in old_stock_updates:
             product = old_update['product']
             location = old_update['location']
@@ -468,16 +434,14 @@ def edit_purchase(id):
             elif location == 'consommables':
                 product.stock_consommables -= quantity
 
-        # Suppression des anciennes lignes
         PurchaseItem.query.filter_by(purchase_id=purchase.id).delete()
 
-        # ✅ CORRECTION : Traitement manuel des nouvelles lignes avec stock_location
         items_added = 0
         product_ids = request.form.getlist('items[][product_id]')
         quantities = request.form.getlist('items[][quantity_ordered]')
         prices = request.form.getlist('items[][unit_price]')
         units = request.form.getlist('items[][unit]')
-        stock_locations = request.form.getlist('items[][stock_location]') # ✅ AJOUTÉ
+        stock_locations = request.form.getlist('items[][stock_location]') 
 
         for i in range(len(product_ids)):
             try:
@@ -485,10 +449,9 @@ def edit_purchase(id):
                 quantity = float(quantities[i]) if quantities[i] else 0
                 price = float(prices[i]) if prices[i] else 0
                 unit_id = int(units[i]) if units[i] else None
-                stock_location = stock_locations[i] if i < len(stock_locations) else 'ingredients_magasin' # ✅ AJOUTÉ
+                stock_location = stock_locations[i] if i < len(stock_locations) else 'ingredients_magasin' 
 
                 if product_id and quantity > 0 and price > 0:
-                    # Conversion d'unités (même logique que new_purchase)
                     final_quantity = quantity
                     final_unit_price = price
                     original_quantity = None
@@ -516,7 +479,7 @@ def edit_purchase(id):
                         original_quantity=original_quantity,
                         original_unit_id=original_unit_id,
                         original_unit_price=original_unit_price,
-                        stock_location=stock_location, # ✅ CORRECTION : Utiliser stock_location
+                        stock_location=stock_location,
                         description_override=description_with_unit
                     )
                     db.session.add(purchase_item)
@@ -535,11 +498,9 @@ def edit_purchase(id):
                                 title='Modifier Bon d\'Achat', available_products=available_products,
                                 available_units=available_units)
         
-        # ✅ NOUVELLE LOGIQUE : Mise à jour stock pour modification
         if purchase.status == PurchaseStatus.RECEIVED:
             for item in purchase.items:
                 if item.product:
-                    # Réappliquer les nouveaux stocks selon stock_location
                     if item.stock_location == 'ingredients_magasin':
                         item.product.stock_ingredients_magasin += float(item.quantity_ordered)
                     elif item.stock_location == 'ingredients_local':
@@ -549,13 +510,11 @@ def edit_purchase(id):
                     elif item.stock_location == 'consommables':
                         item.product.stock_consommables += float(item.quantity_ordered)
 
-        # Recalcul des totaux
         purchase.calculate_totals()
         db.session.commit()
         flash(f'Bon d\'achat {purchase.reference} modifié avec succès.', 'success')
         return redirect(url_for('purchases.view_purchase', id=purchase.id))
 
-    # Variables pour le template
     available_products = Product.query.filter(
         Product.product_type.in_(['ingredient', 'consommable'])
     ).all()
@@ -616,7 +575,6 @@ def api_product_units(product_id):
     """API pour récupérer les unités disponibles pour un produit"""
     Product, User, Unit = get_main_models()
     product = Product.query.get_or_404(product_id)
-    # Pour l'instant, toutes les unités sont disponibles
     units = Unit.query.filter_by(is_active=True).order_by(Unit.display_order).all()
     
     results = []
