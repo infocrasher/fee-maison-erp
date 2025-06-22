@@ -1,133 +1,250 @@
-{% extends "base.html" %}
+{% extends "base.html" %} {% block title %}{{ title }} - Fée Maison{% endblock %} {% block content %}
 
-{% block title %}{{ title }} - Fée Maison{% endblock %}
-
-{% block content %}
-<div class="container-fluid">
-    <!-- Informations Fournisseur et Dates -->
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">📋 Informations Fournisseur</div>
-                <div class="card-body">
-                    <p><strong>Référence :</strong> {{ purchase.reference }}</p>
-                    <p><strong>Fournisseur :</strong> {{ purchase.supplier_name }}</p>
-                    <p><strong>Contact :</strong> {{ purchase.supplier_contact or 'N/A' }}</p>
-                    <p><strong>Téléphone :</strong> {{ purchase.supplier_phone or 'N/A' }}</p>
-                    <p><strong>Email :</strong> {{ purchase.supplier_email or 'N/A' }}</p>
-                    <p><strong>Adresse :</strong> {{ purchase.supplier_address or 'N/A' }}</p>
-                    <p><strong>Date d'achat :</strong> {{ purchase.requested_date.strftime('%d/%m/%Y à %H:%M') }}</p>
+<div class="container-fluid px-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- En-tête avec actions -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-file-invoice text-primary me-2"></i>
+                        Bon d'Achat {{ purchase.reference }}
+                    </h1>
+                    <p class="text-muted mb-0">Détails complets du bon d'achat</p>
+                </div>
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>
+                        Retour à la liste
+                    </a>
+                    {% if purchase.status != 'cancelled' %}
+                        <a href="{{ url_for('purchases.edit_purchase', id=purchase.id) }}" class="btn btn-primary">
+                            <i class="fas fa-edit me-1"></i>
+                            Modifier
+                        </a>
+                        <a href="{{ url_for('purchases.cancel_purchase', id=purchase.id) }}" 
+                           class="btn btn-danger"
+                           onclick="return confirm('Êtes-vous sûr de vouloir annuler ce bon d\'achat ? Cette action est irréversible.')">
+                            <i class="fas fa-times me-1"></i>
+                            Annuler
+                        </a>
+                    {% endif %}
+                    {% if not purchase.is_paid and purchase.status != 'cancelled' %}
+                        <a href="{{ url_for('purchases.mark_paid', id=purchase.id) }}" class="btn btn-success">
+                            <i class="fas fa-check me-1"></i>
+                            Marquer payé
+                        </a>
+                    {% endif %}
                 </div>
             </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">💰 Paiement</div>
+
+            <!-- Informations générales -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-light">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Informations Générales
+                    </h6>
+                </div>
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="badge {{ purchase.payment_badge_class }}">
-                                {{ purchase.payment_status_display }}
-                            </span>
-                            <br><small class="text-muted">Montant : {{ purchase.total_amount }} DA</small>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td class="fw-bold">Référence :</td>
+                                    <td>{{ purchase.reference }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Fournisseur :</td>
+                                    <td>{{ purchase.supplier_name }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Contact :</td>
+                                    <td>{{ purchase.supplier_contact or 'N/A' }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Téléphone :</td>
+                                    <td>{{ purchase.supplier_phone or 'N/A' }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Email :</td>
+                                    <td>{{ purchase.supplier_email or 'N/A' }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Adresse :</td>
+                                    <td>{{ purchase.supplier_address or 'N/A' }}</td>
+                                </tr>
+                            </table>
                         </div>
-                        <div>
-                            {% if not purchase.is_paid %}
-                                <a href="{{ url_for('purchases.mark_as_paid', id=purchase.id) }}" 
-                                   class="btn btn-success btn-sm">
-                                    💳 Marquer Payé
-                                </a>
-                            {% else %}
-                                <form method="POST" action="{{ url_for('purchases.mark_as_unpaid', id=purchase.id) }}" 
-                                      style="display: inline;">
-                                    {{ csrf_token() }}
-                                    <button type="submit" class="btn btn-warning btn-sm"
-                                            onclick="return confirm('Marquer comme non payé ?')">
-                                        ↩️ Annuler Paiement
-                                    </button>
-                                </form>
-                            {% endif %}
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td class="fw-bold">Date d'achat :</td>
+                                    <td>{{ purchase.requested_date.strftime('%d/%m/%Y à %H:%M') }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Statut :</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if purchase.status == 'validated' else 'warning' if purchase.status == 'pending' else 'danger' }}">
+                                            {{ purchase.status_label }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Paiement :</td>
+                                    <td>
+                                        {% if purchase.is_paid %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check me-1"></i>
+                                                Payé
+                                            </span>
+                                            {% if purchase.payment_date %}
+                                                <br><small class="text-muted">{{ purchase.payment_date.strftime('%d/%m/%Y') }}</small>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="fas fa-clock me-1"></i>
+                                                Non payé
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Urgence :</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'danger' if purchase.urgency.value == 'urgent' else 'warning' if purchase.urgency.value == 'high' else 'info' if purchase.urgency.value == 'low' else 'secondary' }}">
+                                            {{ purchase.urgency_label }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Montant total :</td>
+                                    <td class="fs-5 fw-bold text-primary">{{ purchase.total_amount }} DA</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Créé le :</td>
+                                    <td>{{ purchase.created_at.strftime('%d/%m/%Y à %H:%M') }}</td>
+                                </tr>
+                            </table>
                         </div>
                     </div>
+                    {% if purchase.notes %}
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <h6 class="fw-bold">Notes :</h6>
+                                <p class="mb-0">{{ purchase.notes }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Tableau Articles avec Stock Location -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">📦 Articles Commandés</h5>
-        </div>
-        <div class="card-body">
-            {% if purchase.items %}
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Produit</th>
-                            <th>Quantité Commandée</th>
-                            <th>Prix Unitaire</th>
-                            <th>Stock Destination</th>
-                            <th>Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in purchase.items %}
-                        <tr>
-                            <td>
-                                <strong>{{ item.product.name if item.product else 'Produit supprimé' }}</strong>
-                                {% if item.description_override %}
-                                    <br><small class="text-muted">{{ item.description_override }}</small>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if item.original_quantity and item.original_unit %}
-                                    <strong>{{ item.original_quantity }} × {{ item.original_unit.name }}</strong>
-                                    <br><small class="text-muted">= {{ item.quantity_ordered }}{{ item.original_unit.base_unit }}</small>
-                                {% else %}
-                                    <strong>{{ item.quantity_ordered }}</strong>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if item.original_unit_price and item.original_unit %}
-                                    <strong>{{ item.original_unit_price }} DA/{{ item.original_unit.name }}</strong>
-                                    <br><small class="text-muted">{{ item.unit_price }} DA/{{ item.original_unit.base_unit if item.original_unit else 'unité' }}</small>
-                                {% else %}
-                                    <strong>{{ item.unit_price }} DA</strong>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if item.stock_location == 'ingredients_magasin' %}
-                                    <span class="badge bg-primary">🏪 Stock Magasin</span>
-                                {% elif item.stock_location == 'ingredients_local' %}
-                                    <span class="badge bg-success">🏭 Stock Local</span>
-                                {% elif item.stock_location == 'comptoir' %}
-                                    <span class="badge bg-warning">🛒 Stock Comptoir</span>
-                                {% elif item.stock_location == 'consommables' %}
-                                    <span class="badge bg-info">📦 Stock Consommables</span>
-                                {% else %}
-                                    <span class="badge bg-secondary">{{ item.stock_location }}</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <strong>{{ item.line_total_with_discount|round(2) }} DA</strong>
-                                {% if item.discount_percentage and item.discount_percentage > 0 %}
-                                    <br><small class="text-success">-{{ item.discount_percentage }}% remise</small>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <!-- Articles du bon d'achat -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-light">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-list me-1"></i>
+                        Articles du Bon d'Achat
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if purchase.items %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Produit</th>
+                                        <th>Quantité Commandée</th>
+                                        <th>Prix Unitaire</th>
+                                        <th>Stock Destination</th>
+                                        <th class="text-end">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in purchase.items %}
+                                    <tr>
+                                        <td>
+                                            <div>
+                                                <strong>{{ item.product.name if item.product else 'Produit supprimé' }}</strong>
+                                                {% if item.description_override %}
+                                                    <br><small class="text-muted">{{ item.description_override }}</small>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if item.original_quantity and item.original_unit %}
+                                                <div>
+                                                    <strong>{{ item.original_quantity }} × {{ item.original_unit.name }}</strong>
+                                                    <br><small class="text-muted">= {{ item.quantity_ordered }}{{ item.original_unit.base_unit }}</small>
+                                                </div>
+                                            {% else %}
+                                                {{ item.quantity_ordered }}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.original_unit_price and item.original_unit %}
+                                                <div>
+                                                    <strong>{{ item.original_unit_price }} DA/{{ item.original_unit.name }}</strong>
+                                                    <br><small class="text-muted">{{ item.unit_price }} DA/{{ item.original_unit.base_unit if item.original_unit else 'unité' }}</small>
+                                                </div>
+                                            {% else %}
+                                                {{ item.unit_price }} DA
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.stock_location == 'ingredients_magasin' %}
+                                                <span class="badge bg-primary">
+                                                    <i class="fas fa-store me-1"></i>
+                                                    Stock Magasin
+                                                </span>
+                                            {% elif item.stock_location == 'ingredients_local' %}
+                                                <span class="badge bg-info">
+                                                    <i class="fas fa-industry me-1"></i>
+                                                    Stock Local
+                                                </span>
+                                            {% elif item.stock_location == 'comptoir' %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-shopping-cart me-1"></i>
+                                                    Stock Comptoir
+                                                </span>
+                                            {% elif item.stock_location == 'consommables' %}
+                                                <span class="badge bg-warning text-dark">
+                                                    <i class="fas fa-box me-1"></i>
+                                                    Stock Consommables
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ item.stock_location }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            <strong>{{ item.line_total_with_discount|round(2) }} DA</strong>
+                                            {% if item.discount_percentage and item.discount_percentage > 0 %}
+                                                <br><small class="text-success">-{{ item.discount_percentage }}% remise</small>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr>
+                                        <th colspan="4" class="text-end">Total Général :</th>
+                                        <th class="text-end fs-5 text-primary">{{ purchase.total_amount }} DA</th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-inbox fa-3x text-gray-300 mb-3"></i>
+                            <h5 class="text-muted">Aucun article dans ce bon d'achat</h5>
+                        </div>
+                    {% endif %}
+                </div>
             </div>
-            {% else %}
-            <div class="text-center py-4">
-                <i class="bi bi-cart-x" style="font-size: 3rem; color: #ccc;"></i>
-                <p class="text-muted mt-2">Aucun article dans ce bon d'achat</p>
-            </div>
-            {% endif %}
         </div>
     </div>
 </div>
+
 {% endblock %}
