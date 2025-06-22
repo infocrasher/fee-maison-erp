@@ -164,7 +164,7 @@
                             <tr>
                                 <th>Référence</th>
                                 <th>Fournisseur</th>
-                                <th>Date Création</th>
+                                <th>Date d'Achat</th>
                                 <th>Statut</th>
                                 <th>Paiement</th>
                                 <th>Montant</th>
@@ -219,19 +219,18 @@
                                            class="btn btn-outline-primary" title="Voir détails">
                                             <i class="bi bi-eye"></i>
                                         </a>
-                                        {% if purchase.can_be_modified() %}
-                                            <a href="{{ url_for('purchases.edit_purchase', id=purchase.id) }}" 
-                                               class="btn btn-outline-warning" title="Modifier">
-                                                <i class="bi bi-pencil"></i>
-                                            </a>
-                                            <!-- ### DEBUT DE LA MODIFICATION ### -->
-                                            <a href="{{ url_for('purchases.cancel_purchase', id=purchase.id) }}"
-                                               class="btn btn-outline-danger" title="Annuler"
-                                               onclick="return confirm('Êtes-vous sûr de vouloir annuler ce bon d\'achat ? L\'action est irréversible.')">
-                                                <i class="bi bi-trash"></i>
-                                            </a>
-                                            <!-- ### FIN DE LA MODIFICATION ### -->
-                                        {% endif %}
+                                        <!-- ### DEBUT DE LA MODIFICATION ### -->
+                                        <!-- La condition 'if' a été retirée pour toujours afficher les boutons -->
+                                        <a href="{{ url_for('purchases.edit_purchase', id=purchase.id) }}" 
+                                           class="btn btn-outline-warning" title="Modifier">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a href="{{ url_for('purchases.cancel_purchase', id=purchase.id) }}"
+                                           class="btn btn-outline-danger" title="Annuler"
+                                           onclick="return confirm('Êtes-vous sûr de vouloir annuler ce bon d\'achat ? L\'action est irréversible.')">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                        <!-- ### FIN DE LA MODIFICATION ### -->
                                         {% if current_user.is_admin %}
                                             {% if not purchase.is_paid %}
                                                 <a href="{{ url_for('purchases.mark_as_paid', id=purchase.id) }}" 
