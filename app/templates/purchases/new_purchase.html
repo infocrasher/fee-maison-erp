@@ -111,7 +111,6 @@
         margin-left: 5px;
     }
     
-    /* ✅ NOUVEAU CSS : Sélection Stock */
     .stock-location-select {
         background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
         border: none;
@@ -147,7 +146,6 @@
         display: inline-block;
     }
     
-    /* Date d'achat automatique */
     .date-info {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border-radius: 8px;
@@ -158,7 +156,6 @@
     }
 </style>
 
-<!-- ✅ CORRECTION : Données Jinja2 converties en JSON proprement -->
 <script id="template-data" type="application/json">
 {
     "available_units": [
@@ -206,20 +203,9 @@
         </div>
     </div>
 
-    <!-- ✅ À AJOUTER -->
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px;">
-                <label class="form-label">📅 Date d'Achat</label>
-                <input type="date" 
-                       class="form-control" 
-                       name="purchase_date" 
-                       id="purchaseDate"
-                       required>
-                <small class="text-light mt-1">Date à laquelle l'achat a été effectué</small>
-            </div>
-        </div>
-    </div>
+    <!-- ### DEBUT DE LA CORRECTION ### -->
+    <!-- Le bloc de date manuel a été supprimé. Le champ de date est maintenant intégré au formulaire ci-dessous. -->
+    <!-- ### FIN DE LA CORRECTION ### -->
 
     <form id="purchaseForm" method="POST">
         {{ form.hidden_tag() }}
@@ -230,6 +216,18 @@
                 <div class="card form-card">
                     <h5 class="mb-3"><i class="bi bi-building me-2"></i>Informations Fournisseur</h5>
                     <div class="row">
+                        <!-- ### DEBUT DE LA CORRECTION ### -->
+                        <!-- Ajout du champ de date WTForms correct, à la place du champ manuel. -->
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.requested_date.label(class="form-label") }}
+                                {{ form.requested_date(class="form-control") }}
+                                {% if form.requested_date.errors %}
+                                    <div class="text-warning mt-1">{{ form.requested_date.errors[0] }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <!-- ### FIN DE LA CORRECTION ### -->
                         <div class="col-md-6">
                             <div class="mb-3">
                                 {{ form.supplier_name.label(class="form-label") }}
@@ -239,14 +237,14 @@
                                 {% endif %}
                             </div>
                         </div>
-                        <div class="col-md-6">
+                    </div>
+                    <div class="row">
+                         <div class="col-md-6">
                             <div class="mb-3">
                                 {{ form.invoice_number.label(class="form-label") }}
                                 {{ form.invoice_number(class="form-control", placeholder="N° facture (optionnel)") }}
                             </div>
                         </div>
-                    </div>
-                    <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
                                 {{ form.urgency.label(class="form-label") }}
@@ -368,7 +366,6 @@
                        step="0.01">
                 <small class="price-helper text-muted"></small>
             </div>
-            <!-- ✅ NOUVELLE COLONNE : Sélection Stock -->
             <div class="col-md-2">
                 <label class="form-label">🏪 Stock Destination</label>
                 <select class="form-control stock-location-select" name="items[][stock_location]" required>
@@ -411,36 +408,25 @@
 
 {% block scripts %}
 <script>
-// ✅ CORRECTION : Variables globales propres
 let itemIndex = 0;
 let availableProducts = [];
 let availableUnits = [];
 let templateData = {};
 
 document.addEventListener('DOMContentLoaded', function() {
-    // ✅ CORRECTION : Charger données depuis JSON proprement
     loadTemplateData();
     
-      
-    // Ajouter première ligne automatiquement
     addItemRow();
     
-    // Event listener pour ajouter ligne
     document.getElementById('addItemBtn').addEventListener('click', addItemRow);
-    
-    
 });
 
-
-
-// ✅ CORRECTION : Charger données sans mélange Jinja2/JS
 function loadTemplateData() {
     try {
         const dataScript = document.getElementById('template-data');
         templateData = JSON.parse(dataScript.textContent);
         availableUnits = templateData.available_units;
         availableProducts = templateData.available_products;
-        console.log('Données chargées:', availableUnits.length, 'unités,', availableProducts.length, 'produits');
     } catch (error) {
         console.error('Erreur chargement données template:', error);
         availableUnits = [];
@@ -448,17 +434,14 @@ function loadTemplateData() {
     }
 }
 
-// ✅ CORRECTION : Ajouter ligne avec gestion correcte des événements
 function addItemRow() {
     const container = document.getElementById('itemsContainer');
     const template = document.getElementById('itemRowTemplate');
     const clone = template.content.cloneNode(true);
     
-    // Mettre à jour l'index
     const itemRow = clone.querySelector('.item-row');
     itemRow.setAttribute('data-item-index', itemIndex);
     
-    // ✅ CORRECTION : Ajouter options unités AVANT d'ajouter au DOM
     const unitSelect = clone.querySelector('.unit-select');
     availableUnits.forEach(unit => {
         const option = document.createElement('option');
@@ -470,73 +453,57 @@ function addItemRow() {
         unitSelect.appendChild(option);
     });
     
-        
-    // Ajouter au DOM
     container.appendChild(clone);
     
-    // ✅ CORRECTION : Configurer événements APRÈS ajout au DOM
     const addedRow = container.lastElementChild;
     setupRowEvents(addedRow, itemIndex);
     
-    // Masquer message vide
     document.getElementById('emptyItemsMessage').style.display = 'none';
     
     itemIndex++;
 }
 
-// ✅ CORRECTION : Configuration événements simplifiée et robuste
 function setupRowEvents(itemRow, index) {
     const searchInput = itemRow.querySelector('.product-search');
     const unitSelect = itemRow.querySelector('.unit-select');
     const quantityInput = itemRow.querySelector('.item-quantity');
     const priceInput = itemRow.querySelector('.item-price');
-    const stockSelect = itemRow.querySelector('.stock-location-select'); // ✅ NOUVEAU
+    const stockSelect = itemRow.querySelector('.stock-location-select');
     const removeBtn = itemRow.querySelector('.remove-item-btn');
     
-    // Autocomplétion
     setupAutocomplete(searchInput, index);
     
-    // ✅ CORRECTION : Event listeners avec calcul de total immédiat
     quantityInput.addEventListener('input', function() {
         updateConversionDisplay(index);
         calculateItemTotal(index);
-        calculateGrandTotal();
     });
     
     let priceTimeout;
     priceInput.addEventListener('input', function() {
-    updateConversionDisplay(index);
-    
-    // Annuler le calcul précédent
-    clearTimeout(priceTimeout);
-    
-    // Nouveau calcul dans 500ms
-    priceTimeout = setTimeout(function() {
-        calculateItemTotal(index);
-        calculateGrandTotal();
-    }, 500);
+        updateConversionDisplay(index);
+        clearTimeout(priceTimeout);
+        priceTimeout = setTimeout(function() {
+            calculateItemTotal(index);
+        }, 500);
     });
+
     unitSelect.addEventListener('change', function() {
         updateConversionDisplay(index);
         calculateItemTotal(index);
-        calculateGrandTotal();
     });
     
-    // ✅ NOUVEAU : Event listener pour sélection stock
     stockSelect.addEventListener('change', function() {
         updateStockDisplay(index);
+        updateConversionDisplay(index);
     });
     
-    // Supprimer ligne
     removeBtn.addEventListener('click', function() {
         removeItemRow(index);
     });
     
-    // Initialiser l'affichage stock
     updateStockDisplay(index);
 }
 
-// ✅ NOUVEAU : Mise à jour affichage stock sélectionné
 function updateStockDisplay(index) {
     const row = document.querySelector(`[data-item-index="${index}"]`);
     if (!row) return;
@@ -552,10 +519,6 @@ function updateStockDisplay(index) {
     }
 }
 
-
-
-// ✅ CORRECTION : Calcul avec prix unitaire original
-// ✅ CORRECTION : Ajouter au début de calculateItemTotal() (ligne 380)
 function calculateItemTotal(index) {
     const row = document.querySelector(`[data-item-index="${index}"]`);
     if (!row) return;
@@ -564,11 +527,8 @@ function calculateItemTotal(index) {
     const priceInput = row.querySelector('.item-price');
     const totalElement = row.querySelector('.item-total');
     
-    // ✅ FORCER VALEURS ORIGINALES SAISIES
     const quantity = parseFloat(quantityInput.value) || 0;
     const price = parseFloat(priceInput.value) || 0;
-    
-    console.log(`Calcul ligne ${index}: ${quantity} × ${price} = ${quantity * price}`); // ✅ DEBUG
     
     const total = quantity * price;
     
@@ -580,7 +540,6 @@ function calculateItemTotal(index) {
     calculateGrandTotal();
 }
 
-// ✅ CORRECTION : Calcul grand total amélioré
 function calculateGrandTotal() {
     let grandTotal = 0;
     let itemCount = 0;
@@ -591,7 +550,7 @@ function calculateGrandTotal() {
         const quantityInput = row.querySelector('.item-quantity');
         const priceInput = row.querySelector('.item-price');
         const unitSelect = row.querySelector('.unit-select');
-        const stockSelect = row.querySelector('.stock-location-select'); // ✅ NOUVEAU
+        const stockSelect = row.querySelector('.stock-location-select');
         
         const quantity = parseFloat(quantityInput.value) || 0;
         const price = parseFloat(priceInput.value) || 0;
@@ -600,14 +559,12 @@ function calculateGrandTotal() {
             grandTotal += quantity * price;
             itemCount++;
             
-            // Ajouter à résumé conversion avec stock
             if (unitSelect.value) {
                 const selectedOption = unitSelect.selectedOptions[0];
                 const factor = parseFloat(selectedOption.getAttribute('data-factor'));
                 const baseUnit = selectedOption.getAttribute('data-base');
                 const totalBase = quantity * factor;
                 
-                // ✅ NOUVEAU : Grouper par stock
                 const stockLocation = stockSelect.value;
                 const stockLabel = stockSelect.selectedOptions[0].textContent;
                 
@@ -623,7 +580,6 @@ function calculateGrandTotal() {
         }
     });
     
-    // ✅ CORRECTION : Mise à jour affichage total
     document.getElementById('totalAmount').textContent = grandTotal.toLocaleString('fr-FR', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
@@ -631,7 +587,6 @@ function calculateGrandTotal() {
     
     document.getElementById('itemCount').textContent = itemCount + ' produit(s)';
     
-    // ✅ NOUVEAU : Afficher résumé par stock
     const summaryElement = document.getElementById('conversionSummary');
     if (Object.keys(stockSummary).length > 0) {
         let summaryText = '📦 Impact stock :<br>';
@@ -642,11 +597,8 @@ function calculateGrandTotal() {
     } else {
         summaryElement.innerHTML = '';
     }
-    
-    console.log('Grand Total:', grandTotal, 'DA');
 }
 
-// Mise à jour affichage conversion
 function updateConversionDisplay(index) {
     const row = document.querySelector(`[data-item-index="${index}"]`);
     if (!row) return;
@@ -654,7 +606,7 @@ function updateConversionDisplay(index) {
     const unitSelect = row.querySelector('.unit-select');
     const quantityInput = row.querySelector('.item-quantity');
     const priceInput = row.querySelector('.item-price');
-    const stockSelect = row.querySelector('.stock-location-select'); // ✅ NOUVEAU
+    const stockSelect = row.querySelector('.stock-location-select');
     const quantityHelper = row.querySelector('.quantity-helper');
     const priceHelper = row.querySelector('.price-helper');
     const totalHelper = row.querySelector('.total-helper');
@@ -667,20 +619,22 @@ function updateConversionDisplay(index) {
     if (unitSelect.value && quantity > 0) {
         const selectedOption = unitSelect.selectedOptions[0];
         const factor = parseFloat(selectedOption.getAttribute('data-factor'));
-        const baseUnit = selectedOption.getAttribute('data-base');
-        const totalBase = quantity * factor;
-        
-        // Mise à jour des helpers
-        quantityHelper.textContent = `= ${totalBase}${baseUnit} total`;
-        if (price > 0) {
-            priceHelper.textContent = `= ${(price / factor).toFixed(4)} DA/${baseUnit}`;
+        if (factor > 0) {
+            const baseUnit = selectedOption.getAttribute('data-base');
+            const totalBase = quantity * factor;
+            
+            quantityHelper.textContent = `= ${totalBase.toFixed(3)}${baseUnit} total`;
+            if (price > 0) {
+                priceHelper.textContent = `= ${(price / factor).toFixed(4)} DA/${baseUnit}`;
+            }
+            totalHelper.textContent = `${quantity} × ${selectedOption.textContent}`;
+            
+            const stockLabel = stockSelect.selectedOptions[0].textContent;
+            conversionText.textContent = `${quantity} × ${selectedOption.textContent} = ${totalBase.toFixed(3)}${baseUnit} ajoutés au ${stockLabel}`;
+            conversionInfo.style.display = 'block';
+        } else {
+            conversionInfo.style.display = 'none';
         }
-        totalHelper.textContent = `${quantity} × ${selectedOption.textContent}`;
-        
-        // ✅ NOUVEAU : Affichage conversion avec stock
-        const stockLabel = stockSelect.selectedOptions[0].textContent;
-        conversionText.textContent = `${quantity} × ${selectedOption.textContent} = ${totalBase}${baseUnit} ajoutés au ${stockLabel}`;
-        conversionInfo.style.display = 'block';
     } else {
         quantityHelper.textContent = '';
         priceHelper.textContent = '';
@@ -689,7 +643,6 @@ function updateConversionDisplay(index) {
     }
 }
 
-// Configuration autocomplétion (simplifiée)
 function setupAutocomplete(inputElement, index) {
     const suggestionsContainer = inputElement.parentNode.querySelector('.autocomplete-suggestions');
     
@@ -706,7 +659,6 @@ function setupAutocomplete(inputElement, index) {
         }
     });
     
-    // Cacher suggestions si clic ailleurs
     document.addEventListener('click', function(e) {
         if (!inputElement.contains(e.target)) {
             hideSuggestions(suggestionsContainer);
@@ -714,7 +666,6 @@ function setupAutocomplete(inputElement, index) {
     });
 }
 
-// Afficher suggestions
 function showSuggestions(products, container, inputElement, index) {
     container.innerHTML = '';
     
@@ -738,16 +689,13 @@ function showSuggestions(products, container, inputElement, index) {
     container.style.display = 'block';
 }
 
-// Masquer suggestions
 function hideSuggestions(container) {
     container.style.display = 'none';
 }
 
-// Sélectionner un produit
 function selectProduct(inputElement, index, productData) {
     inputElement.value = productData.name;
     
-    // Mettre à jour le champ caché
     const row = document.querySelector(`[data-item-index="${index}"]`);
     const hiddenInput = row.querySelector('.product-id');
     hiddenInput.value = productData.id;
@@ -755,14 +703,12 @@ function selectProduct(inputElement, index, productData) {
     hideSuggestions(inputElement.parentNode.querySelector('.autocomplete-suggestions'));
 }
 
-// Supprimer ligne d'achat
 function removeItemRow(index) {
     const row = document.querySelector(`[data-item-index="${index}"]`);
     if (row) {
         row.remove();
         calculateGrandTotal();
         
-        // Afficher message si plus de lignes
         const remainingRows = document.querySelectorAll('.item-row');
         if (remainingRows.length === 0) {
             document.getElementById('emptyItemsMessage').style.display = 'block';
@@ -770,7 +716,6 @@ function removeItemRow(index) {
     }
 }
 
-// Validation formulaire
 document.getElementById('purchaseForm').addEventListener('submit', function(e) {
     const rows = document.querySelectorAll('.item-row');
     let hasValidItems = false;
@@ -779,7 +724,7 @@ document.getElementById('purchaseForm').addEventListener('submit', function(e) {
         const productId = row.querySelector('.product-id').value;
         const quantity = row.querySelector('.item-quantity').value;
         const price = row.querySelector('.item-price').value;
-        const stockLocation = row.querySelector('.stock-location-select').value; // ✅ NOUVEAU
+        const stockLocation = row.querySelector('.stock-location-select').value;
         
         if (productId && quantity && price && stockLocation) {
             hasValidItems = true;
