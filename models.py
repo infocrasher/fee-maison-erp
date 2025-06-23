@@ -142,16 +142,11 @@ class Product(db.Model):
         return [loc for loc in locations if self.is_low_stock_by_location(loc)]
     
     def update_stock_location(self, location_type, quantity_change):
-        """Met à jour le stock d'une localisation spécifique. DEPRECATED. Utiliser update_stock_by_location"""
-        from app.stock.stock_manager import StockLocationManager
-        column_name = StockLocationManager.get_column_name(location_type)
-        if column_name:
-            current_value = getattr(self, column_name, 0.0)
-            new_value = max(0, current_value + quantity_change)
-            setattr(self, column_name, new_value)
-            self.last_stock_update = datetime.utcnow()
-            return True
-        return False
+        """Met à jour le stock d'une localisation spécifique.
+    NOTE: Cette méthode est conservée pour la compatibilité, mais elle 
+          appelle maintenant la nouvelle méthode plus robuste."""
+    
+        return self.update_stock_by_location(location_type, quantity_change)
     
     def get_location_display_name(self, location_type):
         """Retourne le nom d'affichage de la localisation"""
