@@ -232,6 +232,13 @@ class Recipe(db.Model):
     difficulty_level = db.Column(db.String(20))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # ### DEBUT DE LA CORRECTION ###
+    # Nouveau champ pour spécifier le lieu de production.
+    # On stocke la CLÉ du stock (ex: 'ingredients_magasin')
+    # qui correspond à notre convention : Labo A.
+    production_location = db.Column(db.String(50), nullable=False, default='ingredients_magasin')
+    # ### FIN DE LA CORRECTION ###
+
     # Relations
     ingredients = db.relationship('RecipeIngredient', backref='recipe', lazy='dynamic', cascade='all, delete-orphan')
     finished_product = db.relationship('Product', foreign_keys=[product_id], backref=db.backref('recipe_definition', uselist=False))
@@ -246,60 +253,6 @@ class Recipe(db.Model):
     
     def __repr__(self):
         return f'<Recipe {self.name}>'
-
-class RecipeIngredient(db.Model):
-    __tablename__ = 'recipe_ingredients'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    recipe_id = db.Column(db.Integer, db.ForeignKey('recipes.id'), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
-    quantity_needed = db.Column(db.Numeric(10, 3), nullable=False)
-    unit = db.Column(db.String(50), nullable=False)
-    notes = db.Column(db.String(255))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relations
-    product = db.relationship('Product', backref='recipe_uses')
-    
-    def _convert_unit_cost(self):
-        """Convertit le coût unitaire selon les unités utilisées"""
-        if not self.product or not self.product.cost_price:
-            return Decimal('0.0')
-        
-        product_unit = self.product.unit.upper()
-        recipe_unit = self.unit.upper()
-        base_cost = Decimal(self.product.cost_price)
-        
-        if product_unit == recipe_unit:
-            return base_cost
-        
-        conversions = {
-            ('KG', 'G'): base_cost / 1000,
-            ('L', 'ML'): base_cost / 1000,
-            ('G', 'KG'): base_cost * 1000,
-            ('ML', 'L'): base_cost * 1000,
-            ('KG', 'MG'): base_cost / 1000000,
-            ('L', 'CL'): base_cost / 100,
-        }
-        
-        conversion_key = (product_unit, recipe_unit)
-        if conversion_key in conversions:
-            return conversions[conversion_key]
-        
-        print(f"⚠️ Conversion non trouvée: {product_unit} → {recipe_unit} pour {self.product.name}")
-        return base_cost
-    
-    @property
-    def cost(self):
-        """Calcule le coût de cet ingrédient avec conversion d'unités"""
-        if not self.product or not self.product.cost_price:
-            return Decimal('0.0')
-        
-        converted_cost_per_unit = self._convert_unit_cost()
-        return Decimal(self.quantity_needed) * converted_cost_per_unit
-    
-    def __repr__(self):
-        return f'<RecipeIngredient {self.recipe.name} - {self.product.name}>'
 
 class Order(db.Model):
     __tablename__ = 'orders'
