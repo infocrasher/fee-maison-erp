@@ -62,20 +62,19 @@ class Product(db.Model):
     description = db.Column(db.Text)
     price = db.Column(db.Numeric(10, 2))
     cost_price = db.Column(db.Numeric(10, 2))
-    unit = db.Column(db.String(20), nullable=False) # Unité d'affichage principale (ex: "kg", "l", "pièce")
+    unit = db.Column(db.String(20), nullable=False)
     sku = db.Column(db.String(50), unique=True, nullable=True)
-    quantity_in_stock = db.Column(db.Float, default=0.0) # Ce champ est probablement obsolète, à vérifier
+    quantity_in_stock = db.Column(db.Float, default=0.0)
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # === Gestion 4 Stocks ===
-    # Les valeurs ici sont stockées dans l'unité de base (ex: grammes, millilitres)
     stock_comptoir = db.Column(db.Float, default=0.0, nullable=False)
     stock_ingredients_local = db.Column(db.Float, default=0.0, nullable=False) 
     stock_ingredients_magasin = db.Column(db.Float, default=0.0, nullable=False)
     stock_consommables = db.Column(db.Float, default=0.0, nullable=False)
     
-    # Seuils d'alerte par stock (dans l'unité de base)
+    # Seuils d'alerte par stock
     seuil_min_comptoir = db.Column(db.Float, default=0.0)
     seuil_min_ingredients_local = db.Column(db.Float, default=0.0)
     seuil_min_ingredients_magasin = db.Column(db.Float, default=0.0)
@@ -99,11 +98,9 @@ class Product(db.Model):
             'stock_ingredients_magasin': float(self.stock_ingredients_magasin) if self.stock_ingredients_magasin is not None else 0.0,
         }
     
-    # === NOUVELLES MÉTHODES UTILITAIRES ===
-    
     @property
     def total_stock_all_locations(self):
-        """Stock total toutes localisations confondues (dans l'unité de base)"""
+        """Stock total toutes localisations confondues"""
         return (self.stock_comptoir + self.stock_ingredients_local + 
                 self.stock_ingredients_magasin + self.stock_consommables)
     
@@ -145,30 +142,56 @@ class Product(db.Model):
         return [loc for loc in locations if self.is_low_stock_by_location(loc)]
     
     def update_stock_location(self, location_type, quantity_change):
-        """Met à jour le stock d'une localisation spécifique"""
-        if location_type == 'comptoir':
-            self.stock_comptoir = max(0, self.stock_comptoir + quantity_change)
-        elif location_type == 'ingredients_local':
-            self.stock_ingredients_local = max(0, self.stock_ingredients_local + quantity_change)
-        elif location_type == 'ingredients_magasin':
-            self.stock_ingredients_magasin = max(0, self.stock_ingredients_magasin + quantity_change)
-        elif location_type == 'consommables':
-            self.stock_consommables = max(0, self.stock_consommables + quantity_change)
-        
-        self.last_stock_update = datetime.utcnow()
-        return True
+        """Met à jour le stock d'une localisation spécifique. DEPRECATED. Utiliser update_stock_by_location"""
+        from app.stock.stock_manager import StockLocationManager
+        column_name = StockLocationManager.get_column_name(location_type)
+        if column_name:
+            current_value = getattr(self, column_name, 0.0)
+            new_value = max(0, current_value + quantity_change)
+            setattr(self, column_name, new_value)
+            self.last_stock_update = datetime.utcnow()
+            return True
+        return False
     
     def get_location_display_name(self, location_type):
         """Retourne le nom d'affichage de la localisation"""
         names = {
-            'comptoir': 'Stock Comptoir',
-            'ingredients_local': 'Stock Local Production',
-            'ingredients_magasin': 'Stock Magasin',
+            'comptoir': 'Stock Vente',
+            'ingredients_local': 'Labo B',
+            'ingredients_magasin': 'Labo A (Réserve)',
             'consommables': 'Stock Consommables'
         }
         return names.get(location_type, location_type.title())
 
     # ### DEBUT DU BLOC A AJOUTER ###
+    from app.stock.stock_manager import StockLocationManager
+
+    def get_stock_by_location(self, location_key: str) -> float:
+        """
+        Récupère le stock pour un emplacement donné en utilisant le StockLocationManager.
+        :param location_key: Le nom de la colonne (ex: 'ingredients_magasin').
+        :return: La valeur du stock.
+        """
+        # La clé est directement le nom de la colonne grâce à notre SelectField
+        return getattr(self, location_key, 0.0)
+
+    def update_stock_by_location(self, location_key: str, quantity_change: float) -> bool:
+        """
+        Met à jour le stock pour un emplacement donné en utilisant le StockLocationManager.
+        :param location_key: Le nom de la colonne (ex: 'ingredients_magasin').
+        :param quantity_change: La quantité à ajouter (valeur positive) ou à retirer (valeur négative).
+        :return: True si la mise à jour a réussi, False sinon.
+        """
+        if hasattr(self, location_key):
+            current_value = getattr(self, location_key, 0.0)
+            # On s'assure que le stock ne devient pas négatif
+            new_value = max(0, current_value + quantity_change)
+            setattr(self, location_key, new_value)
+            self.last_stock_update = datetime.utcnow()
+            return True
+        return False
+    # ### FIN DU BLOC A AJOUTER ###
+
     def get_stock_display(self, location_type='total'):
         """
         Retourne une chaîne de caractères formatée pour l'affichage du stock,
@@ -180,29 +203,24 @@ class Product(db.Model):
         else:
             stock_value = self.get_stock_by_location_type(location_type)
 
-        display_unit = self.unit.lower() # ex: 'kg', 'l', 'pièce'
-        base_unit = self.base_unit_for_recipes() # ex: 'g', 'ml', 'pièce'
+        display_unit = self.unit.lower()
+        base_unit = self.base_unit_for_recipes()
         
-        # Si la valeur est 0, on retourne "0" avec l'unité d'affichage
         if stock_value == 0:
             return f"0 {display_unit.upper()}"
 
         try:
-            # Conversion de grammes (base) vers KG (affichage)
             if display_unit == 'kg' and base_unit == 'g':
                 display_value = stock_value / 1000
                 return f"{display_value:,.3f} kg".replace(",", " ").replace(".", ",")
             
-            # Conversion de millilitres (base) vers L (affichage)
             if display_unit == 'l' and base_unit == 'ml':
                 display_value = stock_value / 1000
                 return f"{display_value:,.3f} L".replace(",", " ").replace(".", ",")
 
-            # Pas de conversion nécessaire (ex: "pièce", "unité")
             return f"{int(stock_value)} {display_unit}"
 
         except Exception:
-            # En cas d'erreur, on affiche la valeur brute pour ne rien cacher
             return f"{stock_value} {base_unit} (brut)"
 
     def base_unit_for_recipes(self):
@@ -212,8 +230,7 @@ class Product(db.Model):
             return 'g'
         if unit_lower in ['l', 'cl', 'ml']:
             return 'ml'
-        return unit_lower # Pour 'pièce', 'unité', etc.
-    # ### FIN DU BLOC A AJOUTER ###
+        return unit_lower
     
     def __repr__(self):
         return f'<Product {self.name}>'
