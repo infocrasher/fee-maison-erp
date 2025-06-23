@@ -189,7 +189,7 @@
                                 <div class="stock-level-card {{ level_class }}">
                                     <div class="d-flex justify-content-between align-items-center mb-2">
                                         <span class="fw-bold">{{ level_icon }} {{ ingredient.name }}</span>
-                                        <span class="badge bg-light text-dark">{{ stock_level }} {{ ingredient.unit or 'unités' }}</span>
+                                        <span class="badge bg-light text-dark">{{ ingredient.get_stock_display('ingredients_magasin') }}</span>
                                     </div>
                                     <div class="progress mb-2">
                                         {% set percentage = (stock_level / seuil * 100) if seuil > 0 else 0 %}
