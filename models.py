@@ -86,7 +86,6 @@ class Product(db.Model):
     # Relations
     order_items = db.relationship('OrderItem', backref='product', lazy='dynamic')
 
-    # ### DEBUT DE LA CORRECTION ###
     @property
     def to_dict(self):
         """Retourne une représentation dictionnaire de l'objet, sérialisable en JSON."""
@@ -98,7 +97,6 @@ class Product(db.Model):
             'cost_price': float(self.cost_price) if self.cost_price is not None else 0.0,
             'stock_ingredients_magasin': float(self.stock_ingredients_magasin) if self.stock_ingredients_magasin is not None else 0.0,
         }
-    # ### FIN DE LA CORRECTION ###
     
     # === NOUVELLES MÉTHODES UTILITAIRES ===
     
@@ -274,48 +272,33 @@ class Order(db.Model):
     
     # Relations
     items = db.relationship('OrderItem', backref='order', lazy='dynamic', cascade='all, delete-orphan')
-    
-    # ✅ NOUVELLE RELATION : Tracking employés de production
     produced_by = db.relationship('Employee', secondary=order_employees, back_populates='orders_produced')
     
-    # ✅ CORRECTION : Propriété order_date (alias pour due_date)
     @property
     def order_date(self):
-        """Alias pour due_date - compatibilité avec templates existants"""
         return self.due_date
     
-    # ✅ CORRECTION : Méthode get_items_count manquante
     def get_items_count(self):
-        """Retourne le nombre d'items dans la commande"""
         return self.items.count() if hasattr(self.items, 'count') else len(self.items)
     
-    # ✅ CORRECTION : Méthode get_items_total manquante
     def get_items_total(self):
-        """Retourne le total des articles (méthode pour compatibilité template)"""
         return float(sum(item.subtotal for item in self.items))
     
-    # ✅ NOUVELLE MÉTHODE : Gestion employés de production
     def get_producers_names(self):
-        """Retourne les noms des employés qui ont produit cette commande"""
         return [emp.name for emp in self.produced_by]
     
     def get_main_producer(self):
-        """Retourne le premier employé assigné (producteur principal)"""
         return self.produced_by[0] if self.produced_by else None
     
     def assign_producer(self, employee):
-        """Assigne un employé à la production de cette commande"""
         if employee not in self.produced_by:
             self.produced_by.append(employee)
     
     def remove_producer(self, employee):
-        """Retire un employé de la production de cette commande"""
         if employee in self.produced_by:
             self.produced_by.remove(employee)
     
-    # ✅ CORRECTION : Méthodes d'affichage pour templates
     def get_order_type_display(self):
-        """Retourne le libellé lisible du type de commande"""
         order_types = {
             'customer_order': 'Commande Client',
             'counter_production_request': 'Ordre de Production',
@@ -324,20 +307,14 @@ class Order(db.Model):
         return order_types.get(self.order_type, self.order_type.title())
     
     def get_status_display(self):
-        """Retourne le libellé lisible du statut - VERSION ÉTENDUE"""
         status_types = {
-            # États généraux
             'pending': 'En attente',
             'cancelled': 'Annulée',
             'completed': 'Terminée',
-            
-            # ✅ NOUVEAUX ÉTATS - Workflow production
-            'in_production': 'En production',  # → Calendrier Rayan
-            'ready_at_shop': 'Reçue au magasin',  # → Yasmine peut livrer
-            'out_for_delivery': 'En livraison',  # → En cours de livraison
-            'delivered': 'Livrée',  # → Stock décrementé
-            
-            # États existants (compatibilité)
+            'in_production': 'En production',
+            'ready_at_shop': 'Reçue au magasin',
+            'out_for_delivery': 'En livraison',
+            'delivered': 'Livrée',
             'in_progress': 'En préparation',
             'ready': 'Prête',
             'awaiting_payment': 'En attente de paiement'
@@ -345,7 +322,6 @@ class Order(db.Model):
         return status_types.get(self.status, self.status.title())
     
     def get_delivery_option_display(self):
-        """Retourne le libellé lisible de l'option de livraison"""
         if not self.delivery_option:
             return "Non spécifié"
         
@@ -356,42 +332,34 @@ class Order(db.Model):
         return delivery_options.get(self.delivery_option, self.delivery_option.title())
     
     def get_status_color_class(self):
-        """Retourne la classe CSS selon le statut pour l'affichage"""
         status_colors = {
             'pending': 'secondary',
-            'in_production': 'warning',  # Orange pour Rayan
-            'ready_at_shop': 'info',  # Bleu pour Yasmine
-            'out_for_delivery': 'primary',  # Bleu foncé en livraison
-            'delivered': 'success',  # Vert livré
+            'in_production': 'warning',
+            'ready_at_shop': 'info',
+            'out_for_delivery': 'primary',
+            'delivered': 'success',
             'completed': 'success',
             'cancelled': 'danger',
             'awaiting_payment': 'warning'
         }
         return status_colors.get(self.status, 'secondary')
     
-    # ✅ WORKFLOW METHODS - Gestion des états
     def should_appear_in_calendar(self):
-        """Détermine si la commande doit apparaître dans le calendrier"""
-        # Seules les commandes en production apparaissent pour Rayan
         return self.status in ['pending', 'in_production']
     
     def can_be_received_at_shop(self):
-        """Vérifie si la commande peut être reçue au magasin"""
         return self.status == 'in_production'
     
     def can_be_delivered(self):
-        """Vérifie si la commande peut être livrée/vendue"""
         return self.status == 'ready_at_shop'
     
     def mark_as_in_production(self):
-        """Marque la commande comme en production"""
         if self.status == 'pending':
             self.status = 'in_production'
             return True
         return False
     
     def mark_as_received_at_shop(self):
-        """Marque la commande comme reçue au magasin + incrémente stock"""
         if self.status == 'in_production':
             self.status = 'ready_at_shop'
             self._increment_shop_stock()
@@ -399,7 +367,6 @@ class Order(db.Model):
         return False
     
     def mark_as_delivered(self):
-        """Marque la commande comme livrée + décrémente stock"""
         if self.status == 'ready_at_shop':
             self.status = 'delivered'
             self._decrement_shop_stock()
@@ -407,26 +374,18 @@ class Order(db.Model):
         return False
     
     def _increment_shop_stock(self):
-        """Incrémente le stock comptoir quand la commande arrive au magasin"""
         for item in self.items:
             if item.product:
-                # MODIFICATION : Utiliser le nouveau système 4 stocks
                 item.product.update_stock_location('comptoir', float(item.quantity))
-                # Log du mouvement
                 print(f"📦 Stock comptoir incrémenté: {item.product.name} +{item.quantity}")
     
     def _decrement_shop_stock(self):
-        """Décrémente le stock comptoir quand la commande est livrée"""
         for item in self.items:
             if item.product:
-                # MODIFICATION : Utiliser le nouveau système 4 stocks
                 item.product.update_stock_location('comptoir', -float(item.quantity))
-                # Log du mouvement
                 print(f"📦 Stock comptoir décrémenté: {item.product.name} -{item.quantity}")
     
-    # ✅ CORRECTION : Méthode calculate_total_amount manquante
     def calculate_total_amount(self):
-        """Calcule et met à jour le montant total de la commande"""
         items_total = Decimal('0.0')
         for item in self.items:
             items_total += item.subtotal
@@ -436,29 +395,24 @@ class Order(db.Model):
         return self.total_amount
     
     def get_items_subtotal(self):
-        """Retourne le sous-total des articles (sans frais de livraison)"""
         return sum(item.subtotal for item in self.items)
     
     def get_formatted_due_date(self):
-        """Retourne la date et heure formatées pour affichage"""
         if self.due_date:
             return self.due_date.strftime('%d/%m/%Y à %H:%M')
         return "Non définie"
     
     def get_formatted_due_date_short(self):
-        """Retourne la date et heure formatées courte"""
         if self.due_date:
             return self.due_date.strftime('%d/%m à %H:%M')
         return "Non définie"
     
     def is_overdue(self):
-        """Vérifie si la commande est en retard"""
         if not self.due_date:
             return False
         return self.due_date < datetime.utcnow() and self.status not in ['completed', 'cancelled', 'delivered']
     
     def get_priority_class(self):
-        """Retourne la classe CSS selon la priorité/urgence"""
         if self.is_overdue():
             return 'danger'
         elif self.status == 'ready_at_shop':
@@ -480,32 +434,24 @@ class OrderItem(db.Model):
     unit_price = db.Column(db.Numeric(10, 2), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # ✅ CORRECTION : Ajouter cette méthode manquante
     def get_subtotal(self):
-        """Retourne le sous-total (méthode pour compatibilité template)"""
         return float(Decimal(self.quantity) * Decimal(self.unit_price))
     
-    # ✅ CORRECTION : Propriété price_at_order
     @property
     def price_at_order(self):
-        """Alias pour unit_price - compatibilité avec templates existants"""
         return self.unit_price
     
     @property
     def subtotal(self):
-        """Calcule le sous-total de la ligne (propriété)"""
         return Decimal(self.quantity) * Decimal(self.unit_price)
     
     def get_formatted_subtotal(self):
-        """Retourne le sous-total formaté"""
         return f"{self.subtotal:.2f} DA"
     
     def get_formatted_unit_price(self):
-        """Retourne le prix unitaire formaté"""
         return f"{self.unit_price:.2f} DA"
     
     def get_formatted_quantity(self):
-        """Retourne la quantité formatée"""
         if self.quantity == int(self.quantity):
             return str(int(self.quantity))
         return f"{self.quantity:.2f}"
@@ -514,33 +460,40 @@ class OrderItem(db.Model):
         return f'<OrderItem {self.product.name if self.product else "N/A"}: {self.quantity}x{self.unit_price}>'
 
 class Unit(db.Model):
-    """
-    Unités de conditionnement prédéfinies (25kg, 5L, 250g, etc.)
-    Permet de gérer les achats selon les conditionnements réels des fournisseurs
-    """
     __tablename__ = 'units'
     
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50), unique=True, nullable=False)  # "25kg", "5L"
-    base_unit = db.Column(db.String(10), nullable=False)         # "g", "ml"
-    conversion_factor = db.Column(db.Numeric(10, 3), nullable=False)  # 25000, 5000
-    unit_type = db.Column(db.String(20), nullable=False)         # "weight", "volume"
+    name = db.Column(db.String(50), unique=True, nullable=False)
+    base_unit = db.Column(db.String(10), nullable=False)
+    conversion_factor = db.Column(db.Numeric(10, 3), nullable=False)
+    unit_type = db.Column(db.String(20), nullable=False)
     display_order = db.Column(db.Integer, default=0)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # ### DEBUT DE LA CORRECTION DÉFINITIVE ###
+    @property
+    def to_dict(self):
+        """Retourne une représentation dictionnaire de l'objet, sérialisable en JSON."""
+        return {
+            'id': self.id,
+            'name': self.name,
+            'base_unit': self.base_unit,
+            'conversion_factor': float(self.conversion_factor),
+            'unit_type': self.unit_type,
+            'display_order': self.display_order
+        }
+    # ### FIN DE LA CORRECTION DÉFINITIVE ###
     
     def __repr__(self):
         return f'<Unit {self.name}>'
     
     def to_base_unit(self, quantity):
-        """Convertit une quantité vers l'unité de base (grammes ou ml)"""
         return float(quantity) * float(self.conversion_factor)
     
     def from_base_unit(self, base_quantity):
-        """Convertit depuis l'unité de base vers cette unité"""
         return float(base_quantity) / float(self.conversion_factor)
     
     @property
     def display_name(self):
-        """Nom d'affichage avec type d'unité"""
         return f"{self.name} ({self.unit_type})"
