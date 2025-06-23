@@ -3,7 +3,7 @@ from flask_login import login_required
 from flask_wtf import FlaskForm
 from wtforms import SubmitField
 from extensions import db
-from models import Recipe, Product, RecipeIngredient
+# from models import Recipe, Product, RecipeIngredient # <-- LIGNE SUPPRIMÉE
 from .forms import RecipeForm, ingredient_product_query_factory
 from decorators import admin_required
 import json
@@ -18,7 +18,10 @@ class QuickActionForm(FlaskForm):
 @login_required
 @admin_required
 def list_recipes():
-    # ✅ CORRECTION : Créer un formulaire pour CSRF
+    # ### DEBUT DE LA CORRECTION ###
+    from models import Recipe # Import local
+    # ### FIN DE LA CORRECTION ###
+    
     form = QuickActionForm()
     
     page = request.args.get('page', 1, type=int)
@@ -26,19 +29,21 @@ def list_recipes():
         page=page, per_page=current_app.config.get('ITEMS_PER_PAGE', 10)
     )
     
-    # ✅ CORRECTION : Ajouter form dans le render_template
     return render_template('recipes/list_recipes.html', 
                          recipes_pagination=pagination, 
-                         form=form,  # ← Variable manquante ajoutée
+                         form=form,
                          title='Gestion des Recettes')
 
 @recipes.route('/<int:recipe_id>')
 @login_required
 @admin_required
 def view_recipe(recipe_id):
+    # ### DEBUT DE LA CORRECTION ###
+    from models import Recipe # Import local
+    # ### FIN DE LA CORRECTION ###
+
     recipe = db.session.get(Recipe, recipe_id) or abort(404)
     
-    # ✅ Formulaire pour actions du template
     form = QuickActionForm()
     
     return render_template('recipes/view_recipe.html', 
@@ -50,6 +55,10 @@ def view_recipe(recipe_id):
 @login_required
 @admin_required
 def new_recipe():
+    # ### DEBUT DE LA CORRECTION ###
+    from models import Recipe, Product, RecipeIngredient # Import local
+    # ### FIN DE LA CORRECTION ###
+
     form = RecipeForm()
     
     all_ingredients = ingredient_product_query_factory().all()
@@ -70,7 +79,10 @@ def new_recipe():
                 description=form.description.data,
                 yield_quantity=form.yield_quantity.data,
                 yield_unit=form.yield_unit.data,
-                product_id=form.finished_product.data if form.finished_product.data > 0 else None
+                product_id=form.finished_product.data if form.finished_product.data > 0 else None,
+                # La nouvelle colonne est gérée ici.
+                # On lit la valeur du formulaire qui sera ajoutée à la Tâche 3
+                production_location=form.production_location.data
             )
             db.session.add(recipe)
             db.session.flush()
@@ -104,6 +116,10 @@ def new_recipe():
 @login_required
 @admin_required
 def edit_recipe(recipe_id):
+    # ### DEBUT DE LA CORRECTION ###
+    from models import Recipe, Product, RecipeIngredient # Import local
+    # ### FIN DE LA CORRECTION ###
+
     recipe = db.session.get(Recipe, recipe_id) or abort(404)
     form = RecipeForm(obj=recipe)
     
@@ -125,6 +141,8 @@ def edit_recipe(recipe_id):
             recipe.yield_quantity = form.yield_quantity.data
             recipe.yield_unit = form.yield_unit.data
             recipe.product_id = form.finished_product.data if form.finished_product.data > 0 else None
+            # Mise à jour de la nouvelle colonne
+            recipe.production_location = form.production_location.data
 
             RecipeIngredient.query.filter_by(recipe_id=recipe.id).delete()
             db.session.flush()
@@ -155,6 +173,9 @@ def edit_recipe(recipe_id):
     if request.method == 'GET':
         form.finished_product.data = recipe.product_id
         
+        # Ce champ sera ajouté au formulaire à la Tâche 3
+        form.production_location.data = recipe.production_location
+        
         while len(form.ingredients.entries) > 0:
             form.ingredients.pop_entry()
         for item in recipe.ingredients:
@@ -175,6 +196,10 @@ def edit_recipe(recipe_id):
 @login_required
 @admin_required
 def delete_recipe(recipe_id):
+    # ### DEBUT DE LA CORRECTION ###
+    from models import Recipe # Import local
+    # ### FIN DE LA CORRECTION ###
+
     recipe = db.session.get(Recipe, recipe_id) or abort(404)
     recipe_name = recipe.name
     try:
