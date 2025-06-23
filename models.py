@@ -236,7 +236,10 @@ class Recipe(db.Model):
     # Nouveau champ pour spécifier le lieu de production.
     # On stocke la CLÉ du stock (ex: 'ingredients_magasin')
     # qui correspond à notre convention : Labo A.
-    production_location = db.Column(db.String(50), nullable=False, default='ingredients_magasin')
+    production_location = db.Column(db.String(50), 
+                                    nullable=False, 
+                                    default='ingredients_magasin')
+                                    server_default='ingredients_magasin')
     # ### FIN DE LA CORRECTION ###
 
     # Relations
