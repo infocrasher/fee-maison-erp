@@ -471,6 +471,13 @@ class Order(db.Model):
     
     def __repr__(self):
         return f'<Order {self.id}: {self.customer_name or "Sans nom"}>'
+    
+    @property
+    def items_count(self):
+        """Compte le nombre d'items de manière sûre pour les relations lazy."""
+        if hasattr(self.items, 'count'):
+            return self.items.count()
+        return len(self.items)
 
 class OrderItem(db.Model):
     __tablename__ = 'order_items'
