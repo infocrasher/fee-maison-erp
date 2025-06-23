@@ -62,19 +62,20 @@ class Product(db.Model):
     description = db.Column(db.Text)
     price = db.Column(db.Numeric(10, 2))
     cost_price = db.Column(db.Numeric(10, 2))
-    unit = db.Column(db.String(20), nullable=False)
+    unit = db.Column(db.String(20), nullable=False) # Unité d'affichage principale (ex: "kg", "l", "pièce")
     sku = db.Column(db.String(50), unique=True, nullable=True)
-    quantity_in_stock = db.Column(db.Float, default=0.0)
+    quantity_in_stock = db.Column(db.Float, default=0.0) # Ce champ est probablement obsolète, à vérifier
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # === NOUVEAU : Gestion 4 Stocks ===
+    # === Gestion 4 Stocks ===
+    # Les valeurs ici sont stockées dans l'unité de base (ex: grammes, millilitres)
     stock_comptoir = db.Column(db.Float, default=0.0, nullable=False)
     stock_ingredients_local = db.Column(db.Float, default=0.0, nullable=False) 
     stock_ingredients_magasin = db.Column(db.Float, default=0.0, nullable=False)
     stock_consommables = db.Column(db.Float, default=0.0, nullable=False)
     
-    # Seuils d'alerte par stock
+    # Seuils d'alerte par stock (dans l'unité de base)
     seuil_min_comptoir = db.Column(db.Float, default=0.0)
     seuil_min_ingredients_local = db.Column(db.Float, default=0.0)
     seuil_min_ingredients_magasin = db.Column(db.Float, default=0.0)
@@ -102,7 +103,7 @@ class Product(db.Model):
     
     @property
     def total_stock_all_locations(self):
-        """Stock total toutes localisations confondues"""
+        """Stock total toutes localisations confondues (dans l'unité de base)"""
         return (self.stock_comptoir + self.stock_ingredients_local + 
                 self.stock_ingredients_magasin + self.stock_consommables)
     
@@ -113,7 +114,7 @@ class Product(db.Model):
         return float(self.total_stock_all_locations) * float(cost)
     
     def get_stock_by_location_type(self, location_type):
-        """Récupère le stock par type de localisation"""
+        """Récupère le stock par type de localisation (dans l'unité de base)"""
         location_mapping = {
             'comptoir': self.stock_comptoir,
             'ingredients_local': self.stock_ingredients_local,
@@ -166,10 +167,57 @@ class Product(db.Model):
             'consommables': 'Stock Consommables'
         }
         return names.get(location_type, location_type.title())
+
+    # ### DEBUT DU BLOC A AJOUTER ###
+    def get_stock_display(self, location_type='total'):
+        """
+        Retourne une chaîne de caractères formatée pour l'affichage du stock,
+        en convertissant la valeur de base (grammes) vers l'unité d'affichage (KG/L).
+        """
+        stock_value = 0
+        if location_type == 'total':
+            stock_value = self.total_stock_all_locations
+        else:
+            stock_value = self.get_stock_by_location_type(location_type)
+
+        display_unit = self.unit.lower() # ex: 'kg', 'l', 'pièce'
+        base_unit = self.base_unit_for_recipes() # ex: 'g', 'ml', 'pièce'
+        
+        # Si la valeur est 0, on retourne "0" avec l'unité d'affichage
+        if stock_value == 0:
+            return f"0 {display_unit.upper()}"
+
+        try:
+            # Conversion de grammes (base) vers KG (affichage)
+            if display_unit == 'kg' and base_unit == 'g':
+                display_value = stock_value / 1000
+                return f"{display_value:,.3f} kg".replace(",", " ").replace(".", ",")
+            
+            # Conversion de millilitres (base) vers L (affichage)
+            if display_unit == 'l' and base_unit == 'ml':
+                display_value = stock_value / 1000
+                return f"{display_value:,.3f} L".replace(",", " ").replace(".", ",")
+
+            # Pas de conversion nécessaire (ex: "pièce", "unité")
+            return f"{int(stock_value)} {display_unit}"
+
+        except Exception:
+            # En cas d'erreur, on affiche la valeur brute pour ne rien cacher
+            return f"{stock_value} {base_unit} (brut)"
+
+    def base_unit_for_recipes(self):
+        """Détermine l'unité de base pour les calculs de recette."""
+        unit_lower = self.unit.lower()
+        if unit_lower in ['kg', 'g', 'mg']:
+            return 'g'
+        if unit_lower in ['l', 'cl', 'ml']:
+            return 'ml'
+        return unit_lower # Pour 'pièce', 'unité', etc.
+    # ### FIN DU BLOC A AJOUTER ###
     
     def __repr__(self):
         return f'<Product {self.name}>'
-
+    
 class Recipe(db.Model):
     __tablename__ = 'recipes'
     
