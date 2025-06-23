@@ -232,16 +232,14 @@ class Recipe(db.Model):
     difficulty_level = db.Column(db.String(20))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # ### DEBUT DE LA CORRECTION ###
-    # Nouveau champ pour spécifier le lieu de production.
-    # On stocke la CLÉ du stock (ex: 'ingredients_magasin')
-    # qui correspond à notre convention : Labo A.
-    production_location = db.Column(db.String(50), 
-                                    nullable=False, 
-                                    default='ingredients_magasin')
-                                    server_default='ingredients_magasin')
-    # ### FIN DE LA CORRECTION ###
-
+    # Nouvelle colonne pour spécifier le lieu de production.
+    production_location = db.Column(
+        db.String(50), 
+        nullable=False, 
+        default='ingredients_magasin', 
+        server_default='ingredients_magasin'
+    )
+    
     # Relations
     ingredients = db.relationship('RecipeIngredient', backref='recipe', lazy='dynamic', cascade='all, delete-orphan')
     finished_product = db.relationship('Product', foreign_keys=[product_id], backref=db.backref('recipe_definition', uselist=False))
