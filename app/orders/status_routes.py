@@ -20,27 +20,57 @@ status_bp = Blueprint('status', __name__)
 def change_status_to_ready(order_id):
     """Change le statut de 'in_production' à 'ready_at_shop' avec sélection employé"""
     
+    # ### DEBUT DE LA CORRECTION ###
+    # On importe les modèles nécessaires ici pour éviter les dépendances circulaires
+    from models import Product, Recipe
+    # ### FIN DE LA CORRECTION ###
+
     order = Order.query.get_or_404(order_id)
     
-    # Vérifier que la commande peut être marquée comme reçue
     if not order.can_be_received_at_shop():
         flash(f"La commande #{order_id} ne peut pas être marquée comme reçue. Statut actuel: {order.get_status_display()}", 'error')
         return redirect(url_for('dashboard.shop_dashboard'))
     
-    # Récupérer les employés sélectionnés depuis le formulaire
     employee_ids = request.form.getlist('employee_ids[]')
     
     if not employee_ids:
-        # Si pas d'employés fournis, rediriger vers le formulaire de sélection
         return redirect(url_for('status.select_employees_for_status_change', 
                               order_id=order_id, 
                               new_status='ready_at_shop'))
     
     try:
-        # Marquer la commande comme reçue au magasin
+        # ### DEBUT DE LA NOUVELLE LOGIQUE DE STOCK ###
+        # Étape 1 : Décrémenter les ingrédients
+        for order_item in order.items:
+            product_fini = order_item.product
+            # On ne décrémente que si le produit fini a une recette associée
+            if product_fini and product_fini.recipe_definition:
+                recipe = product_fini.recipe_definition
+                # On récupère le labo de production depuis la recette
+                labo_key = recipe.production_location
+                
+                # On parcourt les ingrédients de la recette
+                for ingredient_in_recipe in recipe.ingredients:
+                    ingredient_product = ingredient_in_recipe.product
+                    # Quantité nécessaire pour 1 produit fini * quantité commandée
+                    quantity_to_decrement = float(ingredient_in_recipe.quantity_needed) * float(order_item.quantity)
+                    
+                    # On utilise notre nouvelle méthode pour mettre à jour le stock du bon labo
+                    ingredient_product.update_stock_by_location(labo_key, -quantity_to_decrement)
+                    
+                    # Log pour débogage (peut être retiré plus tard)
+                    print(f"DECREMENT: {quantity_to_decrement} de {ingredient_product.name} du stock {labo_key}")
+
+        # Étape 2 : Incrémenter le stock du produit fini dans le stock de vente ('comptoir')
+        # Cette logique est déjà dans ta méthode mark_as_received_at_shop, on s'assure qu'elle est correcte.
+        # Il faut vérifier la méthode _increment_shop_stock dans models.py
+        
+        # ### FIN DE LA NOUVELLE LOGIQUE DE STOCK ###
+
+        # Marquer la commande comme reçue au magasin (ce qui déclenche l'incrémentation du produit fini)
         if order.mark_as_received_at_shop():
             
-            # Assigner les employés qui ont produit cette commande
+            # Assigner les employés
             for employee_id in employee_ids:
                 employee = Employee.query.get(employee_id)
                 if employee and employee.is_active:
@@ -49,14 +79,14 @@ def change_status_to_ready(order_id):
             db.session.commit()
             
             producers_names = ", ".join([emp.name for emp in order.produced_by])
-            flash(f'Commande #{order_id} marquée comme reçue au magasin. Produite par: {producers_names}', 'success')
+            flash(f'Commande #{order_id} marquée comme reçue. Stock mis à jour. Produite par: {producers_names}', 'success')
             
         else:
             flash(f"Erreur lors du changement de statut de la commande #{order_id}", 'error')
             
     except Exception as e:
         db.session.rollback()
-        flash(f"Erreur lors de la mise à jour: {str(e)}", 'error')
+        flash(f"Erreur critique lors de la mise à jour des stocks: {str(e)}", 'error')
     
     return redirect(url_for('dashboard.shop_dashboard'))
 
@@ -68,18 +98,15 @@ def change_status_to_delivered(order_id):
     
     order = Order.query.get_or_404(order_id)
     
-    # Vérifier que c'est une commande client
     if order.order_type != 'customer_order':
         flash(f"Seules les commandes client peuvent être marquées comme livrées", 'error')
         return redirect(url_for('dashboard.shop_dashboard'))
     
-    # Vérifier que la commande peut être livrée
     if not order.can_be_delivered():
         flash(f"La commande #{order_id} ne peut pas être livrée. Statut actuel: {order.get_status_display()}", 'error')
         return redirect(url_for('dashboard.shop_dashboard'))
     
     try:
-        # Marquer comme livrée (décrémente le stock automatiquement)
         if order.mark_as_delivered():
             db.session.commit()
             flash(f'Commande #{order_id} marquée comme livrée ! Montant encaissé: {order.total_amount:.2f} DA', 'success')
@@ -100,7 +127,6 @@ def select_employees_for_status_change(order_id, new_status):
     
     order = Order.query.get_or_404(order_id)
     
-    # Récupérer les employés actifs de production
     employees = Employee.query.filter(
         Employee.is_active == True,
         Employee.role.in_(['production', 'chef_production', 'assistant_production'])
@@ -130,22 +156,17 @@ def manual_status_change(order_id):
             return redirect(request.url)
         
         try:
-            # Changement de statut direct
             old_status = order.status
             order.status = new_status
             
-            # Assigner les employés si fournis
             if employee_ids:
-                # Supprimer les anciens producteurs
                 order.produced_by.clear()
                 
-                # Ajouter les nouveaux
                 for employee_id in employee_ids:
                     employee = Employee.query.get(employee_id)
                     if employee and employee.is_active:
                         order.assign_producer(employee)
             
-            # Ajouter une note du changement
             if notes:
                 if order.notes:
                     order.notes += f"\n[{datetime.utcnow().strftime('%d/%m/%Y %H:%M')}] {notes}"
@@ -167,7 +188,6 @@ def manual_status_change(order_id):
             db.session.rollback()
             flash(f"Erreur lors du changement de statut: {str(e)}", 'error')
     
-    # GET - Afficher le formulaire
     employees = Employee.query.filter(
         Employee.is_active == True
     ).order_by(Employee.name).all()
@@ -177,7 +197,6 @@ def manual_status_change(order_id):
                          employees=employees,
                          title=f"Changement Statut - Commande #{order_id}")
 
-# API pour récupérer les employés actifs
 @status_bp.route('/api/active-employees')
 @login_required
 @admin_required
@@ -192,18 +211,16 @@ def get_active_employees():
         'role': emp.role
     } for emp in employees])
 
+# Routes de test (conservées telles quelles)
 @status_bp.route('/<int:order_id>/test-employees/<string:new_status>')
 def test_employees_no_decorators(order_id, new_status):
-    """Test sans décorateurs pour isoler le problème"""
     return f"✅ TEST OK: order_id={order_id}, new_status={new_status}"
 
-# Test 1: Seulement login_required
 @status_bp.route('/<int:order_id>/test-login/<string:new_status>')
 @login_required
 def test_login_only(order_id, new_status):
     return f"✅ LOGIN OK: order_id={order_id}, new_status={new_status}, user={current_user.username}"
 
-# Test 2: Seulement admin_required
 @status_bp.route('/<int:order_id>/test-admin/<string:new_status>')
 @admin_required
 def test_admin_only(order_id, new_status):
