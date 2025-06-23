@@ -15,6 +15,12 @@ from wtforms.widgets import HiddenInput
 from models import Product, Recipe
 from sqlalchemy import or_
 
+# ### DEBUT DE LA CORRECTION ###
+# On importe notre nouveau manager pour l'utiliser dans le formulaire
+from app.stock.stock_manager import StockLocationManager
+# ### FIN DE LA CORRECTION ###
+
+
 def ingredient_product_query_factory():
     """
     Retourne une requête pour obtenir tous les produits de type 'ingrédient'.
@@ -43,6 +49,16 @@ class RecipeForm(FlaskForm):
     name = StringField('Nom de la recette', validators=[DataRequired("Le nom est requis."), Length(max=100)])
     description = TextAreaField('Description / Instructions', validators=[Optional(), Length(max=5000)])
     
+    # ### DEBUT DE LA CORRECTION ###
+    # Ajout du champ pour sélectionner le lieu de production
+    production_location = SelectField(
+        'Lieu de Production (Source des Ingrédients)', 
+        validators=[DataRequired()],
+        # Les choix sont chargés dynamiquement depuis notre manager
+        choices=StockLocationManager.get_production_choices()
+    )
+    # ### FIN DE LA CORRECTION ###
+
     yield_quantity = IntegerField(
         'Quantité Produite', 
         validators=[DataRequired(), NumberRange(min=1)], 
@@ -56,7 +72,6 @@ class RecipeForm(FlaskForm):
         description="Quelle est l'unité ? (ex: pièces, portions, gâteaux)"
     )
 
-    # ✅ CORRECTION : Gardons 'finished_product' pour la cohérence avec le template
     finished_product = SelectField('Produit Fini Associé', coerce=int, validators=[Optional()])
     
     ingredients = FieldList(FormField(IngredientForm), min_entries=1, label="Ingrédients")
