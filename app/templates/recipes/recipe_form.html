@@ -50,6 +50,13 @@
                 <div class="row align-items-end">
                     <div class="col-md-4">{{ render_field(form.yield_quantity, type="number", attrs={'min': '1'}) }}</div>
                     <div class="col-md-4">{{ render_field(form.yield_unit, placeholder="Ex: pièces, portions, gâteaux") }}</div>
+                    
+                    <!-- ### DEBUT DE LA CORRECTION : Ajout du champ ### -->
+                    <div class="col-md-4">
+                        {{ render_field(form.production_location, class="form-select") }}
+                    </div>
+                    <!-- ### FIN DE LA CORRECTION ### -->
+                    
                 </div>
                 <div class="mb-4">{{ render_field(form.description, rows=3, placeholder="Instructions, notes de préparation, astuces...") }}</div>
 
