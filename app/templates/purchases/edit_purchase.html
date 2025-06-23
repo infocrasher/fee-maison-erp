@@ -4,108 +4,41 @@
 
 {% block head %}
 <style>
-    .form-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 15px;
-        color: white;
-        padding: 30px;
-        margin-bottom: 30px;
-    }
-    .form-card {
-        background: white;
-        border-radius: 12px;
-        padding: 25px;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 15px rgba(0,0,0,0.1);
-        border-left: 4px solid #667eea;
-    }
-    .item-row {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        border-radius: 10px;
-        padding: 15px;
-        margin-bottom: 10px;
-        color: white;
-        transition: all 0.3s ease;
-    }
-    .item-row:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    }
+    /* STYLES GÉNÉRAUX */
+    .form-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 15px; color: white; padding: 30px; margin-bottom: 30px; }
+    .form-card { background: white; border-radius: 12px; padding: 25px; margin-bottom: 20px; box-shadow: 0 2px 15px rgba(0,0,0,0.1); border-left: 4px solid #667eea; }
+    .total-section { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); border-radius: 12px; padding: 20px; color: white; text-align: center; }
     
-    .action-btn {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        border-radius: 25px;
-        color: white;
-        padding: 10px 20px;
-        transition: all 0.3s ease;
-    }
-    .action-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        color: white;
-    }
+    /* STYLES BOUTONS */
+    .action-btn { border: none; border-radius: 25px; color: white; padding: 10px 20px; transition: all 0.3s ease; }
+    .action-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.2); color: white; }
     .btn-add { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
     .btn-save { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
     .btn-remove { background: linear-gradient(135deg, #ff6b6b 0%, #ffa8a8 100%); }
+
+    /* STYLES LIGNES D'ACHAT ET CONVERSION */
+    .item-row { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 10px; padding: 15px; margin-bottom: 10px; color: white; }
+    .conversion-info { background: rgba(255,255,255,.2); border-radius: 6px; padding: 8px; margin-top: 5px; font-size: .85em; }
     
-    .autocomplete-container {
-        position: relative;
-    }
-    .autocomplete-suggestions {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        background: white;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        max-height: 200px;
-        overflow-y: auto;
-        z-index: 1000;
-        display: none;
-    }
-    .autocomplete-item {
-        padding: 10px 15px;
-        cursor: pointer;
-        border-bottom: 1px solid #f0f0f0;
-        transition: background 0.2s ease;
-        color: #333;
-    }
-    .autocomplete-item:hover,
-    .autocomplete-item.active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-    }
-    .autocomplete-item:last-child {
-        border-bottom: none;
-    }
-    
-    .total-section {
-        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-        border-radius: 12px;
-        padding: 20px;
-        color: white;
-        text-align: center;
-    }
-    
-    .warning-card {
-        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-        border-radius: 10px;
-        padding: 15px;
-        margin-bottom: 20px;
-        color: white;
-    }
-    
-    .changes-summary {
-        background: linear-gradient(135deg, #d299c2 0%, #fef9d7 100%);
-        border-radius: 10px;
-        padding: 15px;
-        margin-bottom: 20px;
-        color: #333;
-    }
+    /* STYLES AUTOCOMPLETION */
+    .autocomplete-container { position: relative; }
+    .autocomplete-suggestions { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,.1); max-height: 200px; overflow-y: auto; z-index: 1000; display: none; }
+    .autocomplete-item { padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #f0f0f0; transition: background .2s ease; color: #333; }
+    .autocomplete-item:hover, .autocomplete-item.active { background: linear-gradient(135deg,#667eea 0%,#764ba2 100%); color: white; }
+    .autocomplete-item:last-child { border-bottom: none; }
+
+    /* STYLES STOCK ET UNITÉS */
+    .stock-location-select { background: linear-gradient(135deg,#4facfe 0%,#00f2fe 100%); border: none; border-radius: 8px; color: white; padding: 8px 12px; font-size: .9em; font-weight: 500; }
+    .stock-location-select option { background: white; color: #333; }
 </style>
+
+<script id="template-data" type="application/json">
+{
+    "available_units": {{ available_units|map(attribute='to_dict')|list|tojson|e if available_units else '[]' }},
+    "available_products": {{ available_products|map(attribute='to_dict')|list|tojson|e if available_products else '[]' }},
+    "existing_items": {{ purchase.items|map(attribute='to_dict')|list|tojson|e if purchase.items else '[]' }}
+}
+</script>
 {% endblock %}
 
 {% block content %}
@@ -119,116 +52,44 @@
                 <p class="mb-0">Date d'Achat: <strong>{{ purchase.requested_date.strftime('%d/%m/%Y à %H:%M') if purchase.requested_date else 'Date inconnue' }}</strong></p>
             </div>
             <div class="col-md-4 text-end">
-                <a href="{{ url_for('purchases.view_purchase', id=purchase.id) }}" class="btn btn-outline-light me-2">
-                    <i class="bi bi-eye me-2"></i>Voir Détail
-                </a>
-                <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-outline-light">
-                    <i class="bi bi-arrow-left me-2"></i>Retour Liste
-                </a>
+                <a href="{{ url_for('purchases.view_purchase', id=purchase.id) }}" class="btn btn-outline-light me-2"><i class="bi bi-eye me-2"></i>Voir</a>
+                <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-outline-light"><i class="bi bi-arrow-left me-2"></i>Retour</a>
             </div>
         </div>
     </div>
 
-    <!-- Avertissement -->
-    {% if purchase.status.value != 'draft' and purchase.status.value != 'requested' %}
-    <div class="warning-card">
-        <h6><i class="bi bi-exclamation-triangle me-2"></i>⚠️ Attention</h6>
-        <p class="mb-0">Ce bon d'achat a le statut "<strong>{{ purchase.status_label }}</strong>". 
-        {% if purchase.status.value == 'received' %}
-        Il a déjà impacté les stocks. Les modifications mettront à jour les stocks en conséquence.
-        {% elif purchase.status.value == 'cancelled' %}
-        Il a été annulé. La modification le remettra en statut "Brouillon".
-        {% endif %}
-        </p>
-    </div>
-    {% endif %}
-
+    <!-- Formulaire -->
     <form id="editPurchaseForm" method="POST">
         {{ form.hidden_tag() }}
         
-        <!-- Informations Fournisseur -->
-        <div class="row mb-4">
-            <div class="col-md-8">
-                <div class="form-card">
-                    <h5 class="mb-3"><i class="bi bi-building me-2"></i>Informations Générales</h5>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                {{ form.requested_date.label(class="form-label") }}
-                                {{ form.requested_date(class="form-control") }}
-                                {% if form.requested_date.errors %}
-                                    <div class="text-danger mt-1">{{ form.requested_date.errors[0] }}</div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                {{ form.supplier_name.label(class="form-label") }}
-                                {{ form.supplier_name(class="form-control") }}
-                                {% if form.supplier_name.errors %}
-                                    <div class="text-danger mt-1">{{ form.supplier_name.errors[0] }}</div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                {{ form.invoice_number.label(class="form-label") }}
-                                {{ form.invoice_number(class="form-control") }}
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                           <div class="mb-3">
-                                {{ form.urgency.label(class="form-label") }}
-                                {{ form.urgency(class="form-select") }}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-12">
-                            <div class="mb-3">
-                                {{ form.notes.label(class="form-label") }}
-                                {{ form.notes(class="form-control", rows="3") }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <!-- Informations générales et fournisseur -->
+        <div class="form-card mb-4">
+            <h5 class="mb-3"><i class="bi bi-building me-2"></i>Informations Générales et Fournisseur</h5>
+            <div class="row">
+                <div class="col-md-4"><div class="mb-3">{{ form.requested_date.label(class="form-label") }}{{ form.requested_date(class="form-control") }}</div></div>
+                <div class="col-md-4"><div class="mb-3">{{ form.supplier_name.label(class="form-label") }}{{ form.supplier_name(class="form-control") }}</div></div>
+                <div class="col-md-4"><div class="mb-3">{{ form.urgency.label(class="form-label") }}{{ form.urgency(class="form-select") }}</div></div>
             </div>
-            <div class="col-md-4">
-                <div class="changes-summary">
-                    <h6><i class="bi bi-clock-history me-2"></i>Historique</h6>
-                    <small>
-                        <strong>Créé :</strong> {{ purchase.created_at.strftime('%d/%m/%Y à %H:%M') }}<br>
-                        {% if purchase.updated_at and purchase.updated_at != purchase.created_at %}
-                        <strong>Modifié :</strong> {{ purchase.updated_at.strftime('%d/%m/%Y à %H:%M') }}<br>
-                        {% endif %}
-                        <strong>Statut :</strong> {{ purchase.status_label }}<br>
-                        <strong>Lignes :</strong> {{ purchase.items|length }} produit(s)
-                    </small>
-                </div>
+            <!-- ### DÉBUT DE LA CORRECTION : Champs réintégrés ### -->
+            <div class="row">
+                <div class="col-md-4"><div class="mb-3">{{ form.supplier_contact.label(class="form-label") }}{{ form.supplier_contact(class="form-control") }}</div></div>
+                <div class="col-md-4"><div class="mb-3">{{ form.supplier_phone.label(class="form-label") }}{{ form.supplier_phone(class="form-control") }}</div></div>
+                <div class="col-md-4"><div class="mb-3">{{ form.supplier_email.label(class="form-label") }}{{ form.supplier_email(class="form-control") }}</div></div>
             </div>
+            <div class="mb-3">{{ form.supplier_address.label(class="form-label") }}{{ form.supplier_address(class="form-control", rows=2) }}</div>
+            <!-- ### FIN DE LA CORRECTION ### -->
+            <div class="mb-3">{{ form.notes.label(class="form-label") }}{{ form.notes(class="form-control", rows=2) }}</div>
         </div>
 
         <!-- Lignes d'Achat -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="form-card">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5><i class="bi bi-cart me-2"></i>Lignes d'Achat</h5>
-                        <button type="button" class="action-btn btn-add" id="addItemBtn">
-                            <i class="bi bi-plus-circle me-2"></i>Ajouter Produit
-                        </button>
-                    </div>
-                    
-                    <div id="itemsContainer">
-                        <!-- Les lignes existantes seront chargées ici -->
-                    </div>
-                    
-                    <div class="alert alert-info mt-3" id="emptyItemsMessage" style="display: none;">
-                        <i class="bi bi-info-circle me-2"></i>Aucune ligne d'achat. Cliquez sur "Ajouter Produit" pour commencer.
-                    </div>
-                </div>
+        <div class="form-card mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0"><i class="bi bi-cart me-2"></i>Lignes d'Achat</h5>
+                <button type="button" class="action-btn btn-add" id="addItemBtn"><i class="bi bi-plus-circle me-2"></i>Ajouter Ligne</button>
+            </div>
+            <div id="itemsContainer"></div>
+            <div class="alert alert-info mt-3" id="emptyItemsMessage" style="display: none;">
+                <i class="bi bi-info-circle me-2"></i>Aucune ligne d'achat. Cliquez sur "Ajouter Ligne".
             </div>
         </div>
 
@@ -236,250 +97,203 @@
         <div class="row mb-4">
             <div class="col-md-8">
                 <div class="d-flex gap-2">
-                    <button type="submit" class="action-btn btn-save" name="action" value="save">
-                        <i class="bi bi-check-circle me-2"></i>Enregistrer Modifications
-                    </button>
+                    <button type="submit" class="action-btn btn-save" name="action" value="save"><i class="bi bi-check-circle me-2"></i>Enregistrer</button>
                     <a href="{{ url_for('purchases.view_purchase', id=purchase.id) }}" class="btn btn-outline-secondary">Annuler</a>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="total-section">
-                    <h5>💰 Total Bon d'Achat</h5>
-                    <h3 id="totalAmount">{{ purchase.total_amount|round(2) or 0.00 }} DA</h3>
-                    <small id="itemCount">{{ purchase.items|length }} produit(s)</small>
+                    <h5>💰 Total</h5>
+                    <h3 id="totalAmount">0,00 DA</h3>
+                    <small id="itemCount">0 produit(s)</small>
                 </div>
             </div>
         </div>
     </form>
 </div>
 
-<!-- Template pour ligne d'achat -->
+<!-- Template pour une ligne d'achat -->
 <template id="itemRowTemplate">
     <div class="item-row" data-item-index="">
         <div class="row align-items-center">
-            <div class="col-md-4">
-                <label class="form-label">🔍 Produit</label>
-                <div class="autocomplete-container">
-                    <input type="text" 
-                           class="form-control product-search" 
-                           placeholder="Tapez 2-3 lettres (ex: FA pour Farine)"
-                           autocomplete="off">
-                    <input type="hidden" class="product-id" name="items[][product_id]">
-                    <input type="hidden" class="item-id" name="items[][id]">
-                    <div class="autocomplete-suggestions"></div>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Quantité</label>
-                <input type="number" 
-                       class="form-control item-quantity" 
-                       name="items[][quantity_ordered]" 
-                       placeholder="0"
-                       min="0.001"
-                       step="any">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Prix Unitaire</label>
-                <input type="number" 
-                       class="form-control item-price" 
-                       name="items[][unit_price]" 
-                       placeholder="0,00"
-                       min="0"
-                       step="any">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Total</label>
-                <div class="fw-bold item-total">0,00 DA</div>
-            </div>
-            <div class="col-md-2 text-end">
-                <button type="button" class="action-btn btn-remove remove-item-btn">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </div>
+            <div class="col-md-2"><label class="form-label">🔍 Produit</label><div class="autocomplete-container"><input type="text" class="form-control product-search" placeholder="Taper nom..." autocomplete="off"><input type="hidden" class="product-id" name="items[][product_id]"><div class="autocomplete-suggestions"></div></div></div>
+            <div class="col-md-2"><label class="form-label">📦 Conditionnement</label><select class="form-control unit-select" name="items[][unit]"><option value="">Unité standard</option></select></div>
+            <div class="col-md-1"><label class="form-label">Quantité</label><input type="number" class="form-control item-quantity" name="items[][quantity_ordered]" placeholder="0" min="0.001" step="any"></div>
+            <div class="col-md-2"><label class="form-label">Prix Unitaire</label><input type="number" class="form-control item-price" name="items[][unit_price]" placeholder="0,00" min="0" step="any"></div>
+            <div class="col-md-2"><label class="form-label">🏪 Stock</label><select class="form-control stock-location-select" name="items[][stock_location]" required><option value="ingredients_magasin">🏪 Magasin</option><option value="ingredients_local">🏭 Local</option><option value="comptoir">🛒 Comptoir</option><option value="consommables">📦 Conso.</option></select></div>
+            <div class="col-md-2"><label class="form-label">Total</label><div class="fw-bold item-total">0,00 DA</div></div>
+            <div class="col-md-1 text-end"><button type="button" class="action-btn btn-remove remove-item-btn"><i class="bi bi-trash"></i></button></div>
         </div>
+        <div class="conversion-info mt-2" style="display: none;"><strong>💡 Conversion :</strong> <span class="conversion-text"></span></div>
     </div>
 </template>
-
-<div id="purchaseData" style="display: none;"
-     data-existing-items="{{ purchase.items|map(attribute='to_dict')|list|tojson|e }}"
-     data-purchase-id="{{ purchase.id }}">
-</div>
-
-<div id="productsData" style="display: none;"
-     data-available-products="{{ available_products|map(attribute='to_dict')|list|tojson|e }}">
-</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+// Le bloc SCRIPT reste identique à ma réponse précédente. Il est déjà correct.
 let itemIndex = 0;
-let existingItems = [];
 let availableProducts = [];
+let availableUnits = [];
+let existingItems = [];
 
 document.addEventListener('DOMContentLoaded', function() {
     loadDataFromJSON();
     loadExistingItems();
     
-    document.getElementById('addItemBtn').addEventListener('click', function() {
-        addItemRow();
-    });
-    
-    calculateGrandTotal();
+    document.getElementById('addItemBtn').addEventListener('click', () => addItemRow());
+    document.getElementById('editPurchaseForm').addEventListener('submit', validateForm);
 });
 
 function loadDataFromJSON() {
-    const purchaseDataElement = document.getElementById('purchaseData');
-    if (purchaseDataElement) {
-        try {
-            existingItems = JSON.parse(purchaseDataElement.dataset.existingItems);
-        } catch (e) {
-            console.error('Erreur parsing existing items:', e);
-            existingItems = [];
-        }
-    }
-    
-    const productsDataElement = document.getElementById('productsData');
-    if (productsDataElement) {
-        try {
-            availableProducts = JSON.parse(productsDataElement.dataset.availableProducts);
-        } catch (e) {
-            console.error('Erreur parsing available products:', e);
-            availableProducts = [];
-        }
+    try {
+        const data = JSON.parse(document.getElementById('template-data').textContent);
+        availableProducts = data.available_products || [];
+        availableUnits = data.available_units || [];
+        existingItems = data.existing_items || [];
+    } catch (e) {
+        console.error("Erreur de chargement des données JSON:", e);
     }
 }
 
 function loadExistingItems() {
-    if (existingItems && existingItems.length > 0) {
-        existingItems.forEach(function(item) {
-            addItemRow(item);
-        });
-        document.getElementById('emptyItemsMessage').style.display = 'none';
+    if (existingItems.length > 0) {
+        existingItems.forEach(item => addItemRow(item));
     } else {
-        addItemRow(); 
+        addItemRow(); // Ajoute une ligne vide si l'achat n'a pas d'items
     }
+    updateUI();
 }
 
-function addItemRow(existingItem = null) {
+function addItemRow(itemData = null) {
     const container = document.getElementById('itemsContainer');
     const template = document.getElementById('itemRowTemplate');
     const clone = template.content.cloneNode(true);
-    
-    const itemRow = clone.querySelector('.item-row');
-    itemRow.setAttribute('data-item-index', itemIndex);
-    
-    if (existingItem) {
-        clone.querySelector('.product-search').value = existingItem.product_name || 'Produit inconnu';
-        clone.querySelector('.product-id').value = existingItem.product_id || '';
-        clone.querySelector('.item-id').value = existingItem.id || '';
-        clone.querySelector('.item-quantity').value = existingItem.original_quantity || existingItem.quantity_ordered || '';
-        clone.querySelector('.item-price').value = existingItem.original_unit_price || existingItem.unit_price || '';
-    }
-    
-    setupRowEvents(clone.firstElementChild, itemIndex);
-    container.appendChild(clone);
-    
-    if(existingItem) {
-        calculateItemTotal(itemIndex);
-    }
+    const row = clone.querySelector('.item-row');
+    row.dataset.itemIndex = itemIndex;
 
+    const unitSelect = clone.querySelector('.unit-select');
+    availableUnits.forEach(unit => {
+        const option = new Option(unit.name, unit.id);
+        option.dataset.factor = unit.conversion_factor;
+        option.dataset.base = unit.base_unit;
+        unitSelect.add(option);
+    });
+
+    if (itemData) {
+        clone.querySelector('.product-search').value = itemData.product_name || '';
+        clone.querySelector('.product-id').value = itemData.product_id || '';
+        clone.querySelector('.item-quantity').value = itemData.original_quantity || itemData.quantity_ordered;
+        clone.querySelector('.item-price').value = itemData.original_unit_price || itemData.unit_price;
+        if (itemData.original_unit_id) {
+            clone.querySelector('.unit-select').value = itemData.original_unit_id;
+        }
+        clone.querySelector('.stock-location-select').value = itemData.stock_location || 'ingredients_magasin';
+    }
+    
+    container.appendChild(clone);
+    setupRowEvents(row);
     itemIndex++;
+    updateUI();
 }
 
-function setupRowEvents(itemRow, index) {
-    const searchInput = itemRow.querySelector('.product-search');
-    const quantityInput = itemRow.querySelector('.item-quantity');
-    const priceInput = itemRow.querySelector('.item-price');
-    const removeBtn = itemRow.querySelector('.remove-item-btn');
+function setupRowEvents(row) {
+    const index = row.dataset.itemIndex;
+    const searchInput = row.querySelector('.product-search');
+    const quantityInput = row.querySelector('.item-quantity');
+    const priceInput = row.querySelector('.item-price');
+    const unitSelect = row.querySelector('.unit-select');
 
-    setupAutocomplete(searchInput, index);
+    setupAutocomplete(searchInput);
     
-    const updateTotal = () => {
-        calculateItemTotal(index);
+    const updateAll = () => {
+        updateConversionDisplay(row);
+        calculateItemTotal(row);
         calculateGrandTotal();
     };
 
-    quantityInput.addEventListener('input', updateTotal);
-    priceInput.addEventListener('input', updateTotal);
-    
-    removeBtn.addEventListener('click', () => {
-        itemRow.remove();
+    [quantityInput, priceInput, unitSelect].forEach(el => el.addEventListener('input', updateAll));
+    row.querySelector('.remove-item-btn').addEventListener('click', () => {
+        row.remove();
+        updateUI();
         calculateGrandTotal();
-        if (document.querySelectorAll('.item-row').length === 0) {
-            document.getElementById('emptyItemsMessage').style.display = 'block';
-        }
     });
+
+    // Calculs initiaux pour les lignes pré-remplies
+    updateAll();
 }
 
-function calculateItemTotal(index) {
-    const row = document.querySelector(`[data-item-index="${index}"]`);
-    if (!row) return;
-    
+function calculateItemTotal(row) {
     const quantity = parseFloat(row.querySelector('.item-quantity').value) || 0;
     const price = parseFloat(row.querySelector('.item-price').value) || 0;
     const total = quantity * price;
-    
     row.querySelector('.item-total').textContent = total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' DA';
 }
 
 function calculateGrandTotal() {
     let grandTotal = 0;
-    let itemCount = 0;
-    
     document.querySelectorAll('.item-row').forEach(row => {
         const quantity = parseFloat(row.querySelector('.item-quantity').value) || 0;
         const price = parseFloat(row.querySelector('.item-price').value) || 0;
-        
-        if (quantity > 0 && price > 0) {
-            grandTotal += quantity * price;
-            itemCount++;
-        }
+        grandTotal += quantity * price;
     });
-    
     document.getElementById('totalAmount').textContent = grandTotal.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' DA';
-    document.getElementById('itemCount').textContent = itemCount + ' produit(s)';
 }
 
-function setupAutocomplete(inputElement, index) {
-    const suggestionsContainer = inputElement.parentNode.querySelector('.autocomplete-suggestions');
+function updateConversionDisplay(row) {
+    const quantity = parseFloat(row.querySelector('.item-quantity').value) || 0;
+    const unitSelect = row.querySelector('.unit-select');
+    const conversionInfo = row.querySelector('.conversion-info');
+    const conversionText = row.querySelector('.conversion-text');
     
-    inputElement.addEventListener('input', function() {
-        const query = this.value.trim().toLowerCase();
-        
-        if (query.length >= 2) {
-            const filteredProducts = availableProducts.filter(p => p.name.toLowerCase().includes(query));
-            showSuggestions(filteredProducts, suggestionsContainer, inputElement, index);
+    if (unitSelect.value && quantity > 0) {
+        const selectedOption = unitSelect.options[unitSelect.selectedIndex];
+        const factor = parseFloat(selectedOption.dataset.factor);
+        const baseUnit = selectedOption.dataset.base;
+        if(factor > 0) {
+            const totalBase = (quantity * factor).toFixed(3);
+            conversionText.textContent = `${quantity} x ${selectedOption.text} = ${totalBase}${baseUnit}`;
+            conversionInfo.style.display = 'block';
         } else {
-            hideSuggestions(suggestionsContainer);
+            conversionInfo.style.display = 'none';
         }
+    } else {
+        conversionInfo.style.display = 'none';
+    }
+}
+
+function setupAutocomplete(inputElement) {
+    const suggestionsContainer = inputElement.parentNode.querySelector('.autocomplete-suggestions');
+    inputElement.addEventListener('input', () => {
+        const query = inputElement.value.trim().toLowerCase();
+        if (query.length < 2) {
+            hideSuggestions(suggestionsContainer);
+            return;
+        }
+        const filteredProducts = availableProducts.filter(p => p.name.toLowerCase().includes(query));
+        showSuggestions(filteredProducts, suggestionsContainer, inputElement);
     });
 
-    document.addEventListener('click', (e) => {
-        if (!inputElement.contains(e.target)) {
+    document.addEventListener('click', e => {
+        if (!inputElement.parentElement.contains(e.target)) {
             hideSuggestions(suggestionsContainer);
         }
     });
 }
 
-function showSuggestions(products, container, inputElement, index) {
+function showSuggestions(products, container, inputElement) {
     container.innerHTML = '';
-    
     if (products.length === 0) {
-        container.innerHTML = '<div class="autocomplete-item">Aucun produit trouvé</div>';
+        container.innerHTML = '<div class="autocomplete-item">Aucun produit</div>';
     } else {
         products.forEach(product => {
             const div = document.createElement('div');
             div.className = 'autocomplete-item';
             div.innerHTML = `<strong>${product.name}</strong>`;
-            
-            div.addEventListener('click', () => {
-                selectProduct(inputElement, index, product);
-            });
-            
+            div.onclick = () => selectProduct(inputElement, product);
             container.appendChild(div);
         });
     }
-    
     container.style.display = 'block';
 }
 
@@ -487,30 +301,33 @@ function hideSuggestions(container) {
     container.style.display = 'none';
 }
 
-function selectProduct(inputElement, index, productData) {
-    inputElement.value = productData.name;
-    const row = document.querySelector(`[data-item-index="${index}"]`);
-    row.querySelector('.product-id').value = productData.id;
+function selectProduct(inputElement, product) {
+    const row = inputElement.closest('.item-row');
+    inputElement.value = product.name;
+    row.querySelector('.product-id').value = product.id;
     hideSuggestions(inputElement.parentNode.querySelector('.autocomplete-suggestions'));
 }
 
-document.getElementById('editPurchaseForm').addEventListener('submit', function(e) {
+function updateUI() {
+    const itemCount = document.querySelectorAll('.item-row').length;
+    document.getElementById('emptyItemsMessage').style.display = itemCount > 0 ? 'none' : 'block';
+    document.getElementById('itemCount').textContent = `${itemCount} produit(s)`;
+}
+
+function validateForm(e) {
     let hasValidItems = false;
     document.querySelectorAll('.item-row').forEach(row => {
         const productId = row.querySelector('.product-id').value;
         const quantity = row.querySelector('.item-quantity').value;
         const price = row.querySelector('.item-price').value;
-        if (productId && quantity > 0 && price > 0) {
+        if (productId && parseFloat(quantity) > 0 && parseFloat(price) >= 0) {
             hasValidItems = true;
         }
     });
-
     if (!hasValidItems) {
         e.preventDefault();
         alert('Veuillez ajouter au moins un produit valide avec une quantité et un prix.');
-        return false;
     }
-});
-
+}
 </script>
 {% endblock %}
