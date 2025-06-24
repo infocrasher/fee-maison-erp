@@ -54,7 +54,6 @@ class Category(db.Model):
         return f'<Category {self.name}>'
 
 class Product(db.Model):
-    # ... (tous les champs de la colonne restent les mêmes) ...
     __tablename__ = 'products'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -63,28 +62,34 @@ class Product(db.Model):
     description = db.Column(db.Text)
     price = db.Column(db.Numeric(10, 2))
     cost_price = db.Column(db.Numeric(10, 2))
-    unit = db.Column(db.String(20), nullable=False)
+    unit = db.Column(db.String(20), nullable=False) # Unité d'affichage principale (ex: "kg", "l", "pièce")
     sku = db.Column(db.String(50), unique=True, nullable=True)
-    quantity_in_stock = db.Column(db.Float, default=0.0)
+    quantity_in_stock = db.Column(db.Float, default=0.0) # Ce champ est probablement obsolète, à vérifier
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # === Gestion 4 Stocks ===
+    # Les valeurs ici sont stockées dans l'unité de base (ex: grammes, millilitres)
     stock_comptoir = db.Column(db.Float, default=0.0, nullable=False)
     stock_ingredients_local = db.Column(db.Float, default=0.0, nullable=False) 
     stock_ingredients_magasin = db.Column(db.Float, default=0.0, nullable=False)
     stock_consommables = db.Column(db.Float, default=0.0, nullable=False)
     
+    # Seuils d'alerte par stock (dans l'unité de base)
     seuil_min_comptoir = db.Column(db.Float, default=0.0)
     seuil_min_ingredients_local = db.Column(db.Float, default=0.0)
     seuil_min_ingredients_magasin = db.Column(db.Float, default=0.0)
     seuil_min_consommables = db.Column(db.Float, default=0.0)
     
+    # Date dernière mise à jour stock
     last_stock_update = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # Relations
     order_items = db.relationship('OrderItem', backref='product', lazy='dynamic')
 
     @property
     def to_dict(self):
+        """Retourne une représentation dictionnaire de l'objet, sérialisable en JSON."""
         return {
             'id': self.id,
             'name': self.name,
@@ -96,15 +101,18 @@ class Product(db.Model):
     
     @property
     def total_stock_all_locations(self):
+        """Stock total toutes localisations confondues (dans l'unité de base)"""
         return (self.stock_comptoir + self.stock_ingredients_local + 
                 self.stock_ingredients_magasin + self.stock_consommables)
     
     @property
     def stock_value_total(self):
+        """Valeur totale du stock (toutes localisations)"""
         cost = self.cost_price or 0.0
         return float(self.total_stock_all_locations) * float(cost)
     
     def get_stock_by_location_type(self, location_type):
+        """Récupère le stock par type de localisation (dans l'unité de base)"""
         location_mapping = {
             'comptoir': self.stock_comptoir,
             'ingredients_local': self.stock_ingredients_local,
@@ -114,6 +122,7 @@ class Product(db.Model):
         return location_mapping.get(location_type, 0.0)
     
     def get_seuil_min_by_location(self, location_type):
+        """Récupère le seuil minimum par localisation"""
         seuil_mapping = {
             'comptoir': self.seuil_min_comptoir or 0.0,
             'ingredients_local': self.seuil_min_ingredients_local or 0.0,
@@ -123,63 +132,35 @@ class Product(db.Model):
         return seuil_mapping.get(location_type, 0.0)
     
     def is_low_stock_by_location(self, location_type):
+        """Vérifie si le stock est faible pour une localisation"""
         current_stock = self.get_stock_by_location_type(location_type)
         min_threshold = self.get_seuil_min_by_location(location_type)
         return current_stock <= min_threshold
     
     def get_low_stock_locations(self):
+        """Retourne la liste des localisations en stock faible"""
         locations = ['comptoir', 'ingredients_local', 'ingredients_magasin', 'consommables']
         return [loc for loc in locations if self.is_low_stock_by_location(loc)]
     
+    def update_stock_location(self, location_type, quantity_change):
+        """Met à jour le stock d'une localisation spécifique. DEPRECATED. Utiliser update_stock_by_location"""
+        return self.update_stock_by_location(location_type, quantity_change)
+    
     def get_location_display_name(self, location_type):
+        """Retourne le nom d'affichage de la localisation"""
         names = {
-            'comptoir': 'Stock Vente',
-            'ingredients_local': 'Labo B',
-            'ingredients_magasin': 'Labo A (Réserve)',
+            'comptoir': 'Stock Comptoir',
+            'ingredients_local': 'Stock Local Production',
+            'ingredients_magasin': 'Stock Magasin',
             'consommables': 'Stock Consommables'
         }
         return names.get(location_type, location_type.title())
 
-    # ### DEBUT DE LA CORRECTION ###
-    # On supprime l'import global de la classe
-    # from app.stock.stock_manager import StockLocationManager
-
-    def update_stock_location(self, location_type, quantity_change):
-        """
-        Met à jour le stock d'une localisation spécifique.
-        NOTE: Cette méthode est conservée pour la compatibilité, mais elle 
-              appelle maintenant la nouvelle méthode plus robuste.
-        """
-        return self.update_stock_by_location(location_type, quantity_change)
-
-    def get_stock_by_location(self, location_key: str) -> float:
-        """
-        Récupère le stock pour un emplacement donné.
-        :param location_key: Le nom de la colonne (ex: 'ingredients_magasin').
-        :return: La valeur du stock.
-        """
-        return getattr(self, location_key, 0.0)
-
-    def update_stock_by_location(self, location_key: str, quantity_change: float) -> bool:
-        """
-        Met à jour le stock pour un emplacement donné.
-        :param location_key: Le nom de la colonne (ex: 'ingredients_magasin').
-        :param quantity_change: La quantité à ajouter ou à retirer.
-        :return: True si la mise à jour a réussi, False sinon.
-        """
-        # On ne déplace pas l'import ici car cette méthode est simple.
-        # Mais pour la bonne pratique, on pourrait le faire.
-        if hasattr(self, location_key):
-            current_value = getattr(self, location_key, 0.0)
-            new_value = max(0, current_value + quantity_change)
-            setattr(self, location_key, new_value)
-            self.last_stock_update = datetime.utcnow()
-            return True
-        return False
-    # ### FIN DE LA CORRECTION ###
-
     def get_stock_display(self, location_type='total'):
-        # ... (le reste de la méthode reste identique)
+        """
+        Retourne une chaîne de caractères formatée pour l'affichage du stock,
+        en convertissant la valeur de base (grammes) vers l'unité d'affichage (KG/L).
+        """
         stock_value = 0
         if location_type == 'total':
             stock_value = self.total_stock_all_locations
@@ -207,6 +188,7 @@ class Product(db.Model):
             return f"{stock_value} {base_unit} (brut)"
 
     def base_unit_for_recipes(self):
+        """Détermine l'unité de base pour les calculs de recette."""
         unit_lower = self.unit.lower()
         if unit_lower in ['kg', 'g', 'mg']:
             return 'g'
@@ -216,6 +198,55 @@ class Product(db.Model):
     
     def __repr__(self):
         return f'<Product {self.name}>'
+
+# ### DEBUT DE LA MODIFICATION ###
+# AJOUT DE LA CLASSE MANQUANTE
+class RecipeIngredient(db.Model):
+    __tablename__ = 'recipe_ingredients'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    recipe_id = db.Column(db.Integer, db.ForeignKey('recipes.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    quantity_needed = db.Column(db.Numeric(10, 3), nullable=False)
+    unit = db.Column(db.String(50), nullable=False)
+    notes = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relations
+    product = db.relationship('Product', backref='recipe_uses')
+    
+    def _convert_unit_cost(self):
+        if not self.product or not self.product.cost_price:
+            return Decimal('0.0')
+        product_unit = self.product.unit.upper()
+        recipe_unit = self.unit.upper()
+        base_cost = Decimal(self.product.cost_price)
+        if product_unit == recipe_unit:
+            return base_cost
+        conversions = {
+            ('KG', 'G'): base_cost / 1000,
+            ('L', 'ML'): base_cost / 1000,
+            ('G', 'KG'): base_cost * 1000,
+            ('ML', 'L'): base_cost * 1000,
+            ('KG', 'MG'): base_cost / 1000000,
+            ('L', 'CL'): base_cost / 100,
+        }
+        conversion_key = (product_unit, recipe_unit)
+        if conversion_key in conversions:
+            return conversions[conversion_key]
+        print(f"⚠️ Conversion non trouvée: {product_unit} → {recipe_unit} pour {self.product.name}")
+        return base_cost
+    
+    @property
+    def cost(self):
+        if not self.product or not self.product.cost_price:
+            return Decimal('0.0')
+        converted_cost_per_unit = self._convert_unit_cost()
+        return Decimal(self.quantity_needed) * converted_cost_per_unit
+    
+    def __repr__(self):
+        return f'<RecipeIngredient {self.recipe.name} - {self.product.name}>'
+# ### FIN DE LA MODIFICATION ###
     
 class Recipe(db.Model):
     __tablename__ = 'recipes'
@@ -231,7 +262,6 @@ class Recipe(db.Model):
     difficulty_level = db.Column(db.String(20))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Nouvelle colonne pour spécifier le lieu de production.
     production_location = db.Column(
         db.String(50), 
         nullable=False, 
@@ -279,6 +309,11 @@ class Order(db.Model):
     def order_date(self):
         return self.due_date
     
+    @property
+    def items_count(self):
+        if hasattr(self.items, 'count'): return self.items.count()
+        return len(self.items)
+
     def get_items_count(self):
         return self.items.count() if hasattr(self.items, 'count') else len(self.items)
     
@@ -325,7 +360,6 @@ class Order(db.Model):
     def get_delivery_option_display(self):
         if not self.delivery_option:
             return "Non spécifié"
-        
         delivery_options = {
             'pickup': 'Retrait en magasin',
             'delivery': 'Livraison à domicile'
@@ -390,7 +424,6 @@ class Order(db.Model):
         items_total = Decimal('0.0')
         for item in self.items:
             items_total += item.subtotal
-        
         delivery_cost = Decimal(self.delivery_cost or 0)
         self.total_amount = items_total + delivery_cost
         return self.total_amount
@@ -409,28 +442,17 @@ class Order(db.Model):
         return "Non définie"
     
     def is_overdue(self):
-        if not self.due_date:
-            return False
+        if not self.due_date: return False
         return self.due_date < datetime.utcnow() and self.status not in ['completed', 'cancelled', 'delivered']
     
     def get_priority_class(self):
-        if self.is_overdue():
-            return 'danger'
-        elif self.status == 'ready_at_shop':
-            return 'success'
-        elif self.status == 'in_production':
-            return 'warning'
+        if self.is_overdue(): return 'danger'
+        elif self.status == 'ready_at_shop': return 'success'
+        elif self.status == 'in_production': return 'warning'
         return 'info'
     
     def __repr__(self):
         return f'<Order {self.id}: {self.customer_name or "Sans nom"}>'
-    
-    @property
-    def items_count(self):
-        """Compte le nombre d'items de manière sûre pour les relations lazy."""
-        if hasattr(self.items, 'count'):
-            return self.items.count()
-        return len(self.items)
 
 class OrderItem(db.Model):
     __tablename__ = 'order_items'
@@ -460,8 +482,7 @@ class OrderItem(db.Model):
         return f"{self.unit_price:.2f} DA"
     
     def get_formatted_quantity(self):
-        if self.quantity == int(self.quantity):
-            return str(int(self.quantity))
+        if self.quantity == int(self.quantity): return str(int(self.quantity))
         return f"{self.quantity:.2f}"
     
     def __repr__(self):
@@ -479,10 +500,8 @@ class Unit(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # ### DEBUT DE LA CORRECTION DÉFINITIVE ###
     @property
     def to_dict(self):
-        """Retourne une représentation dictionnaire de l'objet, sérialisable en JSON."""
         return {
             'id': self.id,
             'name': self.name,
@@ -491,7 +510,6 @@ class Unit(db.Model):
             'unit_type': self.unit_type,
             'display_order': self.display_order
         }
-    # ### FIN DE LA CORRECTION DÉFINITIVE ###
     
     def __repr__(self):
         return f'<Unit {self.name}>'
