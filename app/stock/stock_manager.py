@@ -25,8 +25,8 @@ class StockLocationManager:
 
     # Liste des emplacements de production valides pour les recettes
     PRODUCTION_LOCATIONS = [
-        ('ingredients_magasin', 'Labo A (Réserve)'),
-        ('ingredients_local', 'Labo B')
+        ('ingredients_magasin', 'Labo Magasin'),
+        ('ingredients_local', 'Labo Local')
     ]
 
     @classmethod
