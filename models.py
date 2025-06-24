@@ -54,6 +54,7 @@ class Category(db.Model):
         return f'<Category {self.name}>'
 
 class Product(db.Model):
+    # ... (tous les champs de la colonne restent les mêmes) ...
     __tablename__ = 'products'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -68,27 +69,22 @@ class Product(db.Model):
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # === Gestion 4 Stocks ===
     stock_comptoir = db.Column(db.Float, default=0.0, nullable=False)
     stock_ingredients_local = db.Column(db.Float, default=0.0, nullable=False) 
     stock_ingredients_magasin = db.Column(db.Float, default=0.0, nullable=False)
     stock_consommables = db.Column(db.Float, default=0.0, nullable=False)
     
-    # Seuils d'alerte par stock
     seuil_min_comptoir = db.Column(db.Float, default=0.0)
     seuil_min_ingredients_local = db.Column(db.Float, default=0.0)
     seuil_min_ingredients_magasin = db.Column(db.Float, default=0.0)
     seuil_min_consommables = db.Column(db.Float, default=0.0)
     
-    # Date dernière mise à jour stock
     last_stock_update = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relations
     order_items = db.relationship('OrderItem', backref='product', lazy='dynamic')
 
     @property
     def to_dict(self):
-        """Retourne une représentation dictionnaire de l'objet, sérialisable en JSON."""
         return {
             'id': self.id,
             'name': self.name,
@@ -100,18 +96,15 @@ class Product(db.Model):
     
     @property
     def total_stock_all_locations(self):
-        """Stock total toutes localisations confondues"""
         return (self.stock_comptoir + self.stock_ingredients_local + 
                 self.stock_ingredients_magasin + self.stock_consommables)
     
     @property
     def stock_value_total(self):
-        """Valeur totale du stock (toutes localisations)"""
         cost = self.cost_price or 0.0
         return float(self.total_stock_all_locations) * float(cost)
     
     def get_stock_by_location_type(self, location_type):
-        """Récupère le stock par type de localisation (dans l'unité de base)"""
         location_mapping = {
             'comptoir': self.stock_comptoir,
             'ingredients_local': self.stock_ingredients_local,
@@ -121,7 +114,6 @@ class Product(db.Model):
         return location_mapping.get(location_type, 0.0)
     
     def get_seuil_min_by_location(self, location_type):
-        """Récupère le seuil minimum par localisation"""
         seuil_mapping = {
             'comptoir': self.seuil_min_comptoir or 0.0,
             'ingredients_local': self.seuil_min_ingredients_local or 0.0,
@@ -131,25 +123,15 @@ class Product(db.Model):
         return seuil_mapping.get(location_type, 0.0)
     
     def is_low_stock_by_location(self, location_type):
-        """Vérifie si le stock est faible pour une localisation"""
         current_stock = self.get_stock_by_location_type(location_type)
         min_threshold = self.get_seuil_min_by_location(location_type)
         return current_stock <= min_threshold
     
     def get_low_stock_locations(self):
-        """Retourne la liste des localisations en stock faible"""
         locations = ['comptoir', 'ingredients_local', 'ingredients_magasin', 'consommables']
         return [loc for loc in locations if self.is_low_stock_by_location(loc)]
     
-    def update_stock_location(self, location_type, quantity_change):
-        """Met à jour le stock d'une localisation spécifique.
-    NOTE: Cette méthode est conservée pour la compatibilité, mais elle 
-          appelle maintenant la nouvelle méthode plus robuste."""
-    
-        return self.update_stock_by_location(location_type, quantity_change)
-    
     def get_location_display_name(self, location_type):
-        """Retourne le nom d'affichage de la localisation"""
         names = {
             'comptoir': 'Stock Vente',
             'ingredients_local': 'Labo B',
@@ -158,40 +140,46 @@ class Product(db.Model):
         }
         return names.get(location_type, location_type.title())
 
-    # ### DEBUT DU BLOC A AJOUTER ###
-    from app.stock.stock_manager import StockLocationManager
+    # ### DEBUT DE LA CORRECTION ###
+    # On supprime l'import global de la classe
+    # from app.stock.stock_manager import StockLocationManager
+
+    def update_stock_location(self, location_type, quantity_change):
+        """
+        Met à jour le stock d'une localisation spécifique.
+        NOTE: Cette méthode est conservée pour la compatibilité, mais elle 
+              appelle maintenant la nouvelle méthode plus robuste.
+        """
+        return self.update_stock_by_location(location_type, quantity_change)
 
     def get_stock_by_location(self, location_key: str) -> float:
         """
-        Récupère le stock pour un emplacement donné en utilisant le StockLocationManager.
+        Récupère le stock pour un emplacement donné.
         :param location_key: Le nom de la colonne (ex: 'ingredients_magasin').
         :return: La valeur du stock.
         """
-        # La clé est directement le nom de la colonne grâce à notre SelectField
         return getattr(self, location_key, 0.0)
 
     def update_stock_by_location(self, location_key: str, quantity_change: float) -> bool:
         """
-        Met à jour le stock pour un emplacement donné en utilisant le StockLocationManager.
+        Met à jour le stock pour un emplacement donné.
         :param location_key: Le nom de la colonne (ex: 'ingredients_magasin').
-        :param quantity_change: La quantité à ajouter (valeur positive) ou à retirer (valeur négative).
+        :param quantity_change: La quantité à ajouter ou à retirer.
         :return: True si la mise à jour a réussi, False sinon.
         """
+        # On ne déplace pas l'import ici car cette méthode est simple.
+        # Mais pour la bonne pratique, on pourrait le faire.
         if hasattr(self, location_key):
             current_value = getattr(self, location_key, 0.0)
-            # On s'assure que le stock ne devient pas négatif
             new_value = max(0, current_value + quantity_change)
             setattr(self, location_key, new_value)
             self.last_stock_update = datetime.utcnow()
             return True
         return False
-    # ### FIN DU BLOC A AJOUTER ###
+    # ### FIN DE LA CORRECTION ###
 
     def get_stock_display(self, location_type='total'):
-        """
-        Retourne une chaîne de caractères formatée pour l'affichage du stock,
-        en convertissant la valeur de base (grammes) vers l'unité d'affichage (KG/L).
-        """
+        # ... (le reste de la méthode reste identique)
         stock_value = 0
         if location_type == 'total':
             stock_value = self.total_stock_all_locations
@@ -219,7 +207,6 @@ class Product(db.Model):
             return f"{stock_value} {base_unit} (brut)"
 
     def base_unit_for_recipes(self):
-        """Détermine l'unité de base pour les calculs de recette."""
         unit_lower = self.unit.lower()
         if unit_lower in ['kg', 'g', 'mg']:
             return 'g'
