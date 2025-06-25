@@ -18,7 +18,15 @@ class ProductForm(FlaskForm):
     name = StringField('Nom du produit', validators=[DataRequired(), Length(max=200)])
     description = TextAreaField('Description', validators=[Optional()])
     sku = StringField('SKU / Référence', validators=[Optional(), Length(max=50)])
-    product_type = SelectField('Type', choices=[('finished', 'Produit Fini'), ('ingredient', 'Ingrédient')], validators=[DataRequired()])
+    product_type = SelectField(
+    'Type', 
+    choices=[
+        ('ingredient', 'Ingrédient'),
+        ('finished', 'Produit Fini'),
+        ('consommable', 'Consommable') # On ajoute l'option ici
+    ], 
+    validators=[DataRequired()]
+)
     unit = StringField('Unité (ex: kg, L, pièce)', validators=[DataRequired(), Length(max=20)])
     price = FloatField('Prix de vente (DA)', validators=[Optional(), NumberRange(min=0)])
     cost_price = FloatField("Prix d'achat / Coût de revient (DA)", validators=[Optional(), NumberRange(min=0)])
