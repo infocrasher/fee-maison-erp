@@ -113,7 +113,7 @@ def list_purchases():
 @purchases.route('/new', methods=['GET', 'POST'])
 @login_required
 def new_purchase():
-    """Création d'un nouveau bon d'achat avec calcul du PMP et mise à jour stock."""
+    """Création d'un nouveau bon d'achat avec PMP et gestion des consommables."""
     Product, User, Unit = get_main_models()
 
     if request.method == 'POST':
@@ -122,12 +122,12 @@ def new_purchase():
         form = PurchaseForm()
 
     if form.validate_on_submit():
+        # ... (le début de la fonction reste identique)
         local_tz = pytz.timezone('Europe/Paris')
         naive_date = form.requested_date.data
         aware_date = local_tz.localize(naive_date)
-
-        # On crée l'objet Achat mais on ne le sauvegarde pas tout de suite
         purchase = Purchase(
+            # ... (tous les champs de l'objet Purchase)
             supplier_name=form.supplier_name.data,
             supplier_contact=form.supplier_contact.data,
             supplier_phone=form.supplier_phone.data,
@@ -149,8 +149,6 @@ def new_purchase():
         db.session.add(purchase)
         db.session.flush()
 
-        # ### DEBUT DE LA NOUVELLE LOGIQUE PMP ###
-        
         items_added = 0
         product_ids = request.form.getlist('items[][product_id]')
         quantities = request.form.getlist('items[][quantity_ordered]')
@@ -165,42 +163,49 @@ def new_purchase():
                 quantity = float(quantities[i])
                 price_per_unit_achat = float(prices[i])
                 unit_id = int(unit_ids[i])
-                stock_location = stock_locations[i]
-
+                
                 if not (product and quantity > 0 and price_per_unit_achat >= 0 and unit_id):
                     continue
                 
                 unit_object = Unit.query.get(unit_id)
                 if not unit_object:
                     continue
-                
-                # --- CALCUL PMP ---
-                # 1. Conversion de la quantité et du prix vers l'unité de base
+
                 quantity_in_base_unit = unit_object.to_base_unit(quantity)
-                price_per_base_unit = price_per_unit_achat / float(unit_object.conversion_factor) if unit_object.conversion_factor > 0 else 0
                 
-                # 2. Valeur monétaire de cet achat
-                purchase_value = quantity_in_base_unit * price_per_base_unit
-
-                # 3. Mise à jour des valeurs du produit AVANT le recalcul
-                product.total_stock_value = float(product.total_stock_value or 0.0) + purchase_value
-                product.update_stock_by_location(stock_location, quantity_in_base_unit)
+                # ### DEBUT DE LA CORRECTION POUR CONSOMMABLES ###
                 
-                # 4. Recalcul du PMP (nouveau cost_price)
-                new_total_stock_qty = product.total_stock_all_locations
-                if new_total_stock_qty > 0:
-                    product.cost_price = product.total_stock_value / new_total_stock_qty
-                else:
-                    product.cost_price = price_per_base_unit # Cas où le stock était à 0
+                # Si c'est un consommable, on le met dans le bon stock et on ne calcule pas le PMP.
+                if product.product_type == 'consommable':
+                    stock_location = 'consommables'
+                    product.update_stock_by_location(stock_location, quantity_in_base_unit)
+                    print(f"CONSOMMABLE: Ajout de {quantity_in_base_unit} de {product.name} au stock consommables.")
+                
+                # Si c'est un ingrédient, on fait le calcul PMP.
+                elif product.product_type == 'ingredient':
+                    stock_location = stock_locations[i]
+                    price_per_base_unit = price_per_unit_achat / float(unit_object.conversion_factor) if unit_object.conversion_factor > 0 else 0
+                    purchase_value = quantity_in_base_unit * price_per_base_unit
 
-                # --- FIN CALCUL PMP ---
+                    product.total_stock_value = float(product.total_stock_value or 0.0) + purchase_value
+                    product.update_stock_by_location(stock_location, quantity_in_base_unit)
+                    
+                    new_total_stock_qty = product.total_stock_all_locations
+                    if new_total_stock_qty > 0:
+                        product.cost_price = product.total_stock_value / new_total_stock_qty
+                    else:
+                        product.cost_price = price_per_base_unit
+                    
+                    print(f"INGREDIENT: {product.name} - Nouveau PMP: {product.cost_price}")
 
-                # Création de l'item d'achat pour l'historique
+                # ### FIN DE LA CORRECTION ###
+
+                # On crée l'item d'achat dans tous les cas pour l'historique
                 purchase_item = PurchaseItem(
                     purchase_id=purchase.id,
                     product_id=product.id,
                     quantity_ordered=quantity_in_base_unit,
-                    unit_price=price_per_base_unit,
+                    unit_price=price_per_unit_achat / float(unit_object.conversion_factor) if unit_object.conversion_factor > 0 else 0,
                     original_quantity=quantity,
                     original_unit_id=unit_id,
                     original_unit_price=price_per_unit_achat,
@@ -213,6 +218,7 @@ def new_purchase():
                 current_app.logger.error(f"Erreur traitement item PMP: {e}", exc_info=True)
                 continue
 
+        # ... (le reste de la fonction reste identique)
         if items_added == 0:
             db.session.rollback()
             flash('Aucun article valide. Le bon d\'achat a été annulé.', 'danger')
