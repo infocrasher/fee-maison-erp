@@ -76,7 +76,7 @@ class Product(db.Model):
     
     # ### DEBUT DE LA MODIFICATION ###
     # Nouveau champ pour stocker la valeur monétaire totale du stock de ce produit
-    total_stock_value = db.Column(db.Numeric(12, 4), default=0.0, nullable=False)
+    total_stock_value = db.Column(db.Numeric(12, 4), nullable=False, default=0.0, server_default='0.0')
     # ### FIN DE LA MODIFICATION ###
 
     # Seuils d'alerte par stock
