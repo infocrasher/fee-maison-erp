@@ -32,7 +32,7 @@ def check_stock_availability(form_items):
                 labo_name = "Labo A (Stock Magasin)" if labo_key == 'ingredients_magasin' else "Labo B (Stock Local)"
                 print(f"    -> Recette trouvée: '{recipe.name}'. Doit être produit dans: {labo_name} (colonne: {labo_key})")
 
-                for ingredient_in_recipe in recipe.ingredients:
+                for ingredient_in_recipe in recipe.ingredients.all():
                     needed_qty = float(ingredient_in_recipe.quantity_needed) * quantity_ordered
                     ingredient_product = ingredient_in_recipe.product
                     
