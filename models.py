@@ -61,25 +61,34 @@ class Product(db.Model):
     product_type = db.Column(db.String(50), nullable=False)
     description = db.Column(db.Text)
     price = db.Column(db.Numeric(10, 2))
-    cost_price = db.Column(db.Numeric(10, 2))
+    cost_price = db.Column(db.Numeric(10, 2)) # Ce champ deviendra notre PMP
     unit = db.Column(db.String(20), nullable=False)
     sku = db.Column(db.String(50), unique=True, nullable=True)
     quantity_in_stock = db.Column(db.Float, default=0.0)
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # === Gestion 4 Stocks ===
     stock_comptoir = db.Column(db.Float, default=0.0, nullable=False)
     stock_ingredients_local = db.Column(db.Float, default=0.0, nullable=False) 
     stock_ingredients_magasin = db.Column(db.Float, default=0.0, nullable=False)
     stock_consommables = db.Column(db.Float, default=0.0, nullable=False)
     
+    # ### DEBUT DE LA MODIFICATION ###
+    # Nouveau champ pour stocker la valeur monétaire totale du stock de ce produit
+    total_stock_value = db.Column(db.Numeric(12, 4), default=0.0, nullable=False)
+    # ### FIN DE LA MODIFICATION ###
+
+    # Seuils d'alerte par stock
     seuil_min_comptoir = db.Column(db.Float, default=0.0)
     seuil_min_ingredients_local = db.Column(db.Float, default=0.0)
     seuil_min_ingredients_magasin = db.Column(db.Float, default=0.0)
     seuil_min_consommables = db.Column(db.Float, default=0.0)
     
+    # Date dernière mise à jour stock
     last_stock_update = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # Relations
     order_items = db.relationship('OrderItem', backref='product', lazy='dynamic')
 
     @property
