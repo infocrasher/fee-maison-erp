@@ -427,10 +427,36 @@ class Order(db.Model):
         return False
     
     def _increment_shop_stock(self):
+        """Méthode dépréciée. Utiliser _increment_shop_stock_with_value."""
+        print("AVERTISSEMENT: _increment_shop_stock est dépréciée et ne met pas à jour la valeur du stock.")
         for item in self.items:
             if item.product:
-                item.product.update_stock_location('comptoir', float(item.quantity))
-                print(f"📦 Stock comptoir incrémenté: {item.product.name} +{item.quantity}")
+                item.product.update_stock_by_location('comptoir', float(item.quantity))
+
+    def _increment_shop_stock_with_value(self):
+        """
+        Incrémente le stock de vente (comptoir) pour le produit fini,
+        et met à jour sa valeur en se basant sur le coût de sa recette.
+        """
+        for item in self.items:
+            product_fini = item.product
+            if product_fini and product_fini.recipe_definition:
+                # 1. On incrémente la quantité
+                product_fini.update_stock_by_location('comptoir', float(item.quantity))
+                
+                # 2. On calcule la valeur de ce qui a été produit
+                cost_per_unit = float(product_fini.recipe_definition.cost_per_unit)
+                value_to_increment = cost_per_unit * float(item.quantity)
+                
+                # 3. On met à jour la valeur totale du stock du produit fini
+                product_fini.total_stock_value = float(product_fini.total_stock_value or 0.0) + value_to_increment
+
+                # 4. On recalcule le PMP du produit fini lui-même
+                new_total_stock_qty = product_fini.total_stock_all_locations
+                if new_total_stock_qty > 0:
+                    product_fini.cost_price = product_fini.total_stock_value / new_total_stock_qty
+                
+                print(f"INCREMENT: Stock de '{product_fini.name}' augmenté de {item.quantity}. Nouvelle valeur: {product_fini.total_stock_value:.2f} DA. Nouveau PMP: {product_fini.cost_price}")
     
     def _decrement_shop_stock(self):
         for item in self.items:
