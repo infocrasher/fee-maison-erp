@@ -33,21 +33,32 @@ def check_stock_availability(form_items):
                 print(f"    -> Recette trouvée: '{recipe.name}'. Doit être produit dans: {labo_name} (colonne: {labo_key})")
 
                 for ingredient_in_recipe in recipe.ingredients.all():
-                    needed_qty = float(ingredient_in_recipe.quantity_needed) * quantity_ordered
+                    # --- DEBUT DE LA CORRECTION ---
+                    
+                    # 1. Calcul de la quantité d'ingrédient nécessaire pour UNE SEULE unité de produit fini
+                    # Ex: (4000g de semoule) / (12 galettes) = 333.33g de semoule par galette
+                    qty_per_unit = float(ingredient_in_recipe.quantity_needed) / float(recipe.yield_quantity)
+                    
+                    # 2. Calcul du besoin total pour la commande actuelle
+                    # Ex: (333.33g par galette) * (20 galettes commandées) = 6666.6g
+                    needed_qty = qty_per_unit * quantity_ordered
+                    
+                    # --- FIN DE LA CORRECTION ---
+
                     ingredient_product = ingredient_in_recipe.product
                     
                     print(f"    - Ingrédient requis: {ingredient_product.name}")
-                    print(f"      - Quantité par recette: {ingredient_in_recipe.quantity_needed}g")
-                    print(f"      - Quantité totale nécessaire: {needed_qty:.2f}g")
+                    print(f"      - Quantité par unité de recette: {qty_per_unit:.3f}g") # Log mis à jour
+                    print(f"      - Quantité totale nécessaire pour la commande: {needed_qty:.3f}g") # Log mis à jour
 
                     available_stock = ingredient_product.get_stock_by_location(labo_key)
-                    print(f"      - Stock disponible dans '{labo_key}': {available_stock or 0:.2f}g")
+                    print(f"      - Stock disponible dans '{labo_key}': {available_stock or 0:.3f}g")
                     
                     if not available_stock or available_stock < needed_qty:
                         is_sufficient = False
                         print(f"      - !!! STOCK INSUFFISANT !!!")
                         flash(f"Stock insuffisant pour '{ingredient_product.name}' dans {labo_name}. "
-                              f"Besoin: {needed_qty:.2f}g, Dispo: {available_stock or 0:.2f}g", 'danger')
+                              f"Besoin: {needed_qty:.3f}g, Dispo: {available_stock or 0:.3f}g", 'danger')
                     else:
                         print(f"      - Stock OK.")
             else:
