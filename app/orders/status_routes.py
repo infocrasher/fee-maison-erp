@@ -19,8 +19,8 @@ status_bp = Blueprint('status', __name__)
 def change_status_to_ready(order_id):
     """
     Traite la finalisation de la production.
-    Change le statut vers 'ready_at_shop' (Prêt Client) ou 'completed' (Prod Interne).
-    Décrémente les ingrédients et incrémente le stock du produit fini.
+    Change le statut, décrémente la quantité ET la valeur des ingrédients, 
+    et incrémente la quantité ET la valeur du stock du produit fini.
     """
     
     from models import Product, Recipe, RecipeIngredient
@@ -39,9 +39,11 @@ def change_status_to_ready(order_id):
                               new_status='ready_at_shop'))
     
     try:
-        # --- LOGIQUE DE STOCK : Décrémentation des ingrédients ---
+        # ### DEBUT DE LA LOGIQUE CORRIGÉE ###
+        
         for order_item in order.items:
             product_fini = order_item.product
+            
             if product_fini and product_fini.recipe_definition:
                 recipe = product_fini.recipe_definition
                 labo_key = recipe.production_location
@@ -49,26 +51,34 @@ def change_status_to_ready(order_id):
                 for ingredient_in_recipe in recipe.ingredients.all():
                     ingredient_product = ingredient_in_recipe.product
                     
-                    # ### DEBUT DE LA CORRECTION ###
                     qty_per_unit = float(ingredient_in_recipe.quantity_needed) / float(recipe.yield_quantity)
                     quantity_to_decrement = qty_per_unit * float(order_item.quantity)
-                    # ### FIN DE LA CORRECTION ###
-
+                    
+                    # --- NOUVELLE LOGIQUE DE VALORISATION ---
+                    # 1. On récupère le PMP (cost_price) de l'ingrédient
+                    cost_per_base_unit = float(ingredient_product.cost_price or 0.0)
+                    
+                    # 2. On calcule la valeur du stock d'ingrédient qui a été consommé
+                    value_to_decrement = quantity_to_decrement * cost_per_base_unit
+                    
+                    # 3. On met à jour la quantité ET la valeur du stock de l'ingrédient
                     ingredient_product.update_stock_by_location(labo_key, -quantity_to_decrement)
-                    print(f"DECREMENT: {quantity_to_decrement:.2f}g de {ingredient_product.name} du stock '{labo_key}'")
+                    ingredient_product.total_stock_value = float(ingredient_product.total_stock_value or 0.0) - value_to_decrement
+                    
+                    print(f"DECREMENT: {quantity_to_decrement:.2f}g de {ingredient_product.name} (Valeur: {value_to_decrement:.2f} DA)")
+        
+        # On appelle la méthode qui incrémente le stock ET la valeur du produit fini
+        order._increment_shop_stock_with_value()
 
-        # --- LOGIQUE DE STOCK : Incrémentation du produit fini ---
-        order._increment_shop_stock()
-
-        # --- LOGIQUE MÉTIER : Décision sur le statut final ---
+        # Décision sur le statut final
         if order.order_type == 'counter_production_request':
             order.status = 'completed'
-            final_message = f'Ordre de production #{order.id} terminé. Stock de vente mis à jour.'
-        else: # 'customer_order'
+            final_message = f'Ordre de production #{order.id} terminé. Stocks mis à jour.'
+        else:
             order.status = 'ready_at_shop'
-            final_message = f'Commande client #{order.id} est maintenant prête pour le client.'
+            final_message = f'Commande client #{order.id} prête pour le client. Stocks mis à jour.'
         
-        # --- Assignation des employés ---
+        # Assignation des employés
         for employee_id in employee_ids:
             employee = Employee.query.get(employee_id)
             if employee and employee.is_active:
@@ -82,7 +92,7 @@ def change_status_to_ready(order_id):
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Erreur critique lors de la finalisation de la commande #{order_id}: {str(e)}", exc_info=True)
-        flash(f"Erreur critique lors de la mise à jour des stocks. Consulter les logs.", 'error')
+        flash(f"Erreur critique lors de la mise à jour des stocks : {str(e)}", 'error')
     
     return redirect(url_for('dashboard.shop_dashboard'))
 
