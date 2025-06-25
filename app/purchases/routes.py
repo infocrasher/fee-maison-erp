@@ -113,7 +113,7 @@ def list_purchases():
 @purchases.route('/new', methods=['GET', 'POST'])
 @login_required
 def new_purchase():
-    """Création d'un nouveau bon d'achat avec traitement manuel des items et mise à jour stock automatique"""
+    """Création d'un nouveau bon d'achat avec calcul du PMP et mise à jour stock."""
     Product, User, Unit = get_main_models()
 
     if request.method == 'POST':
@@ -122,14 +122,11 @@ def new_purchase():
         form = PurchaseForm()
 
     if form.validate_on_submit():
-        
-        # Gestion du fuseau horaire (conservée comme demandé)
-        # Cette logique est correcte à condition que le template envoie bien le champ 'requested_date'
-        local_tz = pytz.timezone('Europe/Paris') # ou votre fuseau horaire
+        local_tz = pytz.timezone('Europe/Paris')
         naive_date = form.requested_date.data
         aware_date = local_tz.localize(naive_date)
 
-        # Création du bon d'achat principal
+        # On crée l'objet Achat mais on ne le sauvegarde pas tout de suite
         purchase = Purchase(
             supplier_name=form.supplier_name.data,
             supplier_contact=form.supplier_contact.data,
@@ -144,143 +141,94 @@ def new_purchase():
             notes=form.notes.data,
             internal_notes=form.internal_notes.data,
             terms_conditions=form.terms_conditions.data,
-            requested_date=aware_date, 
+            requested_date=aware_date,
             requested_by_id=current_user.id,
-            is_paid=False 
+            is_paid=False,
+            status=PurchaseStatus.RECEIVED
         )
-
-        # ✅ WORKFLOW "ACHAT DIRECT" : Statut automatique RECEIVED
-        purchase.status = PurchaseStatus.RECEIVED
         db.session.add(purchase)
-        db.session.flush() # Pour obtenir l'ID
+        db.session.flush()
 
-        # Traitement manuel des items depuis request.form
+        # ### DEBUT DE LA NOUVELLE LOGIQUE PMP ###
+        
         items_added = 0
         product_ids = request.form.getlist('items[][product_id]')
         quantities = request.form.getlist('items[][quantity_ordered]')
         prices = request.form.getlist('items[][unit_price]')
-        units = request.form.getlist('items[][unit]')
+        unit_ids = request.form.getlist('items[][unit]')
         stock_locations = request.form.getlist('items[][stock_location]')
         
-        # Traiter chaque ligne d'item
         for i in range(len(product_ids)):
             try:
-                product_id = int(product_ids[i]) if product_ids[i] else None
-                quantity = float(quantities[i]) if quantities[i] else 0
-                price = float(prices[i]) if prices[i] else 0
-                unit_id = int(units[i]) if units[i] else None
-                stock_location = stock_locations[i] if i < len(stock_locations) else 'ingredients_magasin'
+                product_id = int(product_ids[i])
+                product = Product.query.get(product_id)
+                quantity = float(quantities[i])
+                price_per_unit_achat = float(prices[i])
+                unit_id = int(unit_ids[i])
+                stock_location = stock_locations[i]
 
-                if product_id and quantity > 0 and price > 0:
-                    final_quantity = quantity
-                    final_unit_price = price
-                    original_quantity = None
-                    original_unit_id = None
-                    original_unit_price = None
-                    description_with_unit = f"{quantity} unités"
-                    
-                    if unit_id:
-                        try:
-                            unit = Unit.query.get(unit_id)
-                            if unit and unit.conversion_factor > 0:
-                                final_quantity = unit.to_base_unit(quantity)
-                                final_unit_price = price / float(unit.conversion_factor)
-                                original_quantity = quantity
-                                original_unit_id = unit.id
-                                original_unit_price = price
-                                description_with_unit = f"{quantity} × {unit.name}"
-                                flash(f'Conversion : {quantity} × {unit.name} = {final_quantity}{unit.base_unit}', 'info')
-                        except (ValueError, TypeError):
-                            pass
+                if not (product and quantity > 0 and price_per_unit_achat >= 0 and unit_id):
+                    continue
+                
+                unit_object = Unit.query.get(unit_id)
+                if not unit_object:
+                    continue
+                
+                # --- CALCUL PMP ---
+                # 1. Conversion de la quantité et du prix vers l'unité de base
+                quantity_in_base_unit = unit_object.to_base_unit(quantity)
+                price_per_base_unit = price_per_unit_achat / float(unit_object.conversion_factor) if unit_object.conversion_factor > 0 else 0
+                
+                # 2. Valeur monétaire de cet achat
+                purchase_value = quantity_in_base_unit * price_per_base_unit
 
-                    purchase_item = PurchaseItem(
-                        purchase_id=purchase.id,
-                        product_id=product_id,
-                        quantity_ordered=final_quantity,
-                        unit_price=final_unit_price,
-                        original_quantity=original_quantity,
-                        original_unit_id=original_unit_id,
-                        original_unit_price=original_unit_price,
-                        stock_location=stock_location,
-                        description_override=description_with_unit
-                    )
+                # 3. Mise à jour des valeurs du produit AVANT le recalcul
+                product.total_stock_value = float(product.total_stock_value or 0.0) + purchase_value
+                product.update_stock_by_location(stock_location, quantity_in_base_unit)
+                
+                # 4. Recalcul du PMP (nouveau cost_price)
+                new_total_stock_qty = product.total_stock_all_locations
+                if new_total_stock_qty > 0:
+                    product.cost_price = product.total_stock_value / new_total_stock_qty
+                else:
+                    product.cost_price = price_per_base_unit # Cas où le stock était à 0
 
-                    db.session.add(purchase_item)
-                    items_added += 1
+                # --- FIN CALCUL PMP ---
+
+                # Création de l'item d'achat pour l'historique
+                purchase_item = PurchaseItem(
+                    purchase_id=purchase.id,
+                    product_id=product.id,
+                    quantity_ordered=quantity_in_base_unit,
+                    unit_price=price_per_base_unit,
+                    original_quantity=quantity,
+                    original_unit_id=unit_id,
+                    original_unit_price=price_per_unit_achat,
+                    stock_location=stock_location
+                )
+                db.session.add(purchase_item)
+                items_added += 1
 
             except (ValueError, IndexError, TypeError) as e:
-                print(f"Erreur traitement item {i}: {e}")
+                current_app.logger.error(f"Erreur traitement item PMP: {e}", exc_info=True)
                 continue
-        
+
         if items_added == 0:
-            flash('Aucun article valide n\'a été ajouté au bon d\'achat.', 'danger')
-            available_products = Product.query.filter(
-                Product.product_type.in_(['ingredient', 'consommable'])
-            ).all()
-            available_units = Unit.query.filter_by(is_active=True).order_by(Unit.display_order).all()
-            return render_template('purchases/new_purchase.html', form=form, title='Nouveau Bon d\'Achat',
-                                available_products=available_products, available_units=available_units)
+            db.session.rollback()
+            flash('Aucun article valide. Le bon d\'achat a été annulé.', 'danger')
+            return redirect(url_for('purchases.new_purchase'))
 
-        # Calcul des totaux
         purchase.calculate_totals()
-        
-        if purchase.status == PurchaseStatus.RECEIVED:
-            stock_updates = []
-            for item in purchase.items:
-                if item.product:
-                    if item.stock_location == 'ingredients_magasin':
-                        item.product.stock_ingredients_magasin += float(item.quantity_ordered)
-                        stock_location_display = "Stock Magasin"
-                    elif item.stock_location == 'ingredients_local':
-                        item.product.stock_ingredients_local += float(item.quantity_ordered)
-                        stock_location_display = "Stock Local"
-                    elif item.stock_location == 'comptoir':
-                        item.product.stock_comptoir += float(item.quantity_ordered)
-                        stock_location_display = "Stock Comptoir"
-                    elif item.stock_location == 'consommables':
-                        item.product.stock_consommables += float(item.quantity_ordered)
-                        stock_location_display = "Stock Consommables"
-                    else:
-                        item.product.stock_ingredients_magasin += float(item.quantity_ordered)
-                        stock_location_display = "Stock Magasin (par défaut)"
-
-                    if item.original_quantity and item.original_unit:
-                        display_quantity = f"{item.original_quantity} × {item.original_unit.name}"
-                    else:
-                        display_quantity = f"{item.quantity_ordered}"
-                    stock_updates.append(f"{item.product.name}: +{display_quantity} dans {stock_location_display}")
-
-            if stock_updates:
-                flash(f'Stocks mis à jour automatiquement :', 'success')
-                for update in stock_updates:
-                    flash(f'📦 {update}', 'info')
-
         db.session.commit()
         
-        action_text = "créé et reçu" if purchase.status == PurchaseStatus.RECEIVED else "créé"
-        flash(f'Bon d\'achat {purchase.reference} {action_text} avec {items_added} article(s).', 'success')
+        flash(f'Bon d\'achat {purchase.reference} créé. Le stock et le coût moyen pondéré ont été mis à jour.', 'success')
         return redirect(url_for('purchases.view_purchase', id=purchase.id))
 
-    elif request.method == 'POST':
-        flash('Erreur de validation du formulaire. Vérifiez les champs.', 'danger')
-        if form.errors:
-            for field_name, errors in form.errors.items():
-                for error in errors:
-                    flash(f"Erreur {field_name}: {error}", 'warning')
-
-    # Variables pour le template
-    available_products = Product.query.filter(
-        Product.product_type.in_(['ingredient', 'consommable'])
-    ).all()
+    available_products = Product.query.filter(Product.product_type.in_(['ingredient', 'consommable'])).all()
     available_units = Unit.query.filter_by(is_active=True).order_by(Unit.display_order).all()
 
-    return render_template(
-        'purchases/new_purchase.html',
-        form=form,
-        title='Nouveau Bon d\'Achat',
-        available_products=available_products,
-        available_units=available_units
-    )
+    return render_template('purchases/new_purchase.html', form=form, title='Nouveau Bon d\'Achat',
+                           available_products=available_products, available_units=available_units)
 
 @purchases.route('/<int:id>')
 @login_required
