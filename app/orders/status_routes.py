@@ -46,11 +46,16 @@ def change_status_to_ready(order_id):
                 recipe = product_fini.recipe_definition
                 labo_key = recipe.production_location
                 
-                for ingredient_in_recipe in recipe.ingredients:
+                for ingredient_in_recipe in recipe.ingredients.all():
                     ingredient_product = ingredient_in_recipe.product
-                    quantity_to_decrement = float(ingredient_in_recipe.quantity_needed) * float(order_item.quantity)
+                    
+                    # ### DEBUT DE LA CORRECTION ###
+                    qty_per_unit = float(ingredient_in_recipe.quantity_needed) / float(recipe.yield_quantity)
+                    quantity_to_decrement = qty_per_unit * float(order_item.quantity)
+                    # ### FIN DE LA CORRECTION ###
+
                     ingredient_product.update_stock_by_location(labo_key, -quantity_to_decrement)
-                    print(f"DECREMENT: {quantity_to_decrement}g de {ingredient_product.name} du stock '{labo_key}'")
+                    print(f"DECREMENT: {quantity_to_decrement:.2f}g de {ingredient_product.name} du stock '{labo_key}'")
 
         # --- LOGIQUE DE STOCK : Incrémentation du produit fini ---
         order._increment_shop_stock()
