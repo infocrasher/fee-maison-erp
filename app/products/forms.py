@@ -18,18 +18,39 @@ class ProductForm(FlaskForm):
     name = StringField('Nom du produit', validators=[DataRequired(), Length(max=200)])
     description = TextAreaField('Description', validators=[Optional()])
     sku = StringField('SKU / Référence', validators=[Optional(), Length(max=50)])
+    
     product_type = SelectField(
-    'Type', 
-    choices=[
-        ('ingredient', 'Ingrédient'),
-        ('finished', 'Produit Fini'),
-        ('consommable', 'Consommable') # On ajoute l'option ici
-    ], 
-    validators=[DataRequired()]
-)
-    unit = StringField('Unité (ex: kg, L, pièce)', validators=[DataRequired(), Length(max=20)])
+        'Type de Produit', 
+        choices=[
+            ('ingredient', 'Ingrédient'), 
+            ('finished', 'Produit Fini'),
+            ('consommable', 'Consommable')
+        ], 
+        validators=[DataRequired()]
+    )
+    
+    # ### DEBUT DE LA CORRECTION ###
+    # Le champ "Unité" devient un SelectField pour choisir l'unité de BASE
+    unit = SelectField(
+        'Unité de Base (pour Stock et Recettes)', 
+        choices=[
+            ('g', 'Grammes (g)'),
+            ('ml', 'Millilitres (ml)'),
+            ('pièce', 'Pièce / Unité')
+        ], 
+        validators=[DataRequired()]
+    )
+    # ### FIN DE LA CORRECTION ###
+
     price = FloatField('Prix de vente (DA)', validators=[Optional(), NumberRange(min=0)])
-    cost_price = FloatField("Prix d'achat / Coût de revient (DA)", validators=[Optional(), NumberRange(min=0)])
-    quantity_in_stock = FloatField('Quantité en stock', default=0, validators=[DataRequired(), NumberRange(min=0)])
+    
+    # On clarifie le label pour le coût
+    cost_price = FloatField("Coût de Revient Initial / PMP (DA par unité de base)", 
+                            validators=[Optional(), NumberRange(min=0)],
+                            description="Sera mis à jour automatiquement par les achats (PMP).")
+    
+    # On retire le champ 'quantity_in_stock' qui était source de confusion.
+    # Le stock initial sera géré par un "Ajustement de stock" ou un premier achat.
+    
     category = QuerySelectField('Catégorie', query_factory=category_query_factory, get_label='name', allow_blank=False)
     submit = SubmitField('Enregistrer le produit')
