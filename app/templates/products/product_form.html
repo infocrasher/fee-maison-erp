@@ -19,7 +19,7 @@
                 <div class="card-header bg-light">
                     <h5 class="card-title mb-0">
                         <i class="bi bi-{% if product and product.id %}pencil-fill{% else %}plus-circle-fill{% endif %} me-2"></i>
-                        {{ legend }}
+                        {{ legend or 'Détails du produit' }}
                     </h5>
                 </div>
                 <div class="card-body p-4">
@@ -54,7 +54,6 @@
                                     <div class="invalid-feedback">{% for error in form.category.errors %}{{ error }}{% endfor %}</div>
                                 {% endif %}
                             </div>
-                             <!-- CHAMP UNITÉ AJOUTÉ ICI -->
                             <div class="col-md-5 mb-3">
                                 {{ form.unit.label(class="form-label fw-semibold") }}
                                 <span class="text-danger" title="Champ requis">*</span>
@@ -102,20 +101,11 @@
                         </div>
                         
                         <div class="row">
-                            <div class="col-md-6 mb-3">
-                                {{ form.quantity_in_stock.label(class="form-label fw-semibold") }}
-                                <span class="text-danger" title="Champ requis">*</span>
-                                <div class="input-group">
-                                    {{ form.quantity_in_stock(class="form-control" + (" is-invalid" if form.quantity_in_stock.errors else ""), type="number", step="1") }}
-                                    {# Le champ unit est maintenant un SelectField séparé #}
-                                </div>
-                                {% if form.quantity_in_stock.errors %}
-                                    <div class="invalid-feedback d-block">{% for error in form.quantity_in_stock.errors %}{{ error }}{% endfor %}</div>
-                                {% endif %}
-                                <div class="form-text">Quantité actuelle en stock.</div>
-                            </div>
+                            <!-- ### DEBUT DE LA CORRECTION ### -->
+                            <!-- Le champ pour 'quantity_in_stock' a été supprimé d'ici. -->
+                            <!-- ### FIN DE LA CORRECTION ### -->
 
-                            <div class="col-md-6 mb-4">
+                            <div class="col-md-12 mb-4">
                                 {{ form.sku.label(class="form-label fw-semibold") }}
                                 {{ form.sku(class="form-control" + (" is-invalid" if form.sku.errors else ""), placeholder="Ex: GATEAU-CHOC-001, AMANDES-KG-01") }}
                                 {% if form.sku.errors %}
@@ -144,8 +134,8 @@
             </div>
             {% if product and product.id %}
             <!-- Modal de suppression (si en mode édition) -->
-            <div class="modal fade" id="deleteProductModal{{ product.id }}" ...>
-                <!-- ... (contenu de la modal inchangé) ... -->
+            <div class="modal fade" id="deleteProductModal{{ product.id }}">
+                <!-- Le contenu de ta modal reste ici -->
             </div>
             {% endif %}
         </div>
@@ -156,7 +146,7 @@
 {% block scripts %}
 {{ super() }}
 <script>
-// Le script JS pour la visibilité conditionnelle des champs de prix reste le même
+// Le JavaScript reste exactement le même, il n'est pas affecté par la suppression du champ.
 document.addEventListener('DOMContentLoaded', function() {
     const productTypeField = document.getElementById('product_type');
     const priceFieldWrapper = document.getElementById('price_field_wrapper');
@@ -188,7 +178,7 @@ document.addEventListener('DOMContentLoaded', function() {
             costPriceRequiredIndicator.style.display = 'none';
             if (costPriceFormText) costPriceFormText.textContent = "Coût de revient direct ou prix d'achat (optionnel pour produit fini).";
             if (priceFormText) priceFormText.textContent = "Prix de vente au client (obligatoire pour produit fini).";
-        } else {
+        } else { // Cas 'consommable' et autres
             priceFieldWrapper.style.display = 'block';
             costPriceFieldWrapper.style.display = 'block';
             priceRequiredIndicator.style.display = 'none';
